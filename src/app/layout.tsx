@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Fraunces, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Fraunces, Geist_Mono, Roboto } from "next/font/google";
 import "./globals.css";
+
+const roboto = Roboto({
+  variable: "--font-roboto",
+  subsets: ["latin", "latin-ext"],
+  weight: ["300", "400", "500", "700"],
+});
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
@@ -28,7 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pl"
-      className={`${bricolage.variable} ${fraunces.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${bricolage.variable} ${fraunces.variable} ${geistMono.variable} ${roboto.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
