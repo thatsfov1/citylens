@@ -1,6 +1,7 @@
 import { chatRequestSchema } from "@/lib/llm/chat-schema";
 import type { ChatResult } from "@/lib/llm/chat-schema";
 import { chatTurn } from "@/lib/llm/gemini";
+import { budgetToFilter } from "@/lib/scoring/rent";
 import { resolveAnchor } from "@/lib/supabase/anchors";
 
 // Tiny in-memory per-IP limiter — enough to protect the demo key from accidental loops.
@@ -28,10 +29,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { nearPlace, ...output } = await chatTurn(body.data.messages);
+    const { nearPlace, budget, ...output } = await chatTurn(body.data.messages);
     // Coordinates come from our data, never from the model; an unknown name is silently dropped.
     const anchor = nearPlace ? await resolveAnchor(nearPlace.query, nearPlace.radiusM) : null;
-    return Response.json({ ...output, anchor } satisfies ChatResult);
+    return Response.json({ ...output, anchor, rent: budgetToFilter(budget) } satisfies ChatResult);
   } catch (err) {
     console.error("chat failed:", err instanceof Error ? err.message : err);
     return Response.json({ error: "The assistant is unavailable right now." }, { status: 503 });
