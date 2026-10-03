@@ -55,3 +55,26 @@ export type PlacesResponse = {
   /** Park / forest outlines near the hexagon (properties: name, areaHa). */
   green: GeoJSON.FeatureCollection;
 };
+
+/** A construction / renovation work (or an investment-related permit) near a hexagon, with its source. */
+export type WorkKind = "road" | "tram" | "rail" | "building" | "green" | "utility" | "other";
+/** ongoing = in progress; planned = announced for later; decision = permit issued, no works schedule published. */
+export type WorkStatus = "ongoing" | "planned" | "decision";
+
+export type WorkNearby = {
+  id: number;
+  title: string;
+  kind: WorkKind;
+  status: WorkStatus;
+  /** ISO dates (YYYY-MM-DD), only when the source states them. */
+  dateFrom: string | null;
+  dateTo: string | null;
+  /** Reviewed English wording for vague timing, e.g. "around mid-2027". */
+  whenLabel: string | null;
+  sourceName: string;
+  sourceUrl: string;
+  /** When the source page / record was published or issued (ISO date). */
+  publishedAt: string | null;
+  /** Metres from the hexagon centre to the closest part of the works. */
+  distanceM: number;
+};
