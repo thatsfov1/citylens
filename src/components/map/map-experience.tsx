@@ -6,6 +6,7 @@ import { ArrowLeft, GraduationCap, Hexagon, MapPin, ShieldCheck, SlidersHorizont
 import { AirSection, AreaPanel, SafetySection, type PanelView } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { CompareTray } from "./compare-tray";
+import { RentFilter, isRentActive } from "./rent-filter";
 import { FirstMatchCard } from "./first-match-card";
 import { OsmAttribution } from "@/components/osm-attribution";
 import { ModeSelector } from "./mode-selector";
@@ -25,6 +26,7 @@ import { MIN_SAFETY_LEVELS, importanceToQuery, type Importance } from "@/lib/sco
 import { stagesToParam, withEducationStages } from "@/lib/scoring/education";
 import { formatRadius, hexesOutsideAnchor, type Anchor } from "@/lib/scoring/anchor";
 import { normalizeWeights } from "@/lib/scoring/weights";
+import { DEFAULT_ROOMS, RENT_MAX, RENT_MIN, classifyHexes, rentFor, rentFit, rentToQuery, type RentFilter as RentBudget } from "@/lib/scoring/rent";
 import type { HexSource, HexDetails } from "@/lib/supabase/hex-scores";
 import {
   EDUCATION_STAGES,
@@ -44,6 +46,7 @@ export function MapExperience({
   initialMinSafety = 0,
   initialStages = [...EDUCATION_STAGES],
   anchor = null,
+  initialRent = null,
 }: {
   hexes: HexData[];
   source: HexSource;
@@ -54,6 +57,8 @@ export function MapExperience({
   initialStages?: EducationStage[];
   /** A place the user wants to be near (`?near=`): hexes beyond its radius are dimmed. */
   anchor?: Anchor | null;
+  /** Monthly rent budget from the URL (`?rent=&rooms=`); null = no budget. */
+  initialRent?: RentBudget | null;
 }) {
   const [mode, setMode] = useState<MapMode>("forYou");
   // Safety is optional data: the view and the filter only appear when cells carry safety indicators.
@@ -67,6 +72,22 @@ export function MapExperience({
     else url.searchParams.delete("minSafety");
     window.history.replaceState(null, "", url);
   };
+  // Rent budget: districts whose typical rent is outside the range are greyed out; unknown ones are shaded lightly.
+  const hasRent = useMemo(() => hexes.some((h) => h.district), [hexes]);
+  const [rent, setRent] = useState<RentBudget>(initialRent ?? { min: RENT_MIN, max: RENT_MAX, rooms: DEFAULT_ROOMS });
+  const rentActive = hasRent && isRentActive(rent);
+  const changeRent = (v: RentBudget) => {
+    setRent(v);
+    const url = new URL(window.location.href);
+    if (isRentActive(v)) {
+      for (const [k, val] of new URLSearchParams(rentToQuery(v))) url.searchParams.set(k, val);
+    } else {
+      url.searchParams.delete("rent");
+      url.searchParams.delete("rooms");
+    }
+    window.history.replaceState(null, "", url);
+  };
+  const rentSets = useMemo(() => (rentActive ? classifyHexes(hexes, rent) : null), [hexes, rent, rentActive]);
   // Education has four life stages; the score shown is the mean of the selected ones (recomputed client-side).
   const hasStages = useMemo(() => hexes.some((h) => h.educationStages), [hexes]);
   const [stages, setStages] = useState<EducationStage[]>(initialStages);
@@ -222,14 +243,18 @@ export function MapExperience({
   useEffect(() => {
     if (autoPicked.current || source !== "supabase") return;
     autoPicked.current = true;
-    const ids = strongestAreas(outside ? viewHexes.filter((h) => !outside.has(h.h3Index)) : viewHexes, weights, minSafety);
+    const ids = strongestAreas(
+      viewHexes.filter((h) => !outside?.has(h.h3Index) && !rentSets?.over.has(h.h3Index)),
+      weights,
+      minSafety,
+    );
     if (ids.length === 0) return;
     // One-shot after mount on purpose: selecting here goes through the same fly-in as a click on the map.
     /* eslint-disable react-hooks/set-state-in-effect */
     setFirst({ ids, i: 0 });
     setSelected(ids[0]);
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [source, viewHexes, weights, minSafety, outside]);
+  }, [source, viewHexes, weights, minSafety, outside, rentSets]);
   const compareAnother = () => {
     if (!first) return;
     const i = (first.i + 1) % first.ids.length;
@@ -249,8 +274,8 @@ export function MapExperience({
 
   // Filters (safety level, education stages) live in their own window so the side panel stays a summary.
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const hasFilters = hasSafety || showStageFilter;
-  const activeFilters = (minSafety > 0 ? 1 : 0) + (hasStages && stages.length < EDUCATION_STAGES.length ? 1 : 0);
+  const hasFilters = hasSafety || showStageFilter || hasRent;
+  const activeFilters = (minSafety > 0 ? 1 : 0) + (rentActive ? 1 : 0) + (hasStages && stages.length < EDUCATION_STAGES.length ? 1 : 0);
 
   const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
   const [focusPlace, setFocusPlace] = useState<{ id: number; n: number } | null>(null);
@@ -270,6 +295,8 @@ export function MapExperience({
         focusPlace={focusPlace}
         minSafety={minSafety}
         outside={outside}
+        overBudget={rentSets?.over}
+        rentUnknown={rentSets?.unknown}
         compared={compared}
         badges={
           hex
@@ -293,6 +320,7 @@ export function MapExperience({
           >
             <X className="size-4" />
           </button>
+          {hasRent && <RentFilter value={rent} onChange={changeRent} inline />}
           {hasSafety && <SafetyFilter value={minSafety} onChange={changeMinSafety} inline />}
           {showStageFilter && <StageFilter value={stages} onToggle={toggleStage} inline />}
         </section>
@@ -377,6 +405,14 @@ export function MapExperience({
           source={source}
           weights={weights}
           sensitivity={sensitivity}
+          rent={
+            rentActive && hex
+              ? (() => {
+                  const stats = rentFor(hex.district, rent.rooms);
+                  return { stats, rooms: rent.rooms, fit: rentFit(stats, rent) };
+                })()
+              : null
+          }
           stages={stages}
           onClose={() => setSelected(null)}
           view={view}
@@ -407,7 +443,7 @@ export function MapExperience({
         onClear={() => setCompared([])}
       />
 
-      <Legend mode={mode} minSafety={minSafety} />
+      <Legend mode={mode} minSafety={minSafety} rentActive={rentActive} />
     </div>
   );
 }
@@ -472,7 +508,7 @@ function SafetyFilter({ value, onChange, inline = false }: { value: number; onCh
   );
 }
 
-function Legend({ mode, minSafety }: { mode: MapMode; minSafety: number }) {
+function Legend({ mode, minSafety, rentActive }: { mode: MapMode; minSafety: number; rentActive: boolean }) {
   return (
     <div className="pointer-events-none absolute left-3 top-28 rounded-xl border border-border/70 bg-white/90 px-3 py-2 shadow-lg shadow-black/5 backdrop-blur sm:bottom-6 sm:left-4 sm:top-auto">
       <div className="mb-1.5 text-[11px] font-medium text-slate-600">
@@ -494,6 +530,18 @@ function Legend({ mode, minSafety }: { mode: MapMode; minSafety: number }) {
           <span className="size-2.5 rounded-sm bg-slate-600/60" />
           Below your minimum safety level
         </div>
+      )}
+      {mode !== "safety" && rentActive && (
+        <>
+          <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <span className="size-2.5 rounded-sm bg-slate-600/60" />
+            Outside your rent budget
+          </div>
+          <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <span className="size-2.5 rounded-sm bg-slate-600/20" />
+            No rent data
+          </div>
+        </>
       )}
       {mode === "safety" && (
         <div className="mt-1 max-w-52 text-[10px] leading-snug text-muted-foreground">

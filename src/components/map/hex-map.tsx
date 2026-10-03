@@ -125,6 +125,10 @@ type Props = {
   minSafety: number;
   /** Hexes outside the "near a place" radius: dimmed like the safety filter, in every mode but Safety. */
   outside?: ReadonlySet<string>;
+  /** Hexes whose district rent is outside the user's budget: greyed out like the safety filter (not in the Safety view). */
+  overBudget?: ReadonlySet<string>;
+  /** Hexes with no rent estimate while a budget is active: shaded lightly. */
+  rentUnknown?: ReadonlySet<string>;
   /** Safety / air values of the selected hexagon (null = no data); shown as badges on its border. */
   badges?: HexBadges;
   /** Areas in the side-by-side comparison; they stay outlined even when not selected. */
@@ -189,7 +193,7 @@ function cornerAt(selected: string, degrees: number): [number, number] {
   return cellToBoundary(selected).reduce((best, v) => (diff(v) < diff(best) ? v : best)) as [number, number];
 }
 
-export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, badges, compared, onBadge }: Props) {
+export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentUnknown, badges, compared, onBadge }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -236,7 +240,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     withSafety.forEach((i, k) => (safetyPct[i] = safetyRanks[k]));
     pct.safety = safetyPct;
     // Below the user's minimum safety level (unknown ≠ unsafe: cells without data are never filtered out).
-    const belowMin = hexes.map((h) => (minSafety > 0 && h.safety != null && h.safety < minSafety) || !!outside?.has(h.h3Index));
+    const belowMin = hexes.map((h) => (minSafety > 0 && h.safety != null && h.safety < minSafety) || !!outside?.has(h.h3Index) || !!overBudget?.has(h.h3Index));
     const cells = hexes.map((h) => h.h3Index);
     const fields = Object.fromEntries(
       Object.keys(pct).map((m) => [
@@ -266,6 +270,8 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
           safety: safety ?? null,
           belowMin: belowMin[i] ? 1 : 0,
           outside: outside?.has(hexes[i].h3Index) ? 1 : 0,
+          overBudget: overBudget?.has(hexes[i].h3Index) ? 1 : 0,
+          rentUnknown: rentUnknown?.has(hexes[i].h3Index) ? 1 : 0,
           personal: personal[i],
           ...Object.fromEntries(
             Object.entries(pct).map(([mode, v]) => [pctProp(mode as MapMode), v[i]]),
@@ -275,7 +281,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       })),
     };
     return { geojson, fields, tops };
-  }, [hexes, weights, minSafety, outside]);
+  }, [hexes, weights, minSafety, outside, overBudget, rentUnknown]);
 
   const districts = useMemo(() => districtLayers(hexes), [hexes]);
 
@@ -433,6 +439,14 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         layout: { visibility: mode === "safety" ? "none" : "visible" },
         paint: { "fill-color": "#475569", "fill-opacity": 0.62, "fill-antialias": false },
       });
+      // Rent budget active but no estimate for the district: unknown, not out of budget, so only a light shade.
+      map.addLayer({
+        id: "rent-unknown",
+        type: "fill",
+        source: SOURCE,
+        filter: ["==", ["get", "rentUnknown"], 1],
+        paint: { "fill-color": "#475569", "fill-opacity": 0.16, "fill-antialias": false },
+      });
       map.addLayer({
         id: "top-line",
         type: "line",
@@ -582,7 +596,10 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         x: e.point.x,
         y: e.point.y,
         district: (props.district as string) || "Kraków",
-        label: m !== "safety" && props.belowMin === 1 ? `${label} · ${props.outside === 1 ? "outside your chosen radius" : "below your minimum safety"}` : label,
+        label:
+          m !== "safety" && props.belowMin === 1
+            ? `${label} · ${props.outside === 1 ? "outside your chosen radius" : props.overBudget === 1 ? "outside your rent budget" : "below your minimum safety"}`
+            : label,
         value: noSafety ? "" : `${Math.round(value as number)}`,
       });
     });
@@ -623,6 +640,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     (map.getSource(HEAT_SOURCE) as maplibregl.ImageSource).updateImage({ url: heatUrl(fields[mode]) });
     (map.getSource(TOP_SOURCE) as maplibregl.GeoJSONSource).setData(tops[mode]);
     map.setLayoutProperty("below-min", "visibility", mode === "safety" ? "none" : "visible");
+    map.setLayoutProperty("rent-unknown", "visibility", mode === "safety" ? "none" : "visible");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fields handled by the effect above
   }, [mode]);
 
