@@ -469,3 +469,22 @@ changes a score.
 - Limits / not done: no minimum-suitability threshold input; no LLM explanation of the trade-off yet (if added, give it the
   computed candidates only: suitability, minutes, reasons); "Adjust preferences" does not
   carry the workplace back; the public routing server is best-effort and has no SLA.
+
+## Sharing and saved maps
+
+- **Everything is in the link, no backend.** On top of the filters that already live in the URL (weights, `minSafety`, `edu`,
+  `near`, `rent` / `rooms` / `czynsz`) the map keeps `mode` (tab), `sel` (open area) and `cmp` (up to 3 compared areas) in the
+  address bar (one `replaceState` effect in `map-experience.tsx`). Parse/build/validate: `src/lib/share/state.ts`
+  (unknown tabs, invalid H3 ids, ids outside the loaded grid and a 4th `cmp` id are dropped, never an error); tests in
+  `src/lib/__tests__/share.test.ts`. A link with `sel` skips the automatic "first match" jump.
+- **Share button** (top-right of the map, `share-menu.tsx`): lists what the link reopens, Copy link (clipboard, with a
+  select-the-text fallback), native Share on devices that have it, and "Save on this device". The copied link carries
+  `shared=1`; the owner's own address bar does not.
+- **Receiving:** `shared=1` shows a dismissible "Shared with you" banner (`shared-banner.tsx`) with Adjust preferences and
+  Save a copy. Dismissing removes `shared` from the URL.
+- **Saved maps** (`src/lib/share/saved.ts`): up to 10 named snapshots in `localStorage` (`krakow-saved-maps-v1`), each
+  stored as the map's query string so it keeps working as parameters evolve. No accounts; if the browser blocks storage the
+  UI says so. The landing page shows "Wróć do: <name>" for the latest one (`saved-map-link.tsx`).
+- **Link preview:** `generateMetadata` in `src/app/map/page.tsx` describes the weights and rent budget in the link.
+- Limits: saved maps live in one browser only; a long link (weights + near + compared areas) is a few hundred characters;
+  "Adjust preferences" still returns to the landing page with the weights only (not rent, compared areas or filters).

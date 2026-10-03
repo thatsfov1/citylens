@@ -13,6 +13,7 @@ import { rentToQuery, type RentFilter } from "@/lib/scoring/rent";
 import { workplaceToQuery, type Workplace } from "@/lib/scoring/commute";
 import type { EducationStage } from "@/types";
 import { ChatPanel } from "./chat-panel";
+import { SavedMapLink } from "./saved-map-link";
 
 export function Landing({ initial }: { initial?: Importance }) {
   const router = useRouter();
@@ -48,6 +49,9 @@ export function Landing({ initial }: { initial?: Importance }) {
         </section>
 
         <section className="relative flex items-center justify-center px-5 py-8 sm:px-8 lg:px-10">
+          <div className="absolute right-5 top-5 sm:right-8 sm:top-8">
+            <SavedMapLink />
+          </div>
           <div className="w-full max-w-xl">
             <ChatPanel
               onImportance={(i, nextStages, nextAnchor, nextRent, nextWork) => {
