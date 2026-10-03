@@ -4,8 +4,9 @@ import { createClient } from "./server";
 import { getHexData } from "../mock-data/hexes";
 import { MAX_RADIUS_M } from "../data/score-hex";
 import { bboxAround, selectPlaces } from "../data/places";
+import { WORKS_RADIUS_M } from "../data/works";
 import type { LngLat } from "../data/geo";
-import type { HexData, HexIndicators, PlacesResponse } from "../../types";
+import type { HexData, HexIndicators, PlacesResponse, WorkNearby } from "../../types";
 
 const score = z.number().min(0).max(100);
 const rowSchema = z.object({
@@ -174,6 +175,47 @@ export async function loadPlaces(h3Index: string): Promise<PlacesResponse | null
     return { places, green };
   } catch (err) {
     console.warn("places unavailable:", err);
+    return null;
+  }
+}
+
+const workRow = z.object({
+  id: z.number(),
+  title: z.string(),
+  kind: z.enum(["road", "tram", "rail", "building", "green", "utility", "other"]),
+  status: z.enum(["ongoing", "planned", "decision"]),
+  date_from: z.string().nullable(),
+  date_to: z.string().nullable(),
+  when_label: z.string().nullable(),
+  source_name: z.string(),
+  source_url: z.string(),
+  published_at: z.string().nullable(),
+  distance_m: z.number(),
+});
+
+/** Works (ongoing / planned / permits) within ~1 km of the cell centre; null if unknown or unavailable. */
+export async function loadWorks(h3Index: string): Promise<WorkNearby[] | null> {
+  if (!isValidCell(h3Index)) return null;
+  try {
+    const [lat, lng] = cellToLatLng(h3Index);
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("works_near", { p_lat: lat, p_lng: lng, p_radius_m: WORKS_RADIUS_M });
+    if (error) throw error;
+    return z.array(workRow).parse(data).map((r) => ({
+      id: r.id,
+      title: r.title,
+      kind: r.kind,
+      status: r.status,
+      dateFrom: r.date_from,
+      dateTo: r.date_to,
+      whenLabel: r.when_label,
+      sourceName: r.source_name,
+      sourceUrl: r.source_url,
+      publishedAt: r.published_at,
+      distanceM: Math.round(r.distance_m),
+    }));
+  } catch (err) {
+    console.warn("works unavailable:", err);
     return null;
   }
 }

@@ -35,9 +35,11 @@ type Props = {
   onClose: () => void;
   /** Pins legend + list of the real places behind the scores. */
   placesSlot?: ReactNode;
+  /** Construction / renovation warnings near the area, each with its source. */
+  worksSlot?: ReactNode;
 };
 
-export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, onClose, placesSlot }: Props) {
+export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, onClose, placesSlot, worksSlot }: Props) {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
   // Bars are relative to the largest weight, so the top priority fills the bar.
   const maxWeight = Math.max(...CATEGORIES.map((c) => weights[c]), 0.0001);
@@ -102,6 +104,8 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
           <X className="size-4" />
         </button>
       </div>
+
+      {worksSlot}
 
       <ul className="mt-5 space-y-3">
         {byWeight.map((c) => (

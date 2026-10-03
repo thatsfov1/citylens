@@ -128,7 +128,7 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   `scripts/safety/build-lighting.ts` → `data/safety/lighting.json`), **CCTV** 0.25 (cameras mapped in OSM within 500 m)
   and **help nearby** 0.25 (distance to the nearest police 40% / fire station 30% / hospital or clinic 30% within 3 km).
   Camera, emergency and nightlife points come from `scripts/safety/build-features.ts` → `data/safety/features.json`
-  (commit it once generated; without it `compute.ts` scores lighting only). Overpass mirrors rate-limit (429/504); the
+  (committed, ~30 KB: 30 police, 71 fire stations, 215 hospitals/clinics, 569 cameras, 304 nightlife venues; without it `compute.ts` scores lighting only). Overpass mirrors rate-limit (429/504); the
   script backs off and retries across mirrors. **Nightlife** (bars, pubs, clubs within 300 m) is shown in the panel as
   "After dark" context and is deliberately NOT scored: it cuts both ways (livelier streets vs. noise). Road safety
   (crossings, traffic calming, major roads, accidents) was dropped on purpose. Each indicator's own score and share
@@ -251,7 +251,7 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
 ## 10. Not done yet (candidates)
 
 - GTFS extras: weekend/night service, stop-to-stop travel time (e.g. to the centre), rail timetables (SKA/Koleje Małopolskie).
-- Future-city timeline / planned investments (P2, lower priority than a stable core).
+- Future-city **timeline** (a year slider / projected scores). Works *warnings* exist (see "Construction & planned works"); projections do not.
 - Safety: real crime statistics (`data/safety/crime.json`) and KMZB reports; more lighting coverage on the outskirts.
 - Rebuilding scores with better culture coverage or other data sources.
 - Multiple cities, auth, saved preferences (P3).
@@ -263,3 +263,42 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
 ## Gradient heatmap
 
 - The map colouring is a smooth raster, not banded zones: `heatPixels` (`src/lib/map/heat-field.ts`) blends each hex's percentile with its neighbours (Gaussian, σ 0.4 km), maps it through the red→green ramp and clips it to the Kraków outline; shown as a MapLibre `image` source (`heat-raster`). No-data hexes stay grey and are not blended into coloured neighbours. Hexes remain the interaction unit (invisible `hex-fill` hit target, tooltips, selection). `bandOf`/`BAND_LABELS` are still used for labels.
+
+## Construction & planned works (warnings in the hexagon panel)
+
+Clicking a hexagon shows a "Construction nearby" block: ongoing and planned works within 1 km, each with its official
+source link, e.g. "~400 m away · planned in about 3 months (track works planned for early 2027)". Information only: it never
+changes a score.
+
+- **Table `works`** (migration `…000600_works.sql`, RLS read-only) + SQL function `works_near(lat, lng, radius_m)`
+  (PostGIS distance to the closest part of the geometry). `GET /api/hexes/[h3Index]/works` → `{ works: WorkNearby[] }`
+  (`src/types`); failure ⇒ `[]`, the block simply doesn't appear. Loader: `loadWorks` in `src/lib/supabase/hex-scores.ts`.
+- **The wording is deterministic** (`src/lib/data/works.ts`, tested): "in about N months/years", "lasting about …" are plain
+  arithmetic on stored dates; a duration or end date is **never invented** (no end date ⇒ "end date not stated by the source").
+  **The LLM writes nothing the user sees** and decides no dates (AGENTS.md §10, §15).
+- **Sources, all official, each row stores `source_name` + `source_url`:**
+  1. **Curated works** (`data/works/curated.json`, 12 records): taken from the ZDMK works list
+     (`zdmk.krakow.pl/zestawienie-prac-w-miescie/`, ongoing + upcoming), ZDMK project pages (Starowiślna) and krakow.pl
+     announcements (Azory tram, Domagały). Vague timing is kept as a reviewed `whenLabel` ("around mid-2027"); a 2024 statement
+     is labelled as such.
+  2. **MSIP permits** (`scripts/works/fetch-msip.ts` → `data/works/msip-permits.json`): tree-removal decisions *marked as
+     investment-related* (`03/04 … INWESTYCJA`) from the city GIS, last 12 months, 88 decisions. Status `decision`: they mean an
+     investment is being prepared, **no schedule is published**, so the panel summarises them in one line, never as dated works.
+- **"No mistakes" gate (`scripts/works/build.ts`, `src/lib/data/works-verify.ts`, tested):** a curated record is loaded only if
+  `reviewed` is true, every `evidence` quote appears **verbatim** in the saved official page (`data/works/snapshots/*.txt`, made by
+  `scripts/works/snapshot.ts`), each stated date (day + month, year when quoted) is in the quotes, and every location resolves
+  inside Kraków (city geocoder `epl/Lokalizator_Krakow`, or an official ZTP stop by name from `data/gtfs/stops.json`; cached in
+  `data/works/geocode-cache.json`). Any failure aborts the build. Linear projects are the straight line between two geocoded points,
+  and titles say "approximate" where the route is not exact (Azory, Domagały).
+- **How the curated records were produced:** read from the saved official pages by an LLM-assisted human review (there was no
+  Gemini key on the machine), then passed through the gate above. Automating it with Gemini is possible (same Zod + verbatim-quote
+  gate) but not needed for the demo.
+- **Refresh:** `npx tsx scripts/works/snapshot.ts && npx tsx scripts/works/fetch-msip.ts && npx tsx scripts/works/build.ts`, then load
+  `supabase/seed-works.sql` (it truncates `works` first; `supabase db query --linked --project-ref <ref> -f supabase/seed-works.sql`).
+  The ZDMK list changes daily and the snapshot is dated; the panel shows "Source: …, <date>".
+- **Not used / known gaps:** the city investments map "Kraków w dobrym kierunku" (layer `SI_INWESTYCJE_BUDZET_PKT` on
+  `msip3.um.krakow.pl`) has the best planned-works fields (`data_od`, `data_do`, `status`, `budzet`) but its REST endpoint answers
+  HTTP 404 to scripts; ask msip@um.krakow.pl for an export. S7 expressway layers are route *variants*, not decisions: excluded.
+  Metro (construction tender planned ≈2030) and tram to Mistrzejowice are not included (no reliable geometry/dates yet).
+  OSM `highway=construction` and ZTP GTFS-RT ServiceAlerts (`gtfs.ztp.krakow.pl/ServiceAlerts_*.pb`, free-text diversions) are possible
+  additions. Permits only count within the last 12 months. Open-ended "ongoing" rows stay visible until the snapshot is refreshed.
