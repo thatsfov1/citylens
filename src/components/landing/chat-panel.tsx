@@ -12,7 +12,7 @@ import type { EducationStage } from "@/types";
 import { GREETING } from "./landing-copy";
 
 type Props = {
-  onImportance: (importance: Importance, stages: EducationStage[] | null, anchor: Anchor | null, rent: RentFilter | null, work: Workplace | null) => void;
+  onImportance: (importance: Importance, stages: EducationStage[] | null, anchor: Anchor | null, rent: RentFilter | null, work: Workplace | null, car: boolean) => void;
 };
 
 export function ChatPanel({ onImportance }: Props) {
@@ -45,7 +45,7 @@ export function ChatPanel({ onImportance }: Props) {
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as ChatResult;
       setMessages([...next, { role: "assistant", text: data.reply }]);
-      if (data.importance) onImportance(data.importance, data.stages, data.anchor, data.rent, data.work);
+      if (data.importance) onImportance(data.importance, data.stages, data.anchor, data.rent, data.work, data.car === true);
     } catch {
       setError("Asystent jest chwilowo niedostępny. Spróbuj ponownie za chwilę.");
     } finally {

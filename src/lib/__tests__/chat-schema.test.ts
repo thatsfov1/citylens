@@ -56,3 +56,11 @@ test("workplace is optional and validated", () => {
   assert.deepEqual(r.workplace, { query: "Rynek Główny", mode: "transit", maxMin: 30 });
   assert.throws(() => parseChatOutput(JSON.stringify({ ...base, workplace: { query: "Rynek", mode: "plane", maxMin: null } })));
 });
+
+test("hasCar is optional and must be a boolean", () => {
+  const base = { reply: "ok", importance: null, stages: null };
+  assert.equal(parseChatOutput(JSON.stringify(base)).hasCar, undefined);
+  assert.equal(parseChatOutput(JSON.stringify({ ...base, hasCar: true })).hasCar, true);
+  assert.equal(parseChatOutput(JSON.stringify({ ...base, hasCar: null })).hasCar, null);
+  assert.throws(() => parseChatOutput(JSON.stringify({ ...base, hasCar: "yes" })));
+});

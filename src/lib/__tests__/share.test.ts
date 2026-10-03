@@ -88,3 +88,9 @@ test("saved maps: delete, long names, corrupt and missing storage", () => {
   assert.deepEqual(loadSaved(throwing), []);
   assert.equal(saveMap({ name: "n", query: "q" }, 1, throwing).ok, false);
 });
+
+test("the car switch rides along in shared links and saved maps", () => {
+  const state = { mode: "forYou" as const, selected: A, compared: [] };
+  assert.match(buildShareUrl("https://x.test", "sport=50&car=1", state), /[?&]car=1/);
+  assert.match(savedQuery("sport=50&car=1", state), /car=1/);
+});
