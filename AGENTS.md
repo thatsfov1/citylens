@@ -962,3 +962,530 @@ The milestone is complete when a user can:
 At this point the project has a complete working product loop.
 
 Only then should real datasets and AI integrations replace the mocked components.
+
+
+---
+
+# 24. Team Structure & Development Workflow
+
+This project is being developed by two developers during a time-limited hackathon.
+
+Both developers may use multiple AI coding agents, including Claude Code and Codex.
+
+The most important collaboration rule is:
+
+> Agents must have clearly separated responsibilities and must not modify the same files or architectural areas simultaneously.
+
+---
+
+## 24.1 Developer Responsibilities
+
+### Developer A — Data / Backend / Geographic Processing
+
+Developer A owns the data and backend layer.
+
+Primary responsibilities:
+
+```text
+Supabase
+PostgreSQL
+PostGIS
+database migrations
+data ingestion
+OpenStreetMap
+H3
+geographic aggregation
+category scoring
+API routes
+server-side data access
+future city project data
+
+Typical files/directories:
+
+supabase/
+scripts/
+src/app/api/
+src/lib/supabase/
+src/lib/data/
+src/lib/scoring/
+
+Developer A should focus on:
+
+real city data
+      ↓
+normalization
+      ↓
+H3
+      ↓
+category scores
+      ↓
+Supabase
+      ↓
+Next.js API
+
+Developer A should NOT modify frontend components unless explicitly necessary.
+
+Developer B — Frontend / UX / Visualization
+
+Developer B owns the user-facing application.
+
+Primary responsibilities:
+
+UI
+UX
+shadcn/ui
+Tailwind
+MapLibre
+H3 visualization
+preference controls
+map interactions
+hexagon details
+responsive design
+visual polish
+
+Typical files/directories:
+
+src/app/
+src/components/
+src/features/
+src/hooks/
+src/lib/map/
+
+Developer B should initially use deterministic mock data where the backend is not ready.
+
+The frontend should be developed against the shared TypeScript data contract.
+
+Developer B should NOT modify database schema or data ingestion logic unless explicitly coordinated.
+
+25. Agent Ownership
+
+Multiple coding agents may be active at the same time.
+
+Agents must be treated as specialists, not autonomous project owners.
+
+Each agent receives:
+
+a specific objective,
+an explicit scope,
+allowed files/directories,
+files/directories it must not touch,
+a definition of done.
+
+Example:
+
+Task:
+Implement the H3 scoring pipeline.
+
+Allowed:
+scripts/scoring/**
+src/lib/scoring/**
+src/types/** only if required
+
+Do not modify:
+src/components/**
+src/app/**
+supabase/migrations/**
+
+Definition of done:
+- deterministic scoring function
+- typed input/output
+- basic tests or verification
+- no frontend changes
+26. Parallel Agent Rules
+
+Before starting an agent, check which files another agent is currently modifying.
+
+Do NOT run two agents simultaneously if they may modify:
+
+the same file,
+the same component,
+the same migration,
+the same API route,
+the same shared type definitions.
+
+If two tasks depend on the same file, serialize the work.
+
+Prefer:
+
+Agent A
+  ↓
+commit
+  ↓
+Agent B
+
+over:
+
+Agent A ─────┐
+             ├── same files
+Agent B ─────┘
+27. Shared Contract
+
+The following files are shared between frontend and backend:
+
+src/types/**
+
+Changes to shared types affect multiple developers.
+
+Do not modify shared types casually.
+
+If a change is necessary:
+
+inform the other developer,
+make the smallest possible change,
+commit it separately,
+tell the other developer to update their branch.
+
+The current core contract is:
+
+export type Category =
+  | "sport"
+  | "culture"
+  | "greenery"
+  | "shopping"
+  | "transport";
+
+export type HexScore = {
+  h3: string;
+  sport: number;
+  culture: number;
+  greenery: number;
+  shopping: number;
+  transport: number;
+};
+
+export type UserPreferences = {
+  sport: number;
+  culture: number;
+  greenery: number;
+  shopping: number;
+  transport: number;
+};
+
+Do not change the semantic meaning of these fields without coordination.
+
+28. API Is the Frontend/Backend Boundary
+
+The frontend should consume backend data through a stable API.
+
+Initial endpoint:
+
+GET /api/hexes
+
+The frontend should not depend directly on internal Supabase tables.
+
+Conceptually:
+
+Frontend
+    ↓
+Next.js API
+    ↓
+Supabase
+    ↓
+PostgreSQL/PostGIS
+
+This allows the backend/data layer to evolve without forcing frontend rewrites.
+
+The API response should conform to the shared HexScore contract.
+
+29. Git Workflow
+
+The repository uses GitHub.
+
+main is the integration branch.
+
+Never work directly on main.
+
+The rule is:
+
+Every meaningful feature/task gets its own branch.
+
+Examples:
+
+feature/supabase-schema
+feature/hex-api
+feature/osm-import
+feature/h3-scoring
+feature/map-ui
+feature/preferences-ui
+feature/hex-details
+
+Keep branches small and short-lived.
+
+Do not maintain huge feature branches for many hours if the work can be split into smaller units.
+
+30. Branch Workflow
+
+Before starting a task:
+
+git switch main
+git pull origin main
+git switch -c feature/<task-name>
+
+Work only on that branch.
+
+When the task is complete:
+
+git status
+git add <relevant-files>
+git commit -m "feat: <description>"
+git push -u origin feature/<task-name>
+
+Then merge the branch into main.
+
+After merging:
+
+git switch main
+git pull origin main
+
+The next task starts from the updated main.
+
+31. Commit Frequently
+
+Commits should represent logical units of work.
+
+Good:
+
+feat: add Supabase server client
+feat: add hex scores migration
+feat: add hexes API
+feat: add H3 aggregation
+feat: add OSM importer
+fix: normalize transport scores
+
+Bad:
+
+changes
+stuff
+final
+final2
+hackathon
+
+Prefer several small recoverable commits over one huge commit.
+
+32. Push Frequently
+
+Push completed logical units to GitHub.
+
+This provides:
+
+backup,
+visibility,
+easier collaboration,
+easier recovery,
+easier rollback.
+
+Do not wait until the end of the hackathon to push.
+
+33. Merge Coordination
+
+Only one person should merge a particular branch at a time.
+
+Before merging:
+
+git switch main
+git pull origin main
+
+If another feature was merged while the branch was being developed, update the feature branch before merging if necessary.
+
+The goal is to keep:
+
+main
+
+in a continuously working state.
+
+After every meaningful merge, quickly verify:
+
+npm run build
+
+and/or the relevant lint/typecheck commands.
+
+34. Do Not Rewrite Other People's Work
+
+An agent must not:
+
+rewrite another developer's component,
+refactor unrelated code,
+rename unrelated files,
+change architecture for aesthetic reasons,
+"clean up" code outside its task.
+
+If existing code is sufficient for the requested feature, build on it.
+
+If an architectural problem is discovered, report it before making a broad refactor.
+
+35. Dangerous Git Operations
+
+Never execute automatically:
+
+git reset --hard
+git clean -fd
+git checkout -- .
+git push --force
+
+These commands can destroy another developer's work.
+
+Only execute them when explicitly requested by the human developer.
+
+36. Agent Handoff Protocol
+
+When finishing a task, report:
+
+Implemented:
+- ...
+
+Files changed:
+- ...
+
+Tests/checks:
+- ...
+
+Assumptions:
+- ...
+
+Known limitations:
+- ...
+
+Recommended next step:
+- ...
+
+Do not claim functionality was tested if it was not actually tested.
+
+37. Current Parallel Work Plan
+
+The frontend and backend can progress in parallel.
+
+Backend/Data track
+Supabase setup
+    ↓
+schema
+    ↓
+hex_scores
+    ↓
+API
+    ↓
+H3
+    ↓
+OSM
+    ↓
+scoring
+Frontend track
+landing
+    ↓
+preferences
+    ↓
+MapLibre
+    ↓
+mock H3 data
+    ↓
+category switching
+    ↓
+hex details
+    ↓
+visual polish
+
+The frontend does NOT need to wait for real data.
+
+It should initially use deterministic mock HexScore[].
+
+The backend does NOT need to wait for the final UI.
+
+It should initially make the API/data contract work.
+
+The two tracks converge at:
+
+GET /api/hexes
+38. Current Immediate Backend Task
+
+Developer A is currently responsible for establishing the backend/data foundation.
+
+The immediate sequence is:
+
+1. inspect repository
+2. inspect existing Next.js setup
+3. create shared types if missing
+4. configure Supabase
+5. create database migration
+6. create hex_scores table
+7. create server-side Supabase access
+8. create GET /api/hexes
+9. verify API response
+10. commit and push
+
+Do NOT immediately implement the entire OSM pipeline.
+
+Do NOT implement future projects yet.
+
+Do NOT introduce a separate backend framework.
+
+The first backend milestone is:
+
+Supabase
+   ↓
+hex_scores
+   ↓
+GET /api/hexes
+   ↓
+valid HexScore[]
+39. Current Immediate Frontend Task
+
+Developer B can work independently on:
+
+MapLibre
+H3 visualization
+deterministic mock HexScore[]
+category switching
+manual preferences
+personalized score
+hexagon details
+
+The frontend should eventually replace mock data with:
+
+fetch("/api/hexes")
+
+without requiring a major rewrite.
+
+40. Important Hackathon Principle
+
+This is a 24-hour hackathon.
+
+Optimize for:
+
+working
+→ understandable
+→ deterministic
+→ demoable
+→ visually convincing
+
+Do not optimize for:
+
+perfect architecture
+→ production scalability
+→ abstraction
+→ infrastructure
+
+When choosing between two technically valid solutions, prefer the one that can be implemented, tested, explained to judges, and demoed reliably within the hackathon timeframe.
+
+
+### Jedna korekta względem obecnego `CLAUDE.md`
+
+Wasz obecny dokument mówi:
+
+> **First milestone = mock frontend → dopiero potem Supabase/LLM/OSM.**
+
+To jest OK jako **priorytet produktu**, ale przy pracy równoległej nie oznacza, że Ty masz czekać.
+
+Możecie robić jednocześnie:
+
+```text
+             MAIN
+               │
+       ┌───────┴────────┐
+       ↓                ↓
+ frontend            backend
+ mock data            Supabase
+ MapLibre             API
+ H3 UI                H3/scoring
+       │                │
+       └───────┬────────┘
+               ↓
+          real integration
