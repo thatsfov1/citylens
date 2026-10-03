@@ -46,9 +46,13 @@ export function classifyPoi(tags: Tags): { category: PoiCategory; kind: string; 
   if (leisure === "pitch") return { category: "sport", kind: leisure, weight: 0.5 };
 
   if (tags.tourism === "museum") return { category: "culture", kind: "museum", weight: 1.5 };
+  if (tags.tourism === "gallery") return { category: "culture", kind: "gallery", weight: 1 };
+  const h = tags.historic;
+  if (h === "castle" || h === "monument" || h === "manor" || h === "fort") return { category: "culture", kind: `historic_${h}`, weight: 1 };
   const a = tags.amenity;
   if (a === "theatre" || a === "cinema" || a === "arts_centre") return { category: "culture", kind: a, weight: 1.5 };
   if (a === "library") return { category: "culture", kind: a, weight: 1 };
+  if (a === "community_centre") return { category: "culture", kind: a, weight: 0.7 };
 
   const shop = tags.shop;
   if (shop) {

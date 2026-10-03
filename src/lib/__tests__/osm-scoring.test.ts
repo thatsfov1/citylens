@@ -25,6 +25,9 @@ test("classifyPoi maps OSM tags to categories", () => {
   assert.equal(classifyPoi({ shop: "bakery" })?.category, "shopping");
   assert.equal(classifyPoi({ highway: "bus_stop" })?.category, "transport");
   assert.equal(classifyPoi({ leisure: "pitch" })?.category, "sport");
+  assert.equal(classifyPoi({ tourism: "gallery" })?.category, "culture");
+  assert.equal(classifyPoi({ historic: "castle" })?.category, "culture");
+  assert.equal(classifyPoi({ amenity: "community_centre" })?.category, "culture");
   assert.equal(classifyPoi({ amenity: "bench" }), null);
 });
 

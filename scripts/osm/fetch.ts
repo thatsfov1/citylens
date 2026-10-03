@@ -14,8 +14,9 @@ const MIRRORS = [
 const QUERIES: Record<string, string> = {
   pois: `[out:json][timeout:180];(
   nwr["leisure"~"^(sports_centre|fitness_centre|pitch|swimming_pool|stadium)$"](${BBOX});
-  nwr["tourism"="museum"](${BBOX});
-  nwr["amenity"~"^(theatre|cinema|arts_centre|library)$"](${BBOX});
+  nwr["tourism"~"^(museum|gallery)$"](${BBOX});
+  nwr["historic"~"^(castle|monument|manor|fort)$"](${BBOX});
+  nwr["amenity"~"^(theatre|cinema|arts_centre|library|community_centre)$"](${BBOX});
   nwr["shop"](${BBOX});
   node["highway"="bus_stop"](${BBOX});
   node["railway"~"^(tram_stop|station|halt)$"](${BBOX});
