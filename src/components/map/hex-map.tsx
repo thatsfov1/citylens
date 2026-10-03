@@ -1,16 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { KRAKOW_CENTER, KRAKOW_INITIAL_ZOOM } from "@/lib/h3/config";
 import { cellPolygon } from "@/lib/h3/grid";
-import { boundaryFeature, outsideMaskFeature } from "@/lib/h3/mask";
+import { KRAKOW_BOUNDS, boundaryFeature, outsideMaskFeature } from "@/lib/h3/mask";
 import { calculatePersonalScore } from "@/lib/scoring/personal-score";
 import { percentileRanks } from "@/lib/scoring/percentile";
 import { CATEGORIES, type CategoryWeights, type HexData, type MapMode } from "@/types";
 
 const SOURCE = "hexes";
+
+// Once zoomed in by more than this (zoom levels) beyond the "whole city fits" view,
+// the recenter button appears.
+const RECENTER_THRESHOLD = 0.35;
+const FIT_PADDING = 24;
+const SIDEBAR_WIDTH = 380;
 
 // Basemap layers that stay crisp outside the city veil (airports + runways).
 const KEEP_VISIBLE_LAYERS = [
@@ -73,6 +79,8 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
   const onSelectRef = useRef(onSelect);
+  const fitRef = useRef<{ zoom: number; center: [number, number] } | null>(null);
+  const [zoomedIn, setZoomedIn] = useState(false);
 
   const geojson = useMemo<GeoJSON.FeatureCollection>(() => {
     const personal = hexes.map((h) => calculatePersonalScore(h.scores, weights));
@@ -117,8 +125,50 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
       style: "https://tiles.openfreemap.org/styles/positron",
     });
     mapRef.current = map;
-    // Keep the city clear of the side panel on desktop.
-    if (window.innerWidth >= 640) map.setPadding({ top: 0, bottom: 0, left: 0, right: 380 });
+
+    // The whole city visible (clear of the side panel on desktop) = the minimum zoom.
+    // At that view the map is locked; zooming in unlocks panning within the city bbox.
+    // (Not maxBounds: MapLibre would force the bbox to cover the whole viewport.)
+    const applyFit = () => {
+      const right = window.innerWidth >= 640 ? SIDEBAR_WIDTH + FIT_PADDING : FIT_PADDING;
+      const cam = map.cameraForBounds(KRAKOW_BOUNDS, {
+        padding: { top: 64, bottom: FIT_PADDING, left: FIT_PADDING, right },
+      });
+      if (!cam || cam.zoom === undefined || !cam.center) return;
+      const { lng, lat } = maplibregl.LngLat.convert(cam.center);
+      fitRef.current = { zoom: cam.zoom, center: [lng, lat] };
+      map.setMinZoom(cam.zoom);
+    };
+    const sync = () => {
+      const fit = fitRef.current;
+      if (!fit) return;
+      const z = map.getZoom();
+      setZoomedIn(z > fit.zoom + RECENTER_THRESHOLD);
+      const locked = z <= fit.zoom + 0.01;
+      if (locked) {
+        map.dragPan.disable();
+        const c = map.getCenter();
+        if (Math.abs(c.lng - fit.center[0]) > 1e-6 || Math.abs(c.lat - fit.center[1]) > 1e-6) {
+          map.jumpTo({ center: fit.center });
+        }
+        return;
+      }
+      map.dragPan.enable();
+      const c = map.getCenter();
+      const [[w, s], [e, n]] = KRAKOW_BOUNDS;
+      const lng = Math.min(Math.max(c.lng, w), e);
+      const lat = Math.min(Math.max(c.lat, s), n);
+      if (lng !== c.lng || lat !== c.lat) map.jumpTo({ center: [lng, lat] });
+    };
+    applyFit();
+    if (fitRef.current) map.jumpTo(fitRef.current);
+    sync();
+    map.on("move", sync);
+    map.on("resize", () => {
+      applyFit();
+      if (fitRef.current && map.getZoom() < fitRef.current.zoom) map.jumpTo(fitRef.current);
+      sync();
+    });
 
     map.on("load", () => {
       const { geojson, mode, selected } = initial.current;
@@ -235,9 +285,24 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
   }, [selected]);
 
   // MapLibre forces position:relative on its container, so size it via a wrapper.
+  const recenter = () => {
+    const fit = fitRef.current;
+    if (fit) mapRef.current?.flyTo({ center: fit.center, zoom: fit.zoom, duration: 700 });
+  };
+
   return (
     <div className="absolute inset-0">
       <div ref={container} className="size-full" />
+      {zoomedIn && (
+        <button
+          type="button"
+          onClick={recenter}
+          aria-label="Center map on Kraków"
+          className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 rounded-full border border-border/70 bg-white/95 px-4 py-2 text-sm font-medium shadow-lg backdrop-blur hover:bg-white sm:left-auto sm:right-[25rem] sm:translate-x-0"
+        >
+          Center map
+        </button>
+      )}
     </div>
   );
 }
