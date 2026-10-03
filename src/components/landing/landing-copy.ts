@@ -22,7 +22,7 @@ export const CATEGORY_PL: Record<Category, { label: string; hint: string }> = {
   education: { label: "Edukacja", hint: "Przedszkola, szkoły, uczelnie w pobliżu" },
 };
 
-export const GREETING = "Cześć! Powiedz, czego szukasz w okolicy, a pokażę dopasowane części Krakowa.";
+export const GREETING = "Co jest dla Ciebie ważne w okolicy?";
 
 export const SUGGESTIONS = [
   "Aktywny tryb życia",

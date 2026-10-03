@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, GraduationCap, Hexagon, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
+import { ArrowLeft, GraduationCap, Hexagon, MapPin, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 import { AirSection, AreaPanel, SafetySection, type PanelView } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { CompareTray } from "./compare-tray";
@@ -23,6 +23,7 @@ import { NO_DATA_COLOR } from "@/lib/map/zones";
 import { computeSensitivity } from "@/lib/scoring/sensitivity";
 import { MIN_SAFETY_LEVELS, importanceToQuery, type Importance } from "@/lib/scoring/preferences";
 import { stagesToParam, withEducationStages } from "@/lib/scoring/education";
+import { formatRadius, hexesOutsideAnchor, type Anchor } from "@/lib/scoring/anchor";
 import { normalizeWeights } from "@/lib/scoring/weights";
 import type { HexSource, HexDetails } from "@/lib/supabase/hex-scores";
 import {
@@ -42,6 +43,7 @@ export function MapExperience({
   importance,
   initialMinSafety = 0,
   initialStages = [...EDUCATION_STAGES],
+  anchor = null,
 }: {
   hexes: HexData[];
   source: HexSource;
@@ -50,6 +52,8 @@ export function MapExperience({
   initialMinSafety?: number;
   /** Education life stages from the URL (`?edu=`); all stages by default. */
   initialStages?: EducationStage[];
+  /** A place the user wants to be near (`?near=`): hexes beyond its radius are dimmed. */
+  anchor?: Anchor | null;
 }) {
   const [mode, setMode] = useState<MapMode>("forYou");
   // Safety is optional data: the view and the filter only appear when cells carry safety indicators.
@@ -77,6 +81,12 @@ export function MapExperience({
     window.history.replaceState(null, "", url);
   };
   const viewHexes = useMemo(() => withEducationStages(hexes, stages), [hexes, stages]);
+  // Hexes beyond the anchor's radius; ignored when the place lies outside the city (nothing would be left).
+  const outside = useMemo(() => {
+    if (!anchor) return undefined;
+    const out = hexesOutsideAnchor(hexes.map((h) => h.h3Index), anchor);
+    return out.size < hexes.length ? out : undefined;
+  }, [hexes, anchor]);
   const showStageFilter = hasStages && (mode === "education" || (mode === "forYou" && importance.education > 0));
   const [selected, setSelected] = useState<string | null>(null);
   const weights = useMemo(() => normalizeWeights(importance), [importance]);
@@ -212,14 +222,14 @@ export function MapExperience({
   useEffect(() => {
     if (autoPicked.current || source !== "supabase") return;
     autoPicked.current = true;
-    const ids = strongestAreas(viewHexes, weights, minSafety);
+    const ids = strongestAreas(outside ? viewHexes.filter((h) => !outside.has(h.h3Index)) : viewHexes, weights, minSafety);
     if (ids.length === 0) return;
     // One-shot after mount on purpose: selecting here goes through the same fly-in as a click on the map.
     /* eslint-disable react-hooks/set-state-in-effect */
     setFirst({ ids, i: 0 });
     setSelected(ids[0]);
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [source, viewHexes, weights, minSafety]);
+  }, [source, viewHexes, weights, minSafety, outside]);
   const compareAnother = () => {
     if (!first) return;
     const i = (first.i + 1) % first.ids.length;
@@ -259,6 +269,7 @@ export function MapExperience({
         onHoverPlace={setHoveredPlace}
         focusPlace={focusPlace}
         minSafety={minSafety}
+        outside={outside}
         compared={compared}
         badges={
           hex
@@ -328,6 +339,12 @@ export function MapExperience({
             <SlidersHorizontal className="size-4" />
             Filters{activeFilters > 0 ? ` · ${activeFilters}` : ""}
           </button>
+        )}
+        {anchor && outside && (
+          <span className="flex items-center gap-1.5 rounded-full border border-border/70 bg-white/90 py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur">
+            <MapPin className="size-4 text-rose-600" />
+            Near {anchor.name.split(",")[0]} · {formatRadius(anchor.radiusM)}
+          </span>
         )}
         </div>
         <div className="pointer-events-auto max-w-full sm:absolute sm:left-1/2 sm:-translate-x-1/2">

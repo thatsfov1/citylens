@@ -2,84 +2,75 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OsmAttribution } from "@/components/osm-attribution";
 import { importanceToQuery, type Importance } from "@/lib/scoring/preferences";
 import { stagesToParam } from "@/lib/scoring/education";
-import type { Category, EducationStage } from "@/types";
-import { Background } from "./background";
-import { CategoryOrbit, type OpenState } from "./category-orbit";
+import { anchorToQuery, type Anchor } from "@/lib/scoring/anchor";
+import type { EducationStage } from "@/types";
 import { ChatPanel } from "./chat-panel";
-import { levelsFromImportance, levelsToImportance, type Level, type Levels } from "./landing-copy";
-import { OsmAttribution } from "@/components/osm-attribution";
 
 export function Landing({ initial }: { initial?: Importance }) {
   const router = useRouter();
-  const [levels, setLevels] = useState<Levels>(() => (initial ? levelsFromImportance(initial) : {}));
-  const [open, setOpen] = useState<OpenState>(null);
-  // Education life stages the assistant picked up from the chat (e.g. a toddler → kindergarten); null = all.
+  const [importance, setImportance] = useState<Importance | null>(initial ?? null);
   const [stages, setStages] = useState<EducationStage[] | null>(null);
-  const hasChips = Object.keys(levels).length > 0;
-
-  function setLevel(category: Category, level: Level) {
-    setLevels((prev) => ({ ...prev, [category]: level }));
-  }
-
-  function removeLevel(category: Category) {
-    setLevels((prev) => {
-      const next = { ...prev };
-      delete next[category];
-      return next;
-    });
-  }
+  const [anchor, setAnchor] = useState<Anchor | null>(null);
 
   return (
-    <main className="relative isolate flex flex-1 flex-col items-center overflow-x-clip px-4 py-8 sm:px-6 sm:py-12">
-      <Background />
+    <main className="relative isolate flex min-h-screen flex-col overflow-hidden bg-white text-[#222823]">
+      <header className="relative z-10 flex items-center justify-between border-b border-stone-200 px-5 py-4 sm:px-8 lg:px-12">
+        <div>
+          <Link href="/" className="text-lg font-medium tracking-[-0.04em] text-[#222823]">citylens</Link>
+          <p className="mt-0.5 text-xs font-light tracking-wide text-stone-500">Kraków widziany po Twojemu</p>
+        </div>
+        <span className="text-[10px] font-normal uppercase tracking-[0.22em] text-stone-500">Kraków · Polska</span>
+      </header>
 
-      <div className="flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-5 text-center">
-        <h1 className="text-balance text-3xl font-semibold leading-[1.05] tracking-tight text-mist [text-shadow:0_2px_24px_rgba(0,0,0,0.55)] sm:text-5xl">
-          Znajdź w <em className="font-display font-normal italic text-sun">Krakowie</em> miejsce, które pasuje do{" "}
-          <em className="font-display font-normal italic text-sun">Ciebie</em>
-        </h1>
-
-        <div className="w-full text-left">
-          <ChatPanel
-            levels={levels}
-            onImportance={(i, s) => {
-              setLevels(levelsFromImportance(i));
-              setStages(s && s.length ? s : null);
-            }}
-            onEditCategory={(category) => setOpen({ category, via: "external" })}
-            onRemoveCategory={removeLevel}
+      <div className="relative z-10 mx-auto grid w-full max-w-[1600px] flex-1 lg:grid-cols-2">
+        <section aria-label="Mapa Krakowa" className="relative min-h-[38vh] overflow-hidden sm:min-h-[44vh] lg:min-h-[calc(100vh-5rem)]">
+          <video
+            aria-hidden="true"
+            tabIndex={-1}
+            disablePictureInPicture
+            className="motion-reduce:hidden absolute inset-0 size-full object-cover"
+            src="/videos/krakow.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
           />
-        </div>
+        </section>
 
-        <div className="w-full">
-          <p className="mb-2 text-xs text-mist/80 [text-shadow:0_1px_8px_rgba(0,0,0,0.6)]">Albo ustaw ważność ręcznie</p>
-          <CategoryOrbit levels={levels} open={open} onOpenChange={setOpen} onConfirm={setLevel} />
-        </div>
-
-        <div className="flex flex-col items-center gap-2">
-          <Button
-            type="button"
-            disabled={!hasChips}
-            onClick={() => {
-              const edu = stages && levels.education ? stagesToParam(stages) : null;
-              router.push(`/map?${importanceToQuery(levelsToImportance(levels))}${edu ? `&edu=${edu}` : ""}`);
-            }}
-            className="h-12 gap-2 rounded-full bg-sun px-8 text-base font-semibold text-ink shadow-lg shadow-black/30 hover:bg-sun/85 disabled:bg-white/15 disabled:text-mist/60 disabled:shadow-none"
-          >
-            Pokaż moją mapę
-            <ArrowRight className="size-5" aria-hidden />
-          </Button>
-          <p className="text-sm text-mist/80 [text-shadow:0_1px_8px_rgba(0,0,0,0.6)]">
-            {hasChips ? "Preferencje możesz zmienić w dowolnym momencie." : "Dodaj co najmniej jeden parametr, aby zobaczyć mapę."}
-          </p>
-        </div>
+        <section className="relative flex items-center justify-center px-5 py-8 sm:px-8 lg:px-10">
+          <div className="w-full max-w-xl">
+            <ChatPanel
+              onImportance={(i, nextStages, nextAnchor) => {
+                setImportance(i);
+                setStages(nextStages?.length ? nextStages : null);
+                setAnchor(nextAnchor);
+              }}
+            />
+            {importance && (
+              <Button
+                type="button"
+                onClick={() => {
+                  const edu = importance.education > 0 && stages ? stagesToParam(stages) : null;
+                  router.push(`/map?${importanceToQuery(importance)}${edu ? `&edu=${edu}` : ""}${anchor ? `&${anchorToQuery(anchor)}` : ""}`);
+                }}
+                className="mt-5 h-12 w-full justify-between rounded-none bg-[#252d27] px-5 text-sm font-normal text-white hover:bg-[#39443b]"
+              >
+                Pokaż moją mapę
+                <ArrowRight className="size-4" aria-hidden />
+              </Button>
+            )}
+          </div>
+        </section>
       </div>
 
-      <OsmAttribution className="mt-8 text-center text-mist/70" />
+      <OsmAttribution className="relative z-10 px-5 pb-3 text-right text-stone-400 sm:px-8 lg:px-12" />
     </main>
   );
 }

@@ -394,3 +394,20 @@ changes a score.
   (deduped by place id / park). The side-panel place lists still show only the selected area.
 - **Filters window:** the minimum safety level and the education stage filter moved out of the side panel (which stays a summary) into a "Filters" button + floating window at the top left
   (count of active filters on the button). The stage filter is still also inside the education category detail.
+
+
+## "Near a place" (location anchor)
+
+- The chat LLM may copy a place the user named (university, station, landmark…) into `nearPlace {query, radiusM}`
+  (radius 500/1000/1500/2000 m). It never produces coordinates. `POST /api/chat` resolves the name from our own `pois`
+  table (`src/lib/supabase/anchors.ts`, ranking in `src/lib/data/anchors.ts`) and returns `anchor {name, lat, lng, radiusM}`
+  or `null` (unknown names are silently dropped).
+- The anchor travels in the URL as `?near=lat,lng,radiusM,name`. On the map it is a **filter, not a score term**: hexes
+  whose centre is beyond the radius are dimmed like the safety filter and left out of "Strongest areas"
+  (`src/lib/scoring/anchor.ts`, deterministic, client-side). Weights and stored scores are untouched.
+- Streets/addresses: when `pois` has no match, `src/lib/data/nominatim.ts` does one bounded Nominatim lookup (Kraków
+  box, 4 s timeout, best-effort: failure = no anchor). It returns a single point (the street's centre), so for a long
+  street the radius is measured from its middle. The demo path (named POIs) stays offline-safe.
+- Limits: a place missing from `pois` resolves only if Nominatim is reachable; the best match is picked automatically
+  (exact name, then anchor-like kind), no disambiguation UI; no pin for the anchor on the map; "Adjust preferences"
+  does not carry the anchor back to the landing page.

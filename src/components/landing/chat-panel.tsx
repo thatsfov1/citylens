@@ -1,34 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Bot, RefreshCw, Send, X } from "lucide-react";
+import { Bot, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ChatMessage, ChatResult } from "@/lib/llm/chat-schema";
+import type { Anchor } from "@/lib/scoring/anchor";
 import type { Importance } from "@/lib/scoring/preferences";
-import { CATEGORIES, type Category, type EducationStage } from "@/types";
-import {
-  CATEGORY_PL,
-  CATEGORY_STYLE,
-  GREETING,
-  SUGGESTIONS,
-  SUGGESTIONS_VISIBLE,
-  levelToPercent,
-  type Levels,
-} from "./landing-copy";
+import type { EducationStage } from "@/types";
+import { GREETING } from "./landing-copy";
 
 type Props = {
-  levels: Levels;
-  onImportance: (importance: Importance, stages: EducationStage[] | null) => void;
-  onEditCategory: (category: Category) => void;
-  onRemoveCategory: (category: Category) => void;
+  onImportance: (importance: Importance, stages: EducationStage[] | null, anchor: Anchor | null) => void;
 };
 
-export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCategory }: Props) {
+export function ChatPanel({ onImportance }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [suggestionStart, setSuggestionStart] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const greeting = useTypewriter(GREETING);
 
@@ -54,9 +43,9 @@ export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCatego
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as ChatResult;
       setMessages([...next, { role: "assistant", text: data.reply }]);
-      if (data.importance) onImportance(data.importance, data.stages);
+      if (data.importance) onImportance(data.importance, data.stages, data.anchor);
     } catch {
-      setError("Asystent jest chwilowo niedostępny. Możesz ustawić kategorie samodzielnie, używając ikon poniżej.");
+      setError("Asystent jest chwilowo niedostępny. Spróbuj ponownie za chwilę.");
     } finally {
       setPending(false);
     }
@@ -67,30 +56,24 @@ export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCatego
     void send(input);
   }
 
-  const visibleSuggestions = Array.from(
-    { length: SUGGESTIONS_VISIBLE },
-    (_, i) => SUGGESTIONS[(suggestionStart + i) % SUGGESTIONS.length],
-  );
-  const chips = CATEGORIES.filter((c) => levels[c]);
-
   return (
     <section
       aria-label="Rozmowa z asystentem"
-      className="w-full rounded-[2rem] border border-white/15 bg-ink/70 p-4 text-mist shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-6"
+      className="w-full text-[#303731]"
     >
-      <div ref={listRef} className="max-h-[42vh] min-h-48 space-y-3 overflow-y-auto pr-1" aria-live="polite">
+      <div ref={listRef} className="max-h-[48vh] min-h-40 space-y-4 overflow-y-auto pr-1" aria-live="polite">
         <div className="flex items-end gap-2">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sun text-ink">
-            <Bot className="size-5" aria-hidden />
+          <span className="flex size-8 shrink-0 items-center justify-center border border-stone-300 text-stone-500">
+            <Bot className="size-4" aria-hidden />
           </span>
-          <div className="max-w-[85%] rounded-3xl rounded-bl-md bg-white/10 px-4 py-2.5 text-base leading-relaxed text-mist">
+          <div className="max-w-[85%] border-l border-stone-300 py-1 pl-4 text-base font-light leading-relaxed text-[#303731]">
             {greeting.thinking ? (
               <TypingDots />
             ) : (
               <>
                 <span className="sr-only">{GREETING}</span>
                 <span aria-hidden>{greeting.shown}</span>
-                {!greeting.done && <span aria-hidden className="animate-caret ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 bg-sun" />}
+                {!greeting.done && <span aria-hidden className="animate-caret ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 bg-stone-600" />}
               </>
             )}
           </div>
@@ -100,8 +83,8 @@ export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCatego
         ))}
         {pending && (
           <div className="flex items-end gap-2">
-            <span className="size-9 shrink-0" />
-            <div className="rounded-3xl rounded-bl-md bg-white/10 px-4 py-3">
+            <span className="size-8 shrink-0" />
+            <div className="border-l border-[#c2c8ac]/40 px-4 py-2">
               <span className="sr-only">Asystent pisze…</span>
               <TypingDots />
             </div>
@@ -110,90 +93,25 @@ export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCatego
       </div>
 
       {error && (
-        <p role="alert" className="mt-2 rounded-2xl bg-sun/15 px-3 py-2 text-sm text-sun">
-          {error}
-        </p>
+          <p role="alert" className="mt-2 border-l-2 border-stone-400 py-1 pl-3 text-sm text-stone-600">
+            {error}
+          </p>
       )}
 
-      {chips.length > 0 && (
-        <div className="mt-3">
-          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-mist/70">Twoje parametry</p>
-          <ul className="flex flex-wrap gap-2">
-            {chips.map((c) => (
-              <li
-                key={c}
-                className={cn(
-                  "animate-pop flex items-center rounded-full border-2 text-sm font-semibold",
-                  CATEGORY_STYLE[c].chip,
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={() => onEditCategory(c)}
-                  aria-label={`${CATEGORY_PL[c].label}: ${levelToPercent(levels[c]!)}%. Zmień`}
-                  className="flex items-center gap-1.5 rounded-full py-1 pl-3 pr-1.5 outline-none focus-visible:ring-4 focus-visible:ring-sun/60"
-                >
-                  <span className={cn("size-2.5 rounded-full", CATEGORY_STYLE[c].dot)} aria-hidden />
-                  {CATEGORY_PL[c].label} · {levelToPercent(levels[c]!)}%
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onRemoveCategory(c)}
-                  aria-label={`Usuń parametr: ${CATEGORY_PL[c].label}`}
-                  className="mr-1 rounded-full p-1 outline-none hover:bg-white/15 focus-visible:ring-4 focus-visible:ring-sun/60"
-                >
-                  <X className="size-3.5" aria-hidden />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="mt-3 flex items-center gap-1.5">
-        <ul
-          key={suggestionStart}
-          aria-label="Propozycje"
-          className="flex min-w-0 flex-1 flex-nowrap gap-1.5 overflow-hidden"
-        >
-          {visibleSuggestions.map((s, i) => (
-            <li key={s} className="animate-pop" style={{ animationDelay: `${i * 50}ms` }}>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => void send(s)}
-                className="whitespace-nowrap rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-xs text-mist outline-none transition hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-sun/60 active:scale-95 disabled:opacity-50"
-              >
-                {s}
-              </button>
-            </li>
-          ))}
-        </ul>
-        <button
-          type="button"
-          onClick={() => setSuggestionStart((s) => (s + SUGGESTIONS_VISIBLE) % SUGGESTIONS.length)}
-          aria-label="Pokaż inne propozycje"
-          title="Pokaż inne propozycje"
-          className="group flex size-7 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-sun outline-none transition hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-sun/60"
-        >
-          <RefreshCw className="size-3.5 transition-transform duration-300 group-hover:rotate-180 motion-reduce:transition-none" aria-hidden />
-        </button>
-      </div>
-
-      <form onSubmit={onSubmit} className="mt-3 flex gap-2">
+      <form onSubmit={onSubmit} className="mt-5 flex gap-2 border-b border-stone-300 pb-2 focus-within:border-stone-700">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           maxLength={500}
-          placeholder="Napisz, czego szukasz w okolicy…"
+          placeholder="Napisz tutaj…"
           aria-label="Opisz swoje preferencje"
-          className="h-14 min-w-0 flex-1 rounded-full border border-white/20 bg-white/10 px-6 text-base text-mist outline-none placeholder:text-mist/60 focus:border-sun focus-visible:ring-4 focus-visible:ring-sun/20"
+          className="h-12 min-w-0 flex-1 bg-transparent px-1 text-base font-light text-[#222823] outline-none placeholder:text-stone-400"
         />
         <button
           type="submit"
           disabled={pending || !input.trim()}
           aria-label="Wyślij"
-          className="flex size-14 shrink-0 items-center justify-center rounded-full bg-sun text-ink outline-none transition hover:bg-sun/85 focus-visible:ring-4 focus-visible:ring-sun/60 active:scale-90 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-mist/50"
+          className="flex size-11 shrink-0 items-center justify-center bg-[#252d27] text-white outline-none transition hover:bg-[#39443b] focus-visible:ring-2 focus-visible:ring-stone-500 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-400"
         >
           <Send className="size-5" aria-hidden />
         </button>
@@ -206,17 +124,13 @@ function Bubble({ role, text }: { role: ChatMessage["role"]; text: string }) {
   const user = role === "user";
   return (
     <div className={cn("animate-pop flex", user ? "justify-end" : "items-end gap-2")}>
-      {!user && (
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sun text-ink">
-          <Bot className="size-5" aria-hidden />
-        </span>
-      )}
+      {!user && <span className="size-8 shrink-0" />}
       <div
         className={cn(
-          "max-w-[85%] px-4 py-2.5 text-base leading-relaxed",
+          "max-w-[85%] border-l px-4 py-2 text-base font-light leading-relaxed",
           user
-            ? "rounded-3xl rounded-br-md bg-sun text-ink"
-            : "rounded-3xl rounded-bl-md bg-white/10 text-mist",
+            ? "border-stone-300 bg-stone-50 text-stone-600"
+            : "border-stone-300 text-[#303731]",
         )}
       >
         {text}
@@ -231,7 +145,7 @@ function TypingDots() {
       {[0, 1, 2].map((i) => (
         <span
           key={i}
-          className="animate-typing-dot size-2 rounded-full bg-sun"
+          className="animate-typing-dot size-1.5 bg-stone-500"
           style={{ animationDelay: `${i * 0.15}s` }}
         />
       ))}
