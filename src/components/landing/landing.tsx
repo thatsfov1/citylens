@@ -13,7 +13,6 @@ import { rentToQuery, type RentFilter } from "@/lib/scoring/rent";
 import { workplaceToQuery, type Workplace } from "@/lib/scoring/commute";
 import type { EducationStage } from "@/types";
 import { ChatPanel } from "./chat-panel";
-import { WorkplaceForm } from "./workplace-form";
 
 export function Landing({ initial }: { initial?: Importance }) {
   const router = useRouter();
@@ -52,14 +51,14 @@ export function Landing({ initial }: { initial?: Importance }) {
         <section className="relative flex items-center justify-center px-5 py-8 sm:px-8 lg:px-10">
           <div className="w-full max-w-xl">
             <ChatPanel
-              onImportance={(i, nextStages, nextAnchor, nextRent) => {
+              onImportance={(i, nextStages, nextAnchor, nextRent, nextWork) => {
                 setImportance(i);
                 setStages(nextStages?.length ? nextStages : null);
                 setAnchor(nextAnchor);
                 setRent(nextRent);
+                setWorkplace(nextWork);
               }}
             />
-            <WorkplaceForm value={workplace} onChange={setWorkplace} />
             <Button
               type="button"
               disabled={!importance}

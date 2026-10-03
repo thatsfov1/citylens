@@ -436,12 +436,13 @@ changes a score.
 
 ## Workplace & commute
 
-- A **filter, not a score term** (like rent, safety and "near a place"): the user may enter a workplace, a travel mode
-  (walk / bike / public transport / car) and a maximum commute (15/30/45/60 min) on the landing page
-  (`src/components/landing/workplace-form.tsx`). Hexes whose commute exceeds the limit are dimmed and left out of "Strongest areas";
+- A **filter, not a score term** (like rent, safety and "near a place"): the user may mention where they work, how they travel
+  (walk / bike / public transport / car) and a maximum commute in the landing chat. The model copies it into
+  `workplace {query, mode, maxMin}` (null = not stated; defaults transit / 30 min) and `POST /api/chat` resolves the address and
+  returns `work`. Hexes whose commute exceeds the limit are dimmed and left out of "Strongest areas";
   weights and stored scores are untouched. A strongly matching area can therefore be impractical without the score hiding it.
 - URL: `?work=lat,lng,mode,maxMin,name` (`src/lib/scoring/commute.ts`, tested in `commute.test.ts`).
-- Address -> coordinates: `POST /api/geocode {query}` reuses `resolveAnchor` (own `pois`, then bounded Nominatim).
+- Address -> coordinates: `resolveAnchor` in the chat route (own `pois`, then bounded Nominatim); unknown addresses are dropped.
 - **Minutes come from data, never from the LLM.** `POST /api/commute {lat,lng,mode,cells}` -> `{ minutes, source }` via the OSRM
   *table* service on `routing.openstreetmap.de` (foot / bike / car, 100 cells per request, 8 s timeout; `src/lib/data/routing.ts`).
   **Public transport has no free routing**, so it (and any failed chunk) uses a deterministic estimate: straight line x detour
@@ -455,5 +456,5 @@ changes a score.
   sends cells whose estimate is within 1.6x the limit (all ~2,800 at once timed out). Verified: parsers (unit tests) and the
   fallback path; the live server was unreachable at the end of the session, so routed output was only seen on a 3-point request.
 - Limits / not done: no minimum-suitability threshold input; no LLM explanation of the trade-off yet (if added, give it the
-  computed candidates only: suitability, minutes, reasons); the chat does not extract a workplace; "Adjust preferences" does not
+  computed candidates only: suitability, minutes, reasons); "Adjust preferences" does not
   carry the workplace back; the public routing server is best-effort and has no SLA.
