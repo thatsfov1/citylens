@@ -87,10 +87,10 @@ function Legend({ mode }: { mode: MapMode }) {
       <div className="h-2 w-40 rounded-full" style={{ background: LEGEND_GRADIENT }} />
       <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
         <span>{mode === "forYou" ? "Weaker match" : "Low"}</span>
-        <span>{mode === "forYou" ? "Strong match" : "High"}</span>
+        <span>{mode === "forYou" ? "Stronger match" : "High"}</span>
       </div>
       <div className="mt-1 text-[10px] text-muted-foreground">
-        Relative to the rest of Kraków · untinted = average
+        Five bands, relative to the rest of Kraków
       </div>
       <OsmAttribution className="pointer-events-auto mt-1" />
     </div>
