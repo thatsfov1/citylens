@@ -1,5 +1,6 @@
 import { importanceFromQuery } from "@/lib/scoring/preferences";
 import { PreferencesForm } from "@/components/preferences/preferences-form";
+import { OsmAttribution } from "@/components/osm-attribution";
 import { LandingMapPreview } from "@/components/map/landing-map-preview";
 
 export default async function Home({ searchParams }: PageProps<"/">) {
@@ -26,6 +27,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         </section>
         <PreferencesForm initial={initial} />
       </div>
+      <OsmAttribution className="absolute inset-x-0 bottom-2 text-center" />
     </main>
   );
 }
