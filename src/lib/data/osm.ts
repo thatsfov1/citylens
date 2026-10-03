@@ -53,7 +53,7 @@ export const EDUCATION_KIND_STAGES: Record<string, readonly EducationStage[]> = 
 
 const KINDERGARTEN_NAME = /przedszkol|żłob|zlob/i;
 const PRIMARY_NAME = /podstawow/i;
-const SECONDARY_NAME = /liceum|technikum|branżow|branzow|zespół szkół|zespol szkol|ponadpodstawow|ponadgimnaz|szkoła średnia|szkola srednia/i;
+const SECONDARY_NAME = /liceum|technikum|branżow|branzow|zespół szkół|zespol szkol|ponadpodstawow|zasadnicz|zawodow|ponadgimnaz|szkoła średnia|szkola srednia/i;
 
 /** School level from `isced:level` (lowest listed level wins), else from the Polish name; "school" if unknown. */
 function schoolKind(tags: Tags): string {

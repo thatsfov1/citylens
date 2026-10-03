@@ -158,6 +158,7 @@ test("classifyPoi: education stages from isced level, then Polish names", () => 
   assert.equal(classifyPoi({ amenity: "school", name: "II Liceum Ogólnokształcące" })?.kind, "secondary_school");
   assert.equal(classifyPoi({ amenity: "school", name: "Technikum Mechaniczne" })?.kind, "secondary_school");
   assert.equal(classifyPoi({ amenity: "school", name: "Przedszkole Integracyjne" })?.kind, "kindergarten");
+  assert.equal(classifyPoi({ amenity: "school", name: "Zasadnicza Szkoła Zawodowa nr 30" })?.kind, "secondary_school");
   // Unknown level is not guessed.
   assert.equal(classifyPoi({ amenity: "school", name: "Szkoła Muzyczna" })?.kind, "school");
 });
