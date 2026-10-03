@@ -171,6 +171,14 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   A "Center map" button appears once zoomed in by > 0.35 levels and flies back to the fit view.
   Do **not** use MapLibre `maxBounds` for this: it forces the bbox to cover the viewport and over-zooms.
 
+### Landing page (Polish, chat-first)
+
+- `/` is a centred Polish page (`src/components/landing/`): headline, five floating category icons, a chatbot panel, CTA „Pokaż moją mapę”. No nav bar; a dashed "logo" box is the logo placeholder.
+- Each icon opens a panel with 5 levels = 20/40/60/80/100 % (hovering level N highlights 1..N). Confirming adds a chip to the chat panel; chips can be edited (click) or removed. The chat panel talks to the existing `POST /api/chat`; LLM importance (0/25/50/75/100) is mapped to levels with `importanceToLevel` (25→20 %, 50→60 %, 75→80 %).
+- The CTA links to `/map?sport=…` with **unset categories = 0** so the map reflects only what was chosen. Levels stay compatible with the 0–100 query. Returning from the map (`/?sport=…`) prefills the chips.
+- Background is a swappable layer (`background.tsx`, `videoSrc` prop + dark scrim) so a Kraków video can be added without layout changes. Animations are plain CSS (`globals.css`), disabled under `prefers-reduced-motion`. No new dependencies.
+- `preferences-form.tsx` and `landing-map-preview.tsx` are no longer used by the landing page (kept in the repo).
+
 ### Hexagon drill-down: places on the map
 
 - Clicking a hex flies the camera in (zoom ≥ 14.2, padded for the side panel), draws dashed 500 m / 1 km

@@ -4,24 +4,24 @@ import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
 });
 
 export const metadata: Metadata = {
-  title: "Kraków, matched to you",
+  title: "Kraków dopasowany do Ciebie",
   description:
-    "Discover which parts of Kraków match your lifestyle — a personalized suitability map.",
+    "Sprawdź, które części Krakowa pasują do Twojego stylu życia — spersonalizowana mapa dopasowania.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
+      lang="pl"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
