@@ -44,3 +44,17 @@ export function importanceFromQuery(
   }
   return out;
 }
+
+/** Minimum safety level filter: 0 = off. Not an importance weight; hexes below it are dimmed on the map. */
+export const MIN_SAFETY_LEVELS = [
+  { value: 0, label: "Off" },
+  { value: 25, label: "Low" },
+  { value: 50, label: "Medium" },
+  { value: 75, label: "High" },
+] as const;
+
+export function minSafetyFromQuery(params: Record<string, string | string[] | undefined>): number {
+  const raw = params.minSafety;
+  const n = typeof raw === "string" ? Number(raw) : NaN;
+  return MIN_SAFETY_LEVELS.some((l) => l.value === n) ? n : 0;
+}

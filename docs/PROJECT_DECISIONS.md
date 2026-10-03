@@ -116,6 +116,24 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   "~N departures/h on weekdays". Result vs OSM-only: cells with transport 0 went 38 → 2; centre and tram corridors stay on top.
   Refresh when the timetable changes: `npx tsx scripts/gtfs/build.ts` (delete `data/gtfs/full/` first to re-download,
   and update `SERVICE_DATE` — the feeds only list a few weeks), then recompute the seed.
+- **Safety is NOT a category.** It is an optional per-cell value (`hex_scores.safety_score`, nullable;
+  `HexData.safety`; map mode `"safety"`), used as a **minimum-level filter** (`?minSafety=0|25|50|75`, control in the side
+  panel) — good transport can't make up for feeling unsafe, so it never enters the weighted score or the LLM prompt.
+  Hexes below the minimum are greyed out and skipped by "Strongest areas"; hexes with no data are never filtered out
+  (unknown ≠ unsafe). The UI hides the mode and the control when no cell has safety data (e.g. mock fallback).
+  Copy rule: "safety indicators", "below your minimum safety level" — never "dangerous".
+- **Safety data actually used:** `scripts/safety/build-lighting.ts` → `data/safety/lighting.json` (committed, ~1 MB): midpoints of
+  OSM street segments with an explicit `lit` tag (service roads/tracks/steps excluded). Per cell: segments within 700 m,
+  share lit (smoothed toward the city share, `scoreLighting` in `src/lib/data/safety.ts`), ≥ 8 segments or "no data"
+  (168/461 cells: outskirts, forests). Score = percentile rank among cells with data. **Known bias:** 92% of tagged
+  segments are lit — mappers tag "unlit" rarely — so this leans optimistic and only separates cells *relatively*.
+- **Crime stats are wired in but NOT shipped.** `compute.ts` reads `data/safety/crime.json` (`CrimeFile`: police areas →
+  district names, crimes, residents, source URL, year; normalised per 1,000 residents; weight 0.6 vs lighting 0.4)
+  when the file exists. No machine-readable Kraków police dataset was found (only partial 2022 press figures for some
+  precincts), and **KMZB has no public export** (the viewer's data service isn't documented). Do not enter numbers
+  that you can't source; ask KMP Kraków / kmzb@policja.gov.pl for an export.
+- **`loadHexDetails` must list every indicator field in `indicatorsSchema`** (src/lib/supabase/hex-scores.ts): Zod
+  strips unknown keys, which silently dropped `radiusM` and the GTFS departure fields before this was fixed.
 - **Attribution:** OSM © contributors, ODbL — in `readme.md`, the landing page and the map legend.
 
 ## 5. LLM (Gemini) decisions
@@ -206,5 +224,6 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
 
 - GTFS extras: weekend/night service, stop-to-stop travel time (e.g. to the centre), rail timetables (SKA/Koleje Małopolskie).
 - Future-city timeline / planned investments (P2, lower priority than a stable core).
+- Safety: real crime statistics (`data/safety/crime.json`) and KMZB reports; more lighting coverage on the outskirts.
 - Rebuilding scores with better culture coverage or other data sources.
 - Multiple cities, auth, saved preferences (P3).

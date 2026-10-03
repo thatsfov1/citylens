@@ -15,11 +15,12 @@ const rowSchema = z.object({
   greenery_score: score,
   shopping_score: score,
   transport_score: score,
+  safety_score: score.nullable(),
   district: z.string().nullable(),
 });
 
 // Scores + district only: the heavy `indicators` JSON is fetched per hex on demand.
-const LIST_COLUMNS = "h3_index,sport_score,culture_score,greenery_score,shopping_score,transport_score,district";
+const LIST_COLUMNS = "h3_index,sport_score,culture_score,greenery_score,shopping_score,transport_score,safety_score,district";
 
 export type HexSource = "supabase" | "mock";
 
@@ -36,6 +37,7 @@ export async function loadHexes(): Promise<{ hexes: HexData[]; source: HexSource
       hexes: rows.map((r) => ({
         h3Index: r.h3_index,
         district: r.district,
+        safety: r.safety_score,
         scores: {
           sport: r.sport_score,
           culture: r.culture_score,
@@ -56,10 +58,14 @@ export async function loadHexData(): Promise<HexData[]> {
 }
 
 const poiIndicator = z.object({
+  radiusM: z.number().optional(),
   raw: z.number(),
   within500: z.number(),
   within1000: z.number(),
-  nearest: z.object({ name: z.string().nullable(), kind: z.string(), distanceM: z.number() }).nullable(),
+  nearest: z
+    .object({ name: z.string().nullable(), kind: z.string(), distanceM: z.number(), departuresPerHour: z.number().optional() })
+    .nullable(),
+  departuresPerHourWithin500: z.number().optional(),
 });
 const indicatorsSchema = z.object({
   sport: poiIndicator,
@@ -73,6 +79,14 @@ const indicatorsSchema = z.object({
       .object({ name: z.string().nullable(), kind: z.string(), distanceM: z.number(), areaHa: z.number() })
       .nullable(),
   }),
+  safety: z
+    .object({
+      lighting: z.object({ segments: z.number(), lit: z.number(), litShare: z.number() }).optional(),
+      crime: z
+        .object({ area: z.string(), year: z.number(), per1000: z.number(), cityPer1000: z.number() })
+        .optional(),
+    })
+    .optional(),
 });
 
 export type HexDetails = { h3Index: string; district: string | null; indicators: HexIndicators | null };

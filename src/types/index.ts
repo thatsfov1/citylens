@@ -19,9 +19,14 @@ export type HexData = {
   scores: CategoryScores;
   /** OSM district containing the cell centre; absent for mock data. */
   district?: string | null;
+  /**
+   * Safety indicators, 0–100 (higher = more indicators in favour). null/absent = no data for this cell.
+   * Not a category: it is used as a minimum-level filter, never in the weighted score.
+   */
+  safety?: number | null;
 };
 
-export type MapMode = "forYou" | Category;
+export type MapMode = "forYou" | Category | "safety";
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   sport: "Sport",

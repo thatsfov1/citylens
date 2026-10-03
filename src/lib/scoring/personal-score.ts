@@ -17,7 +17,7 @@ export function calculatePersonalScore(
 export function getModeScore(
   scores: CategoryScores,
   weights: CategoryWeights,
-  mode: MapMode,
+  mode: Exclude<MapMode, "safety">,
 ): number {
   return mode === "forYou" ? calculatePersonalScore(scores, weights) : scores[mode];
 }

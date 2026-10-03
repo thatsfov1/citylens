@@ -1,5 +1,6 @@
 import { haversine, pointInPolygon, type LngLat, type Ring } from "./geo";
 import type { District, GreenArea, Poi, PoiCategory } from "./osm";
+import type { SafetyIndicators } from "./safety";
 
 // Deterministic, explainable per-cell scoring from OSM features.
 // Distance bands follow AGENTS.md §9: 0–250 m high, 250–500 medium, 500–1000 lower, >1000 ignored.
@@ -48,7 +49,11 @@ export type GreenIndicators = {
   nearestPark: (Nearest & { areaHa: number }) | null;
 };
 
-export type CellIndicators = Record<PoiCategory, PoiIndicators> & { greenery: GreenIndicators };
+export type CellIndicators = Record<PoiCategory, PoiIndicators> & {
+  greenery: GreenIndicators;
+  /** Safety indicators (street lighting, official crime stats); absent when there is no data for the cell. */
+  safety?: SafetyIndicators;
+};
 
 export function scorePoiCategory(center: LngLat, pois: Poi[], scale = 1): PoiIndicators {
   const radiusM = MAX_RADIUS_M * scale;

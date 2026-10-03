@@ -95,9 +95,11 @@ type Props = {
   onHoverPlace: (id: number | null) => void;
   /** Ease the camera to this place (e.g. list row clicked); `n` makes repeated clicks re-trigger. */
   focusPlace: { id: number; n: number } | null;
+  /** Minimum safety level (0 = off): hexes below it are dimmed outside the Safety view. */
+  minSafety: number;
 };
 
-export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace }: Props) {
+export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -135,6 +137,14 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     for (const c of CATEGORIES) {
       pct[c] = percentileRanks(hexes.map((h) => h.scores[c]));
     }
+    // Safety view: percentile among the cells that have data; the rest are shown as "no data".
+    const withSafety = hexes.flatMap((h, i) => (h.safety == null ? [] : [i]));
+    const safetyRanks = percentileRanks(withSafety.map((i) => hexes[i].safety as number));
+    const safetyPct = hexes.map(() => 0);
+    withSafety.forEach((i, k) => (safetyPct[i] = safetyRanks[k]));
+    pct.safety = safetyPct;
+    // Below the user's minimum safety level (unknown ≠ unsafe: cells without data are never filtered out).
+    const belowMin = hexes.map((h) => minSafety > 0 && h.safety != null && h.safety < minSafety);
     const cells = hexes.map((h) => h.h3Index);
     const zones = Object.fromEntries(
       Object.entries(pct).map(([m, v]) => [
@@ -143,22 +153,31 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
           cells,
           v.map((p, i) =>
             // Nothing nearby in a category ≠ weak match: shown as "no data".
-            m !== "forYou" && hexes[i].scores[m as Category] === 0 ? NO_DATA_BAND : bandOf(p),
+            m === "safety"
+              ? hexes[i].safety == null
+                ? NO_DATA_BAND
+                : bandOf(p)
+              : m !== "forYou" && hexes[i].scores[m as Category] === 0
+                ? NO_DATA_BAND
+                : bandOf(p),
           ),
         ),
       ]),
     ) as Record<MapMode, GeoJSON.FeatureCollection>;
     const tops = Object.fromEntries(
-      Object.entries(pct).map(([m, v]) => [m, topZone(cells, v)]),
+      // "Strongest areas" skips cells below the minimum safety level (except in the Safety view itself).
+      Object.entries(pct).map(([m, v]) => [m, topZone(cells, m === "safety" ? v : v.map((p, i) => (belowMin[i] ? -1 : p)))]),
     ) as Record<MapMode, GeoJSON.FeatureCollection>;
     const geojson: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
-      features: hexes.map(({ h3Index, scores, district }, i) => ({
+      features: hexes.map(({ h3Index, scores, district, safety }, i) => ({
         type: "Feature",
         properties: {
           h3Index,
           district: district ?? "",
           ...scores,
+          safety: safety ?? null,
+          belowMin: belowMin[i] ? 1 : 0,
           personal: personal[i],
           ...Object.fromEntries(
             Object.entries(pct).map(([mode, v]) => [pctProp(mode as MapMode), v[i]]),
@@ -168,7 +187,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       })),
     };
     return { geojson, zones, tops };
-  }, [hexes, weights]);
+  }, [hexes, weights, minSafety]);
 
   // Latest values for the one-time map setup (updated before it runs).
   const initial = useRef({ geojson, zones, tops, mode, selected });
@@ -295,6 +314,16 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       });
 
       map.addSource(TOP_SOURCE, { type: "geojson", data: tops[mode] });
+      // Hexes below the user's minimum safety level are greyed out (not in the Safety view itself).
+      map.addSource(SOURCE, { type: "geojson", data: geojson });
+      map.addLayer({
+        id: "below-min",
+        type: "fill",
+        source: SOURCE,
+        filter: ["==", ["get", "belowMin"], 1],
+        layout: { visibility: mode === "safety" ? "none" : "visible" },
+        paint: { "fill-color": "#475569", "fill-opacity": 0.62, "fill-antialias": false },
+      });
       map.addLayer({
         id: "top-line",
         type: "line",
@@ -304,7 +333,6 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       });
 
       // Invisible per-hex layer: hit target for hover / click.
-      map.addSource(SOURCE, { type: "geojson", data: geojson });
       map.addLayer({
         id: "hex-fill",
         type: "fill",
@@ -424,16 +452,19 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       map.setFilter("hex-hover", ["==", ["get", "h3Index"], id]);
       if (!props) return;
       const m = modeRef.current;
+      const noSafety = m === "safety" && props.safety == null;
       const value = m === "forYou" ? props.personal : props[m];
+      const label = noSafety
+        ? "No safety data"
+        : m !== "forYou" && m !== "safety" && props[m] === 0
+          ? "Nothing nearby"
+          : BAND_LABELS[bandOf(props[pctProp(m)] as number)];
       setTip({
         x: e.point.x,
         y: e.point.y,
         district: (props.district as string) || "Kraków",
-        label:
-          m !== "forYou" && props[m] === 0
-            ? "Nothing nearby"
-            : BAND_LABELS[bandOf(props[pctProp(m)] as number)],
-        value: `${Math.round(value as number)}`,
+        label: m !== "safety" && props.belowMin === 1 ? `${label} · below your minimum safety` : label,
+        value: noSafety ? "" : `${Math.round(value as number)}`,
       });
     });
     map.on("mouseleave", "hex-fill", () => {
@@ -465,6 +496,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     if (!map || !readyRef.current) return;
     (map.getSource(ZONES_SOURCE) as maplibregl.GeoJSONSource).setData(zones[mode]);
     (map.getSource(TOP_SOURCE) as maplibregl.GeoJSONSource).setData(tops[mode]);
+    map.setLayoutProperty("below-min", "visibility", mode === "safety" ? "none" : "visible");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- zones handled by the effect above
   }, [mode]);
 
@@ -598,7 +630,8 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         >
           <div className="font-medium text-slate-900">{tip.district}</div>
           <div className="text-slate-600">
-            {tip.label} · {tip.value}/100
+            {tip.label}
+            {tip.value ? ` · ${tip.value}/100` : ""}
           </div>
         </div>
       )}

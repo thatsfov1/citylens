@@ -1,4 +1,5 @@
 import type { Category, HexIndicators } from "../../types";
+import { LIGHTING_RADIUS_M } from "../data/safety";
 
 // Turns stored OSM indicators into short, factual sentences. Deterministic; no LLM involved.
 
@@ -90,4 +91,24 @@ export function describeAll(ind: HexIndicators): Record<Category, string> {
     shopping: describeCategory("shopping", ind),
     transport: describeCategory("transport", ind),
   };
+}
+
+/**
+ * Data-backed facts behind the safety level of a cell, one per indicator. Empty when there is no data.
+ * Wording is deliberately neutral: these are indicators, not a verdict on the area.
+ */
+export function describeSafety(ind: HexIndicators): string[] {
+  const out: string[] = [];
+  const { crime, lighting } = ind.safety ?? {};
+  if (crime) {
+    out.push(
+      `${crime.per1000} reported crimes per 1,000 residents in police area ${crime.area} (${crime.year}); city: ${crime.cityPer1000}`,
+    );
+  }
+  if (lighting) {
+    out.push(
+      `${lighting.lit} of ${lighting.segments} mapped street segments within ${metres(LIGHTING_RADIUS_M)} are tagged as lit (OpenStreetMap; unlit streets are mapped less often, so this leans optimistic)`,
+    );
+  }
+  return out;
 }
