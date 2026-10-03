@@ -6,6 +6,8 @@ import { ArrowLeft, GraduationCap, Hexagon, MapPin, ShieldCheck, SlidersHorizont
 import { AirSection, AreaPanel, SafetySection, type PanelView } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { CompareTray } from "./compare-tray";
+import { ShareMenu } from "./share-menu";
+import { SharedBanner } from "./shared-banner";
 import { RentFilter, isRentActive } from "./rent-filter";
 import { FirstMatchCard } from "./first-match-card";
 import { OsmAttribution } from "@/components/osm-attribution";
@@ -26,9 +28,13 @@ import { MIN_SAFETY_LEVELS, importanceToQuery, type Importance } from "@/lib/sco
 import { stagesToParam, withEducationStages } from "@/lib/scoring/education";
 import { formatRadius, hexesOutsideAnchor, type Anchor } from "@/lib/scoring/anchor";
 import { normalizeWeights } from "@/lib/scoring/weights";
-import { DEFAULT_ROOMS, RENT_MAX, RENT_MIN, classifyHexes, rentToQuery, summarizeRent, type RentFilter as RentBudget } from "@/lib/scoring/rent";
+import { saveMap } from "@/lib/share/saved";
+import { DEFAULT_SHARE, applyShareState, buildShareUrl, savedQuery, type ShareState } from "@/lib/share/state";
+import { formatRentRange, DEFAULT_ROOMS, RENT_MAX, RENT_MIN, classifyHexes, rentToQuery, summarizeRent, type RentFilter as RentBudget } from "@/lib/scoring/rent";
 import type { HexSource, HexDetails } from "@/lib/supabase/hex-scores";
 import {
+  CATEGORIES,
+  CATEGORY_LABELS,
   EDUCATION_STAGES,
   EDUCATION_STAGE_LABELS,
   type Category,
@@ -47,6 +53,7 @@ export function MapExperience({
   initialStages = [...EDUCATION_STAGES],
   anchor = null,
   initialRent = null,
+  initialShare,
 }: {
   hexes: HexData[];
   source: HexSource;
@@ -59,10 +66,13 @@ export function MapExperience({
   anchor?: Anchor | null;
   /** Monthly rent budget from the URL (`?rent=&rooms=`); null = no budget. */
   initialRent?: RentBudget | null;
+  /** Tab, open area and compared areas from the URL (`?mode=&sel=&cmp=`), already validated against the grid. */
+  initialShare?: ShareState & { shared: boolean };
 }) {
-  const [mode, setMode] = useState<MapMode>("forYou");
+  const start = initialShare ?? { ...DEFAULT_SHARE, shared: false };
   // Safety is optional data: the view and the filter only appear when cells carry safety indicators.
   const hasSafety = useMemo(() => hexes.some((h) => h.safety != null), [hexes]);
+  const [mode, setMode] = useState<MapMode>(start.mode === "safety" && !hasSafety ? "forYou" : start.mode);
   const [minSafety, setMinSafety] = useState(hasSafety ? initialMinSafety : 0);
   const changeMinSafety = (v: number) => {
     setMinSafety(v);
@@ -109,19 +119,40 @@ export function MapExperience({
     return out.size < hexes.length ? out : undefined;
   }, [hexes, anchor]);
   const showStageFilter = hasStages && (mode === "education" || (mode === "forYou" && importance.education > 0));
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(start.selected);
   const weights = useMemo(() => normalizeWeights(importance), [importance]);
   const sensitivity = useMemo(
     () => (selected ? computeSensitivity(viewHexes, selected, importance) : null),
     [viewHexes, selected, importance],
   );
   // Areas the user is considering (up to three), compared side by side.
-  const [compared, setCompared] = useState<string[]>([]);
+  const [compared, setCompared] = useState<string[]>(start.compared);
   const toggleCompared = () => {
     if (!selected) return;
     setCompared((c) => (c.includes(selected) ? c.filter((x) => x !== selected) : c.length < MAX_COMPARED ? [...c, selected] : c));
   };
   const comparison = useMemo(() => compareAreas(viewHexes, compared, weights), [viewHexes, compared, weights]);
+
+  // Sharing: the tab, open area and compared areas live in the address bar next to the filters, so the link always
+  // reopens this exact view. A shared link (`shared=1`) shows a banner once.
+  const [bannerOpen, setBannerOpen] = useState(start.shared);
+  const [bannerSaved, setBannerSaved] = useState(false);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    url.search = applyShareState(url.searchParams, { mode, selected, compared }, { shared: bannerOpen }).toString();
+    window.history.replaceState(null, "", url);
+  }, [mode, selected, compared, bannerOpen]);
+  // Current map parameters, with the importance weights always present (a map opened without them uses the defaults).
+  const currentSearch = () => {
+    const params = new URLSearchParams(window.location.search);
+    for (const [k, v] of new URLSearchParams(importanceToQuery(importance))) if (!params.has(k)) params.set(k, v);
+    return params.toString();
+  };
+  const shareState = (): ShareState => ({ mode, selected, compared });
+  const saveSharedCopy = () => {
+    const r = saveMap({ name: `Shared · ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`, query: savedQuery(currentSearch(), shareState()) });
+    setBannerSaved(r.ok);
+  };
   const hex = useMemo(
     () => (selected ? (viewHexes.find((h) => h.h3Index === selected) ?? null) : null),
     [viewHexes, selected],
@@ -239,7 +270,8 @@ export function MapExperience({
   // "Your first match": once, on load with real data, fly to one of the strongest areas and explain it.
   // The ranking is fixed at that moment so "Compare another area" walks a stable list.
   const [first, setFirst] = useState<{ ids: string[]; i: number } | null>(null);
-  const autoPicked = useRef(false);
+  // A shared link that names an area keeps it: no automatic first-match jump.
+  const autoPicked = useRef(start.selected !== null);
   useEffect(() => {
     if (autoPicked.current || source !== "supabase") return;
     autoPicked.current = true;
@@ -275,6 +307,21 @@ export function MapExperience({
   // Filters (safety level, education stages) live in their own window so the side panel stays a summary.
   const [filtersOpen, setFiltersOpen] = useState(false);
   const hasFilters = hasSafety || showStageFilter || hasRent;
+  const shareSummary = useMemo(() => {
+    const lines: string[] = [];
+    const priorities = CATEGORIES.filter((c) => importance[c] > 0)
+      .sort((a, b) => importance[b] - importance[a])
+      .slice(0, 3)
+      .map((c) => `${CATEGORY_LABELS[c]} ${Math.round(importance[c])}%`);
+    if (priorities.length) lines.push(`Priorities: ${priorities.join(", ")}`);
+    if (minSafety > 0) lines.push(`Minimum safety: ${MIN_SAFETY_LEVELS.find((l) => l.value === minSafety)?.label ?? minSafety}`);
+    if (rentActive) lines.push(`Rent budget: ${formatRentRange(rent)}${rent.fees ? " with czynsz" : ""}, ${rent.rooms}${rent.rooms === 3 ? "+" : ""} room${rent.rooms > 1 ? "s" : ""}`);
+    if (anchor && outside) lines.push(`Near ${anchor.name.split(",")[0]} · ${formatRadius(anchor.radiusM)}`);
+    if (mode !== "forYou") lines.push(`Tab: ${mode === "safety" ? "Safety" : CATEGORY_LABELS[mode]}`);
+    if (compared.length) lines.push(`${compared.length} compared area${compared.length > 1 ? "s" : ""}`);
+    if (hex) lines.push(`Open area: ${hex.district ?? "selected hexagon"}`);
+    return lines.length ? lines : ["Your preferences"];
+  }, [importance, minSafety, rentActive, rent, anchor, outside, mode, compared, hex]);
   const activeFilters = (minSafety > 0 ? 1 : 0) + (rentActive ? 1 : 0) + (hasStages && stages.length < EDUCATION_STAGES.length ? 1 : 0);
 
   const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
@@ -311,6 +358,17 @@ export function MapExperience({
         }
         onBadge={(kind) => (kind === "compare" ? toggleCompared() : setBadgeInfo({ hex: selected, kind }))}
       />
+
+      {bannerOpen && (
+        <SharedBanner
+          compared={compared.length}
+          hasArea={selected !== null}
+          adjustHref={`/?${importanceToQuery(importance)}`}
+          saved={bannerSaved}
+          onSave={saveSharedCopy}
+          onDismiss={() => setBannerOpen(false)}
+        />
+      )}
 
       {filtersOpen && hasFilters && (
         <section className="absolute inset-x-3 top-28 z-10 space-y-4 rounded-2xl border border-border/70 bg-white/95 p-4 shadow-2xl backdrop-blur sm:inset-x-auto sm:left-4 sm:top-16 sm:w-[22rem]">
@@ -379,6 +437,11 @@ export function MapExperience({
         <div className="pointer-events-auto max-w-full sm:absolute sm:left-1/2 sm:-translate-x-1/2">
           <ModeSelector mode={mode} onChange={setMode} hasSafety={hasSafety} />
         </div>
+        <ShareMenu
+          getUrl={() => buildShareUrl(window.location.origin, currentSearch(), shareState())}
+          getQuery={() => savedQuery(currentSearch(), shareState())}
+          summary={shareSummary}
+        />
       </div>
 
       <aside className="absolute inset-x-0 bottom-0 max-h-[55%] overflow-y-auto rounded-t-3xl border border-border/70 bg-white/95 shadow-2xl backdrop-blur sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-16 sm:max-h-[calc(100%-5.5rem)] sm:w-[22rem] sm:rounded-3xl">

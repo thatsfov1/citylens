@@ -12,6 +12,7 @@ import { anchorToQuery, type Anchor } from "@/lib/scoring/anchor";
 import { rentToQuery, type RentFilter } from "@/lib/scoring/rent";
 import type { EducationStage } from "@/types";
 import { ChatPanel } from "./chat-panel";
+import { SavedMapLink } from "./saved-map-link";
 
 export function Landing({ initial }: { initial?: Importance }) {
   const router = useRouter();
@@ -27,7 +28,10 @@ export function Landing({ initial }: { initial?: Importance }) {
           <Link href="/" className="text-lg font-medium tracking-[-0.04em] text-[#222823]">citylens</Link>
           <p className="mt-0.5 text-xs font-light tracking-wide text-stone-500">Kraków widziany po Twojemu</p>
         </div>
-        <span className="text-[10px] font-normal uppercase tracking-[0.22em] text-stone-500">Kraków · Polska</span>
+        <div className="flex items-center gap-5">
+          <SavedMapLink />
+          <span className="text-[10px] font-normal uppercase tracking-[0.22em] text-stone-500">Kraków · Polska</span>
+        </div>
       </header>
 
       <div className="relative z-10 mx-auto grid w-full max-w-[1600px] flex-1 lg:grid-cols-2">
