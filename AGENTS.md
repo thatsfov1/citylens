@@ -8,6 +8,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
+# Current state & decisions
+
+Read `docs/PROJECT_DECISIONS.md` before starting any task. It records what was actually built and decided
+(data model, API, pipeline, UI conventions). Where it disagrees with the plans below, it is newer and
+authoritative for current behaviour. Add an entry there when you make a structural decision.
+
 # Branching
 
 Always use new branch for each feature
