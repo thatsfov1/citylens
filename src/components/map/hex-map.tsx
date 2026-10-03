@@ -3,18 +3,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { cellToLatLng } from "h3-js";
 import { KRAKOW_CENTER, KRAKOW_INITIAL_ZOOM } from "@/lib/h3/config";
 import { cellPolygon } from "@/lib/h3/grid";
+import { GREEN_COLOR, PLACE_COLORS, circleRing, placeTitle } from "@/lib/map/places";
 import { KRAKOW_BOUNDS, boundaryFeature, outsideMaskFeature } from "@/lib/h3/mask";
 import { calculatePersonalScore } from "@/lib/scoring/personal-score";
 import { percentileRanks } from "@/lib/scoring/percentile";
 import { BAND_COLORS, BAND_LABELS, NO_DATA_BAND, NO_DATA_COLOR, bandOf, bandZones, topZone } from "@/lib/map/zones";
-import { CATEGORIES, type Category, type CategoryWeights, type HexData, type MapMode } from "@/types";
+import { CATEGORIES, type Category, type CategoryWeights, type HexData, type MapMode, type PlacesResponse } from "@/types";
 
 const SOURCE = "hexes";
 const ZONES_SOURCE = "zones";
 const DIMMED_OPACITY = 0.6;
 const TOP_SOURCE = "top-zone";
+const PLACES_SOURCE = "places";
+const GREEN_SOURCE = "place-green";
+const RING_SOURCE = "place-rings";
+const DRILL_ZOOM = 14.2;
+const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
 // Once zoomed in by more than this (zoom levels) beyond the "whole city fits" view,
 // the recenter button appears.
@@ -81,9 +88,16 @@ type Props = {
   mode: MapMode;
   selected: string | null;
   onSelect: (h3Index: string | null) => void;
+  /** Places behind the selected hexagon, shown as pins once the camera flies in. */
+  places: PlacesResponse | null;
+  pinCategories: ReadonlySet<Category>;
+  hoveredPlace: number | null;
+  onHoverPlace: (id: number | null) => void;
+  /** Ease the camera to this place (e.g. list row clicked); `n` makes repeated clicks re-trigger. */
+  focusPlace: { id: number; n: number } | null;
 };
 
-export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
+export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -94,6 +108,24 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
   const modeRef = useRef(mode);
   const [showTop, setShowTop] = useState(false);
   const showTopRef = useRef(showTop);
+  const onHoverPlaceRef = useRef(onHoverPlace);
+  const beforeDrill = useRef<{ center: [number, number]; zoom: number } | null>(null);
+
+  const pinsGeoJson = useMemo<GeoJSON.FeatureCollection>(
+    () => ({
+      type: "FeatureCollection",
+      features: (places?.places ?? [])
+        .filter((p) => pinCategories.has(p.category))
+        .map((p) => ({
+          type: "Feature",
+          id: p.id,
+          properties: { id: p.id, category: p.category, title: placeTitle(p) },
+          geometry: { type: "Point", coordinates: [p.lng, p.lat] },
+        })),
+    }),
+    [places, pinCategories],
+  );
+  const greenGeoJson = pinCategories.has("greenery") && places ? places.green : EMPTY;
 
   const { geojson, zones, tops } = useMemo(() => {
     const personal = hexes.map((h) => calculatePersonalScore(h.scores, weights));
@@ -140,6 +172,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
   const initial = useRef({ geojson, zones, tops, mode, selected });
   useEffect(() => {
     onSelectRef.current = onSelect;
+    onHoverPlaceRef.current = onHoverPlace;
     modeRef.current = mode;
     showTopRef.current = showTop;
     initial.current = { geojson, zones, tops, mode, selected };
@@ -293,16 +326,87 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
         filter: ["==", ["get", "h3Index"], selected ?? ""],
         paint: { "line-color": "#0f172a", "line-width": 3 },
       });
+
+      // Drill-down layers: distance rings, park outlines and place pins (only filled for a selected hexagon).
+      map.addSource(RING_SOURCE, { type: "geojson", data: EMPTY });
+      map.addLayer({
+        id: "place-rings",
+        type: "line",
+        source: RING_SOURCE,
+        paint: { "line-color": "#334155", "line-width": 1.2, "line-opacity": 0.55, "line-dasharray": [2, 3] },
+      });
+      map.addSource(GREEN_SOURCE, { type: "geojson", data: EMPTY });
+      map.addLayer({
+        id: "place-green-fill",
+        type: "fill",
+        source: GREEN_SOURCE,
+        paint: { "fill-color": GREEN_COLOR, "fill-opacity": 0.3 },
+      });
+      map.addLayer({
+        id: "place-green-line",
+        type: "line",
+        source: GREEN_SOURCE,
+        paint: { "line-color": GREEN_COLOR, "line-width": 1.5, "line-opacity": 0.9 },
+      });
+      map.addSource(PLACES_SOURCE, { type: "geojson", data: EMPTY });
+      const pinColor = [
+        "match",
+        ["get", "category"],
+        ...Object.entries(PLACE_COLORS).flat(),
+        "#64748b",
+      ] as unknown as maplibregl.ExpressionSpecification;
+      map.addLayer({
+        id: "place-hover",
+        type: "circle",
+        source: PLACES_SOURCE,
+        filter: ["==", ["get", "id"], -1],
+        paint: { "circle-radius": 14, "circle-color": pinColor, "circle-opacity": 0.3 },
+      });
+      map.addLayer({
+        id: "place-pins",
+        type: "circle",
+        source: PLACES_SOURCE,
+        paint: {
+          "circle-radius": 7,
+          "circle-color": pinColor,
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 2,
+        },
+      });
+      map.addLayer({
+        id: "place-labels",
+        type: "symbol",
+        source: PLACES_SOURCE,
+        minzoom: 14,
+        layout: {
+          "text-field": ["get", "title"],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 12,
+          "text-offset": [0, 1.1],
+          "text-anchor": "top",
+          "text-optional": true,
+        },
+        paint: { "text-color": "#0f172a", "text-halo-color": "#ffffff", "text-halo-width": 1.6 },
+      });
       readyRef.current = true;
     });
 
+    map.on("mousemove", "place-pins", (e) => {
+      map.getCanvas().style.cursor = "pointer";
+      const id = e.features?.[0]?.properties?.id as number | undefined;
+      onHoverPlaceRef.current(id ?? null);
+    });
+    map.on("mouseleave", "place-pins", () => onHoverPlaceRef.current(null));
     map.on("click", "hex-fill", (e) => {
+      if (map.queryRenderedFeatures(e.point, { layers: ["place-pins"] }).length > 0) return;
       const id = e.features?.[0]?.properties?.h3Index as string | undefined;
       if (id) onSelectRef.current(id);
     });
     map.on("click", (e) => {
       if (!map.getLayer("hex-fill")) return;
-      if (map.queryRenderedFeatures(e.point, { layers: ["hex-fill"] }).length === 0) {
+      if (
+        map.queryRenderedFeatures(e.point, { layers: ["hex-fill", "place-pins"] }).length === 0
+      ) {
         onSelectRef.current(null);
       }
     });
@@ -366,6 +470,73 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
     // Dim the other zones while an area is selected.
     map.setPaintProperty("zone-fill", "fill-opacity", selected ? DIMMED_OPACITY : 1);
   }, [selected]);
+
+  // Selecting a hexagon flies in; deselecting flies back to where the user was.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    if (selected) {
+      if (!beforeDrill.current) {
+        const c = map.getCenter();
+        beforeDrill.current = { center: [c.lng, c.lat], zoom: map.getZoom() };
+      }
+      const [lat, lng] = cellToLatLng(selected);
+      const right = window.innerWidth >= 640 ? SIDEBAR_WIDTH + FIT_PADDING : 0;
+      const bottom = window.innerWidth >= 640 ? 0 : window.innerHeight * 0.5;
+      map.flyTo({
+        center: [lng, lat],
+        zoom: Math.max(map.getZoom(), DRILL_ZOOM),
+        padding: { top: 0, left: 0, right, bottom },
+        duration: 900,
+        essential: true,
+      });
+    } else if (beforeDrill.current) {
+      const { center, zoom } = beforeDrill.current;
+      beforeDrill.current = null;
+      map.flyTo({ center, zoom, padding: { top: 0, left: 0, right: 0, bottom: 0 }, duration: 700 });
+    }
+  }, [selected]);
+
+  // Distance guide: 500 m and 1 km around the hexagon centre (what the score "saw").
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    const src = map.getSource(RING_SOURCE) as maplibregl.GeoJSONSource;
+    if (!selected) {
+      src.setData(EMPTY);
+      return;
+    }
+    const [lat, lng] = cellToLatLng(selected);
+    src.setData({
+      type: "FeatureCollection",
+      features: [500, 1000].map((r) => ({
+        type: "Feature",
+        properties: { r },
+        geometry: { type: "LineString", coordinates: circleRing([lng, lat], r) },
+      })),
+    });
+  }, [selected]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    (map.getSource(PLACES_SOURCE) as maplibregl.GeoJSONSource).setData(selected ? pinsGeoJson : EMPTY);
+    (map.getSource(GREEN_SOURCE) as maplibregl.GeoJSONSource).setData(selected ? greenGeoJson : EMPTY);
+  }, [selected, pinsGeoJson, greenGeoJson]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    map.setFilter("place-hover", ["==", ["get", "id"], hoveredPlace ?? -1]);
+  }, [hoveredPlace]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const p = focusPlace && places?.places.find((x) => x.id === focusPlace.id);
+    if (!map || !p) return;
+    map.easeTo({ center: [p.lng, p.lat], duration: 500 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- react to explicit focus requests only
+  }, [focusPlace]);
 
   // "Strongest areas" toggle: outline the top 10% and frame them.
   useEffect(() => {

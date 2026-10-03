@@ -130,6 +130,21 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   A "Center map" button appears once zoomed in by > 0.35 levels and flies back to the fit view.
   Do **not** use MapLibre `maxBounds` for this: it forces the bbox to cover the viewport and over-zooms.
 
+### Hexagon drill-down: places on the map
+
+- Clicking a hex flies the camera in (zoom ≥ 14.2, padded for the side panel), draws dashed 500 m / 1 km
+  rings and pins the real OSM places behind the scores; deselecting flies back. The full-city map has no icons.
+- **Tables `pois` and `green_areas`** (migration `…000300_places.sql`, RLS read-only like `hex_scores`).
+  `pois` = one row per classified OSM point (category, kind, name, lat, lng). `green_areas` = park/forest
+  outlines ≥ 0.5 ha as simplified GeoJSON + bbox columns. Filled by `scripts/osm/export-places.ts`
+  → `supabase/seed-places.sql` (run it with `OSM_DIR=data/osm/full`; the committed seed is built from the
+  small sample and is only good for development).
+- `GET /api/hexes/[h3Index]/places` → `PlacesResponse` (`src/types`). Selection logic is `selectPlaces`
+  in `src/lib/data/places.ts`: within each category's reach (culture 2 km, others 1 km), nearest 10 per
+  category; transport = up to 8 rail/tram + 6 bus stops. Failure ⇒ the panel just stays text-only.
+- Pins: default categories = active map mode, or the two top-weighted in "For You"; chips in the panel toggle
+  the rest. Greenery is shown as park outlines, not points. Pins are MapLibre circle/symbol layers (no sprites).
+
 ## 7. Code layout & ownership
 
 | Area | Paths | Owner |
@@ -153,6 +168,7 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
 - `/map` reads Supabase directly on the server instead of via `/api/hexes` (see §3).
 - Culture is still the weakest category (OSM coverage); it is now much denser after the tag and radius expansion.
 - `supabase/seed.sql` in the repo can be newer than the live Supabase table: after recomputing, the table must be reloaded by someone with write access.
+- The live `pois`/`green_areas` tables currently hold only a tiny hand-made demo slice (28 POIs, one made-up park outline) — reload with the full `seed-places.sql`.
 - Do not run `compute.ts` on the sample, and don't commit the full extracts.
 - Next.js here has breaking changes vs older versions: read `node_modules/next/dist/docs/` before
   writing framework code (see `AGENTS.md`).

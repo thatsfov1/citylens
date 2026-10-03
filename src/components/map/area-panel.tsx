@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Check, Info, MapPin, X } from "lucide-react";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
 import { describeAll } from "@/lib/scoring/facts";
@@ -26,9 +27,11 @@ type Props = {
   source: HexSource;
   weights: CategoryWeights;
   onClose: () => void;
+  /** Pins legend + list of the real places behind the scores. */
+  placesSlot?: ReactNode;
 };
 
-export function AreaPanel({ scores, district, indicators, source, weights, onClose }: Props) {
+export function AreaPanel({ scores, district, indicators, source, weights, onClose, placesSlot }: Props) {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
 
   if (!scores) {
@@ -113,6 +116,8 @@ export function AreaPanel({ scores, district, indicators, source, weights, onClo
           </li>
         ))}
       </ul>
+
+      {placesSlot}
 
       <h3 className="mt-6 text-sm font-semibold">Why it matches you</h3>
       <ul className="mt-2 space-y-1.5">
