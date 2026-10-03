@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, GraduationCap, Hexagon, ShieldCheck } from "lucide-react";
 import { AreaPanel, type PanelView } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
+import { FirstMatchCard } from "./first-match-card";
 import { OsmAttribution } from "@/components/osm-attribution";
 import { ModeSelector } from "./mode-selector";
 import { CategoryPlaces } from "./places-list";
 import { WorksWarnings } from "./works-warnings";
 import { EDUCATION_KIND_STAGES } from "@/lib/data/osm";
+import { explainMatch } from "@/lib/scoring/explain";
+import { describeAll } from "@/lib/scoring/facts";
+import { strongestAreas, topContributor } from "@/lib/scoring/first-match";
 import { summarizeWorks } from "@/lib/data/works";
 import { fetchCached } from "@/lib/map/hex-cache";
 import { defaultPinCategories } from "@/lib/map/places";
@@ -153,6 +157,34 @@ export function MapExperience({
       },
     [places, stages],
   );
+  // "Your first match": once, on load with real data, fly to one of the strongest areas and explain it.
+  // The ranking is fixed at that moment so "Compare another area" walks a stable list.
+  const [first, setFirst] = useState<{ ids: string[]; i: number } | null>(null);
+  const autoPicked = useRef(false);
+  useEffect(() => {
+    if (autoPicked.current || source !== "supabase") return;
+    autoPicked.current = true;
+    const ids = strongestAreas(viewHexes, weights, minSafety);
+    if (ids.length === 0) return;
+    // One-shot after mount on purpose: selecting here goes through the same fly-in as a click on the map.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setFirst({ ids, i: 0 });
+    setSelected(ids[0]);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [source, viewHexes, weights, minSafety]);
+  const compareAnother = () => {
+    if (!first) return;
+    const i = (first.i + 1) % first.ids.length;
+    setFirst({ ...first, i });
+    setSelected(first.ids[i]);
+  };
+  // Only while its area is the selected one and the data-backed facts have loaded (no generic text).
+  const firstMatch = useMemo(() => {
+    if (!first || !hex || view || selected !== first.ids[first.i] || !details?.indicators) return null;
+    const ex = explainMatch(hex.scores, weights, describeAll(details.indicators, stages));
+    return { ex, contributor: placesView ? topContributor(placesView, weights) : null };
+  }, [first, hex, view, selected, details, weights, stages, placesView]);
+
   const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
   const [focusPlace, setFocusPlace] = useState<{ id: number; n: number } | null>(null);
 
@@ -187,6 +219,20 @@ export function MapExperience({
       </div>
 
       <aside className="absolute inset-x-0 bottom-0 max-h-[55%] overflow-y-auto rounded-t-3xl border border-border/70 bg-white/95 shadow-2xl backdrop-blur sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-16 sm:max-h-[calc(100%-5.5rem)] sm:w-[22rem] sm:rounded-3xl">
+        {firstMatch && first && hex && (
+          <FirstMatchCard
+            score={firstMatch.ex.score}
+            district={hex.district ?? null}
+            headline={firstMatch.ex.headline}
+            reason={firstMatch.ex.reasons[0]}
+            tradeoff={firstMatch.ex.considerations[0] ?? null}
+            contributor={firstMatch.contributor}
+            position={first.i + 1}
+            total={first.ids.length}
+            onCompare={compareAnother}
+            onDismiss={() => setFirst(null)}
+          />
+        )}
         {!view && showStageFilter && <StageFilter value={stages} onToggle={toggleStage} />}
         {!view && hasSafety && <SafetyFilter value={minSafety} onChange={changeMinSafety} />}
         <AreaPanel
