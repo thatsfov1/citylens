@@ -223,6 +223,7 @@ export function MapExperience({
         onHoverPlace={setHoveredPlace}
         focusPlace={focusPlace}
         minSafety={minSafety}
+        compared={compared}
         badges={
           hex
             ? {

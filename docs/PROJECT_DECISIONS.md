@@ -389,3 +389,4 @@ changes a score.
 - The selected hexagon carries badges on its corners (MapLibre markers in `hex-map.tsx`, shown from zoom 12.5 so they don't overlap at city zoom): safety and air with their score, works with a count
   (only if > 0), and a +/✓ compare button. Native tooltips on hover. Safety, air and works open a floating info window (same `SafetySection` / `AirSection` / `WorksWarnings` content);
   the compare badge adds/removes the area (max 3). They replace the chip row and the "Add to comparison" button that used to be in the side panel.
+- Areas in the comparison keep a dashed outline on the map (`hex-compared` layer) while another area is selected.

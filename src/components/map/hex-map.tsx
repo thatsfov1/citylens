@@ -125,6 +125,8 @@ type Props = {
   minSafety: number;
   /** Safety / air values of the selected hexagon (null = no data); shown as badges on its border. */
   badges?: HexBadges;
+  /** Areas in the side-by-side comparison; they stay outlined even when not selected. */
+  compared?: readonly string[];
   onBadge?: (kind: BadgeKind) => void;
 };
 
@@ -185,7 +187,7 @@ function cornerAt(selected: string, degrees: number): [number, number] {
   return cellToBoundary(selected).reduce((best, v) => (diff(v) < diff(best) ? v : best)) as [number, number];
 }
 
-export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, badges, onBadge }: Props) {
+export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, badges, compared, onBadge }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -450,6 +452,15 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         filter: ["==", ["get", "h3Index"], ""],
         paint: { "line-color": "#0f172a", "line-width": 1.5, "line-opacity": 0.55 },
       });
+      // Areas added to the comparison keep a lighter outline while another area is selected.
+      map.addLayer({
+        id: "hex-compared",
+        type: "line",
+        source: SOURCE,
+        filter: ["==", ["get", "h3Index"], ""],
+        layout: { "line-join": "round" },
+        paint: { "line-color": "#0f172a", "line-width": 2.5, "line-dasharray": [2, 1.2] },
+      });
       map.addLayer({
         id: "hex-selected-glow",
         type: "line",
@@ -621,6 +632,13 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     // Dim the heat field while an area is selected.
     map.setPaintProperty("heat-raster", "raster-opacity", selected ? DIMMED_OPACITY : 1);
   }, [selected]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    map.setFilter("hex-compared", ["in", ["get", "h3Index"], ["literal", [...(compared ?? [])]]]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `compared` content changes identity every render; key by joined ids
+  }, [(compared ?? []).join(",")]);
 
   // Safety / air badges sit on the selected hexagon's two northern corners; clicking one opens its info window.
   const onBadgeRef = useRef(onBadge);
