@@ -48,14 +48,14 @@ const CENTRALITY: Record<Category, number> = {
 
 export function getMockScores(h3Index: string): CategoryScores {
   const [lat, lng] = cellToLatLng(h3Index);
-  // Distance from centre in km (approximate), normalised so ~9 km → 1.
+  // Distance from centre in km (approximate), normalised so ~13 km → 1.
   const dx = (lng - KRAKOW_CENTER.lng) * 71;
   const dy = (lat - KRAKOW_CENTER.lat) * 111;
-  const central = 1 - Math.min(1, Math.hypot(dx, dy) / 9); // 1 at centre, 0 at edge
+  const central = 1 - Math.min(1, Math.hypot(dx, dy) / 13); // 1 at centre, 0 at edge
 
   const scores = {} as CategoryScores;
   for (const category of Object.keys(CENTRALITY) as Category[]) {
-    const coarse = valueNoise(category, lng * 90, lat * 130);
+    const coarse = valueNoise(category, lng * 32, lat * 46);
     const fine = lattice(category, hash(h3Index) % 9973, 7);
     const bias = CENTRALITY[category] * (central - 0.5); // [-0.5, 0.5] * weight
     scores[category] = clamp(100 * (0.15 + 0.6 * coarse + 0.1 * fine + 0.5 * bias + 0.15));

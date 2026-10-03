@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Hexagon } from "lucide-react";
 import { AreaPanel } from "./area-panel";
-import { HexMap, SCORE_COLORS } from "./hex-map";
+import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { ModeSelector } from "./mode-selector";
 import { getHexData } from "@/lib/mock-data/hexes";
 import { importanceToQuery, type Importance } from "@/lib/scoring/preferences";
@@ -48,16 +48,18 @@ export function MapExperience({ importance }: { importance: Importance }) {
 }
 
 function Legend({ mode }: { mode: MapMode }) {
-  const gradient = `linear-gradient(to right, ${SCORE_COLORS.map(([v, c]) => `${c} ${((v - 25) / 55) * 100}%`).join(", ")})`;
   return (
     <div className="pointer-events-none absolute left-3 top-28 rounded-xl border border-border/70 bg-white/90 px-3 py-2 shadow-lg shadow-black/5 backdrop-blur sm:bottom-6 sm:left-4 sm:top-auto">
       <div className="mb-1.5 text-[11px] font-medium text-slate-600">
         {mode === "forYou" ? "Match for you" : "Category score"}
       </div>
-      <div className="h-2 w-40 rounded-full" style={{ background: gradient }} />
+      <div className="h-2 w-40 rounded-full" style={{ background: LEGEND_GRADIENT }} />
       <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
         <span>{mode === "forYou" ? "Weaker match" : "Low"}</span>
         <span>{mode === "forYou" ? "Strong match" : "High"}</span>
+      </div>
+      <div className="mt-1 text-[10px] text-muted-foreground">
+        Relative to the rest of Kraków · untinted = average
       </div>
     </div>
   );

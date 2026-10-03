@@ -7,29 +7,48 @@ import { KRAKOW_CENTER, KRAKOW_INITIAL_ZOOM } from "@/lib/h3/config";
 import { cellPolygon } from "@/lib/h3/grid";
 import { getHexData } from "@/lib/mock-data/hexes";
 import { calculatePersonalScore } from "@/lib/scoring/personal-score";
-import type { CategoryWeights, MapMode } from "@/types";
+import { percentileRanks } from "@/lib/scoring/percentile";
+import { CATEGORIES, type CategoryWeights, type MapMode } from "@/types";
 
 const SOURCE = "hexes";
 
 // Worker files are copied to /public/maplibre by scripts/copy-maplibre-worker.mjs.
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
-// Score → colour. Green = stronger match, red = weaker match (not "bad").
-// Stops are tighter than 0–100 because mock scores cluster mid-range.
-export const SCORE_COLORS: [number, string][] = [
-  [25, "#d9453b"],
-  [40, "#f08a3c"],
-  [52, "#f2d14b"],
-  [65, "#8cc152"],
-  [80, "#12915a"],
-];
+// Diverging scale on percentile rank within the city (for the selected mode):
+// the middle of the distribution stays invisible; only clearly weaker (red) or
+// stronger (green) areas are tinted. Weaker match ≠ worse place.
+const WEAK = "217,69,59";
+const STRONG = "18,145,90";
+const rgba = (rgb: string, a: number) => `rgba(${rgb},${a})`;
+
+export const LEGEND_GRADIENT = `linear-gradient(to right, ${rgba(WEAK, 1)}, #e5e7eb 35%, #e5e7eb 65%, ${rgba(STRONG, 1)})`;
+
+const pctProp = (mode: MapMode) => `pct_${mode}`;
 
 const colorExpression = (mode: MapMode) =>
   [
     "interpolate",
     ["linear"],
-    ["get", mode === "forYou" ? "personal" : mode],
-    ...SCORE_COLORS.flat(),
+    ["get", pctProp(mode)],
+    0, rgba(WEAK, 0.85),
+    0.15, rgba(WEAK, 0.7),
+    0.33, rgba(WEAK, 0),
+    0.67, rgba(STRONG, 0),
+    0.85, rgba(STRONG, 0.7),
+    1, rgba(STRONG, 0.85),
+  ] as maplibregl.ExpressionSpecification;
+
+// Thin white outline only around tinted hexes, so neutral hexes stay invisible.
+const outlineOpacityExpression = (mode: MapMode) =>
+  [
+    "interpolate",
+    ["linear"],
+    ["get", pctProp(mode)],
+    0, 0.7,
+    0.33, 0,
+    0.67, 0,
+    1, 0.7,
   ] as maplibregl.ExpressionSpecification;
 
 type Props = {
@@ -45,21 +64,29 @@ export function HexMap({ weights, mode, selected, onSelect }: Props) {
   const readyRef = useRef(false);
   const onSelectRef = useRef(onSelect);
 
-  const geojson = useMemo<GeoJSON.FeatureCollection>(
-    () => ({
+  const geojson = useMemo<GeoJSON.FeatureCollection>(() => {
+    const hexes = getHexData();
+    const personal = hexes.map((h) => calculatePersonalScore(h.scores, weights));
+    const pct: Record<string, number[]> = { forYou: percentileRanks(personal) };
+    for (const c of CATEGORIES) {
+      pct[c] = percentileRanks(hexes.map((h) => h.scores[c]));
+    }
+    return {
       type: "FeatureCollection",
-      features: getHexData().map(({ h3Index, scores }) => ({
+      features: hexes.map(({ h3Index, scores }, i) => ({
         type: "Feature",
         properties: {
           h3Index,
           ...scores,
-          personal: calculatePersonalScore(scores, weights),
+          personal: personal[i],
+          ...Object.fromEntries(
+            Object.entries(pct).map(([mode, v]) => [pctProp(mode as MapMode), v[i]]),
+          ),
         },
         geometry: { type: "Polygon", coordinates: [cellPolygon(h3Index)] },
       })),
-    }),
-    [weights],
-  );
+    };
+  }, [weights]);
 
   // Latest values for the one-time map setup (updated before it runs).
   const initial = useRef({ geojson, mode, selected });
@@ -81,6 +108,8 @@ export function HexMap({ weights, mode, selected, onSelect }: Props) {
       style: "https://tiles.openfreemap.org/styles/positron",
     });
     mapRef.current = map;
+    // Keep the city clear of the side panel on desktop.
+    if (window.innerWidth >= 640) map.setPadding({ top: 0, bottom: 0, left: 0, right: 380 });
 
     map.on("load", () => {
       const { geojson, mode, selected } = initial.current;
@@ -91,7 +120,6 @@ export function HexMap({ weights, mode, selected, onSelect }: Props) {
         source: SOURCE,
         paint: {
           "fill-color": colorExpression(mode),
-          "fill-opacity": 0.62,
           "fill-color-transition": { duration: 350 },
         },
       });
@@ -99,7 +127,18 @@ export function HexMap({ weights, mode, selected, onSelect }: Props) {
         id: "hex-line",
         type: "line",
         source: SOURCE,
-        paint: { "line-color": "#ffffff", "line-width": 0.6, "line-opacity": 0.7 },
+        paint: {
+          "line-color": "#ffffff",
+          "line-width": 0.6,
+          "line-opacity": outlineOpacityExpression(mode),
+        },
+      });
+      map.addLayer({
+        id: "hex-hover",
+        type: "line",
+        source: SOURCE,
+        filter: ["==", ["get", "h3Index"], ""],
+        paint: { "line-color": "#0f172a", "line-width": 1.5, "line-opacity": 0.55 },
       });
       map.addLayer({
         id: "hex-selected",
@@ -121,8 +160,15 @@ export function HexMap({ weights, mode, selected, onSelect }: Props) {
         onSelectRef.current(null);
       }
     });
-    map.on("mouseenter", "hex-fill", () => (map.getCanvas().style.cursor = "pointer"));
-    map.on("mouseleave", "hex-fill", () => (map.getCanvas().style.cursor = ""));
+    map.on("mousemove", "hex-fill", (e) => {
+      map.getCanvas().style.cursor = "pointer";
+      const id = (e.features?.[0]?.properties?.h3Index as string | undefined) ?? "";
+      map.setFilter("hex-hover", ["==", ["get", "h3Index"], id]);
+    });
+    map.on("mouseleave", "hex-fill", () => {
+      map.getCanvas().style.cursor = "";
+      map.setFilter("hex-hover", ["==", ["get", "h3Index"], ""]);
+    });
 
     return () => {
       readyRef.current = false;
@@ -143,6 +189,7 @@ export function HexMap({ weights, mode, selected, onSelect }: Props) {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
     map.setPaintProperty("hex-fill", "fill-color", colorExpression(mode));
+    map.setPaintProperty("hex-line", "line-opacity", outlineOpacityExpression(mode));
   }, [mode]);
 
   useEffect(() => {

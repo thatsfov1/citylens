@@ -1,18 +1,14 @@
 import { cellToBoundary, polygonToCells } from "h3-js";
-import { H3_RESOLUTION, KRAKOW_BBOX } from "./config";
+import { H3_RESOLUTION } from "./config";
+import boundary from "./krakow-boundary.json";
 
-/** All H3 cells covering the demo bounding box. */
+/**
+ * H3 cells whose centre lies inside Kraków's administrative boundary
+ * (OpenStreetMap data © OpenStreetMap contributors, ODbL — simplified, static).
+ */
 export function getDemoCells(resolution = H3_RESOLUTION): string[] {
-  const { south, north, west, east } = KRAKOW_BBOX;
-  // h3-js v4 polygons are [lat, lng] by default.
-  const ring: [number, number][] = [
-    [south, west],
-    [south, east],
-    [north, east],
-    [north, west],
-    [south, west],
-  ];
-  return polygonToCells(ring, resolution);
+  // GeoJSON ring, [lng, lat].
+  return polygonToCells(boundary.coordinates as number[][][], resolution, true);
 }
 
 /** Closed GeoJSON ring ([lng, lat]) for a cell. */
