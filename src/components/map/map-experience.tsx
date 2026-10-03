@@ -6,23 +6,22 @@ import { ArrowLeft, Hexagon } from "lucide-react";
 import { AreaPanel } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { ModeSelector } from "./mode-selector";
-import { getHexData } from "@/lib/mock-data/hexes";
 import { importanceToQuery, type Importance } from "@/lib/scoring/preferences";
 import { normalizeWeights } from "@/lib/scoring/weights";
-import type { MapMode } from "@/types";
+import type { HexData, MapMode } from "@/types";
 
-export function MapExperience({ importance }: { importance: Importance }) {
+export function MapExperience({ hexes, importance }: { hexes: HexData[]; importance: Importance }) {
   const [mode, setMode] = useState<MapMode>("forYou");
   const [selected, setSelected] = useState<string | null>(null);
   const weights = useMemo(() => normalizeWeights(importance), [importance]);
   const scores = useMemo(
-    () => (selected ? (getHexData().find((h) => h.h3Index === selected)?.scores ?? null) : null),
-    [selected],
+    () => (selected ? (hexes.find((h) => h.h3Index === selected)?.scores ?? null) : null),
+    [hexes, selected],
   );
 
   return (
     <div className="relative flex-1 overflow-hidden">
-      <HexMap weights={weights} mode={mode} selected={selected} onSelect={setSelected} />
+      <HexMap hexes={hexes} weights={weights} mode={mode} selected={selected} onSelect={setSelected} />
 
       <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center gap-3 p-3 sm:flex-row sm:items-start sm:justify-between sm:p-4">
         <Link

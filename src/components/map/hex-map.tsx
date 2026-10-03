@@ -6,10 +6,9 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { KRAKOW_CENTER, KRAKOW_INITIAL_ZOOM } from "@/lib/h3/config";
 import { cellPolygon } from "@/lib/h3/grid";
 import { boundaryFeature, outsideMaskFeature } from "@/lib/h3/mask";
-import { getHexData } from "@/lib/mock-data/hexes";
 import { calculatePersonalScore } from "@/lib/scoring/personal-score";
 import { percentileRanks } from "@/lib/scoring/percentile";
-import { CATEGORIES, type CategoryWeights, type MapMode } from "@/types";
+import { CATEGORIES, type CategoryWeights, type HexData, type MapMode } from "@/types";
 
 const SOURCE = "hexes";
 
@@ -62,20 +61,20 @@ const outlineOpacityExpression = (mode: MapMode) =>
   ] as maplibregl.ExpressionSpecification;
 
 type Props = {
+  hexes: HexData[];
   weights: CategoryWeights;
   mode: MapMode;
   selected: string | null;
   onSelect: (h3Index: string | null) => void;
 };
 
-export function HexMap({ weights, mode, selected, onSelect }: Props) {
+export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
   const onSelectRef = useRef(onSelect);
 
   const geojson = useMemo<GeoJSON.FeatureCollection>(() => {
-    const hexes = getHexData();
     const personal = hexes.map((h) => calculatePersonalScore(h.scores, weights));
     const pct: Record<string, number[]> = { forYou: percentileRanks(personal) };
     for (const c of CATEGORIES) {
@@ -96,7 +95,7 @@ export function HexMap({ weights, mode, selected, onSelect }: Props) {
         geometry: { type: "Polygon", coordinates: [cellPolygon(h3Index)] },
       })),
     };
-  }, [weights]);
+  }, [hexes, weights]);
 
   // Latest values for the one-time map setup (updated before it runs).
   const initial = useRef({ geojson, mode, selected });
