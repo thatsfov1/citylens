@@ -409,7 +409,7 @@ export function MapExperience({
             rentActive && hex
               ? (() => {
                   const stats = rentFor(hex.district, rent.rooms);
-                  return { stats, rooms: rent.rooms, fit: rentFit(stats, rent) };
+                  return { stats, rooms: rent.rooms, fit: rentFit(stats, rent), filter: rent };
                 })()
               : null
           }

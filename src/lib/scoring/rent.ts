@@ -99,6 +99,31 @@ export function rentFromQuery(params: Record<string, string | string[] | undefin
   return parsed.data.min <= RENT_MIN && parsed.data.max >= RENT_MAX ? null : parsed.data;
 }
 
+const OTODOM_BASE = "https://www.otodom.pl/pl/wyniki/wynajem/mieszkanie/malopolskie/krakow/krakow/krakow";
+const OTODOM_ROOMS: Record<Rooms, string> = { 1: "[ONE]", 2: "[TWO]", 3: "[THREE,FOUR,FIVE,SIX_OR_MORE]" };
+
+/** "Bieżanów-Prokocim" -> "biezanow--prokocim", the way Otodom spells district paths. */
+export function otodomDistrictSlug(district: string): string {
+  return district
+    .replace(/ł/g, "l")
+    .replace(/Ł/g, "L")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/-/g, "--")
+    .replace(/\s+/g, "-");
+}
+
+/** Link to the same offers on Otodom, with the user's district, flat size and price range applied. */
+export function otodomUrl(filter: RentFilter, district?: string | null): string {
+  const path = district ? `${OTODOM_BASE}/${otodomDistrictSlug(district)}` : OTODOM_BASE;
+  const params = new URLSearchParams();
+  params.set("roomsNumber", OTODOM_ROOMS[filter.rooms]);
+  if (filter.min > RENT_MIN) params.set("priceMin", String(filter.min));
+  if (filter.max < RENT_MAX) params.set("priceMax", String(filter.max));
+  return `${path}?${params}`;
+}
+
 /** 2500 -> "2 500 zł", grouped by hand because Polish locale data does not group four-digit numbers. */
 export const formatZl = (n: number) => `${String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ")} zł`;
 

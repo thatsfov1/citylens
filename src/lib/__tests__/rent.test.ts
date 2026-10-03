@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { RENT_MAX, RENT_MIN, budgetToFilter, classifyHexes, formatRentRange, rentFit, rentFor, rentFromQuery, rentToQuery } from "../scoring/rent";
+import { RENT_MAX, RENT_MIN, budgetToFilter, classifyHexes, formatRentRange, otodomDistrictSlug, otodomUrl, rentFit, rentFor, rentFromQuery, rentToQuery } from "../scoring/rent";
 
 const stats = (median: number) => ({ n: 20, p25: median - 200, median, p75: median + 200 });
 const table = { A: { "2": stats(3000) }, B: { "2": stats(2000) }, C: {} };
@@ -61,4 +61,23 @@ test("a stated budget becomes a valid filter, snapped to the slider step", () =>
   assert.equal(budgetToFilter({ min: 4000, max: 2000, rooms: null }), null);
   assert.equal(budgetToFilter({ min: null, max: null, rooms: 2 }), null);
   assert.equal(budgetToFilter(null), null);
+});
+
+test("Otodom district slugs follow its spelling", () => {
+  assert.equal(otodomDistrictSlug("Prądnik Biały"), "pradnik-bialy");
+  assert.equal(otodomDistrictSlug("Bieżanów-Prokocim"), "biezanow--prokocim");
+  assert.equal(otodomDistrictSlug("Łagiewniki-Borek Fałęcki"), "lagiewniki--borek-falecki");
+  assert.equal(otodomDistrictSlug("Wzgórza Krzesławickie"), "wzgorza-krzeslawickie");
+});
+
+test("Otodom link carries district, flat size and only the price limits that are set", () => {
+  const url = new URL(otodomUrl({ min: 2500, max: 4000, rooms: 2 }, "Prądnik Biały"));
+  assert.ok(url.pathname.endsWith("/krakow/krakow/krakow/pradnik-bialy"));
+  assert.equal(url.searchParams.get("roomsNumber"), "[TWO]");
+  assert.equal(url.searchParams.get("priceMin"), "2500");
+  assert.equal(url.searchParams.get("priceMax"), "4000");
+  const open = new URL(otodomUrl({ min: RENT_MIN, max: 3000, rooms: 3 }));
+  assert.equal(open.searchParams.get("priceMin"), null);
+  assert.equal(open.searchParams.get("roomsNumber"), "[THREE,FOUR,FIVE,SIX_OR_MORE]");
+  assert.ok(open.pathname.endsWith("/krakow/krakow/krakow"));
 });
