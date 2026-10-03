@@ -10,6 +10,7 @@
   --font-sans: var(--font-bricolage);
   --font-display: var(--font-fraunces);
   --font-landing: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-title: var(--font-inter), "Helvetica Neue", Helvetica, sans-serif;
   --font-script: var(--font-script-face), cursive;
   --color-bark: #6E3511;
   --color-sage: #91AC67;

@@ -76,7 +76,7 @@ export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCatego
   return (
     <section
       aria-label="Rozmowa z asystentem"
-      className="w-full rounded-2xl border border-black/15 bg-white p-4 text-black sm:p-5"
+      className="w-full rounded-2xl border border-white/60 bg-white/40 p-4 text-black shadow-lg shadow-black/5 backdrop-blur-xl sm:p-5"
     >
       <div ref={listRef} className="max-h-[46vh] min-h-56 space-y-3 overflow-y-auto pr-1" aria-live="polite">
         <div className="flex items-end gap-2">
@@ -187,7 +187,7 @@ export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCatego
           maxLength={500}
           placeholder="Napisz, czego szukasz w okolicy…"
           aria-label="Opisz swoje preferencje"
-          className="h-14 min-w-0 flex-1 rounded-full border border-black/20 bg-black/5 px-6 text-base text-black outline-none placeholder:text-black/60 focus:border-black focus-visible:ring-4 focus-visible:ring-black/30"
+          className="h-14 min-w-0 flex-1 rounded-full border border-white/70 bg-white/50 px-6 text-base text-black outline-none placeholder:text-black/60 focus:border-black focus-visible:ring-4 focus-visible:ring-black/30"
         />
         <button
           type="submit"
