@@ -58,11 +58,15 @@ export function PreferencesForm({ initial }: { initial?: Importance }) {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="rounded-3xl border border-border/70 bg-white/80 p-4 shadow-xl shadow-emerald-900/5 backdrop-blur"
+      className="border border-slate-200 bg-white/90 p-4 shadow-lg shadow-emerald-950/5 backdrop-blur sm:p-5"
     >
-      <h2 className="text-lg font-semibold tracking-tight">What matters to you?</h2>
+      <div className="mb-3">
+        <p className="text-[11px] font-normal uppercase tracking-[0.16em] text-emerald-700">Make it yours</p>
+        <h2 className="mt-1 text-xl font-normal tracking-tight">What matters to you?</h2>
+        <p className="mt-1 text-sm font-light text-slate-500">Tell us in your own words, or set each priority below.</p>
+      </div>
 
-      <div className="mt-3 h-56">
+      <div className="h-48">
         <PreferencesChat
           onImportance={(i) => {
             for (const c of CATEGORIES) setValue(c, snapImportance(i[c]), { shouldDirty: true });
@@ -70,24 +74,32 @@ export function PreferencesForm({ initial }: { initial?: Importance }) {
         />
       </div>
 
-      <ul className="mt-4 space-y-2">
+      <p className="mt-4 text-xs font-normal text-slate-500">Fine-tune your priorities</p>
+      <ul className="mt-2 space-y-3">
         {CATEGORIES.map((c) => {
           const Icon = ICONS[c];
           return (
             <li key={c} className="flex items-center gap-2.5" title={HINTS[c]}>
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+              <span className="flex size-7 shrink-0 items-center justify-center bg-emerald-50 text-emerald-700">
                 <Icon className="size-3.5" />
               </span>
-              <span className="w-[4.5rem] shrink-0 text-sm font-medium">{CATEGORY_LABELS[c]}</span>
               <Controller
                 control={control}
                 name={c}
                 render={({ field }) => (
-                  <ScaleSelect
-                    label={`${CATEGORY_LABELS[c]} importance`}
-                    value={field.value}
-                    onChange={field.onChange}
-                  />
+                  <>
+                    <span className="w-[4.5rem] shrink-0">
+                      <span className="block text-sm font-normal leading-tight">{CATEGORY_LABELS[c]}</span>
+                      <span className="mt-1 block text-[10px] leading-tight text-slate-500">
+                        {STEP_NAMES[IMPORTANCE_STEPS.findIndex((step) => step === snapImportance(field.value))]}
+                      </span>
+                    </span>
+                    <ScaleSelect
+                      label={`${CATEGORY_LABELS[c]} importance`}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  </>
                 )}
               />
             </li>
@@ -102,11 +114,12 @@ export function PreferencesForm({ initial }: { initial?: Importance }) {
       <Button
         type="submit"
         size="lg"
-        className="mt-4 h-10 w-full gap-2 rounded-xl bg-emerald-600 text-base text-white hover:bg-emerald-700"
+        className="mt-4 h-10 w-full gap-2 rounded-none bg-emerald-700 text-sm font-normal text-white hover:bg-emerald-800"
       >
         Explore my Kraków
         <ArrowRight className="size-4" />
       </Button>
+      <p className="mt-2 text-center text-[11px] font-light text-slate-500">Your map updates to match the priorities you choose.</p>
     </form>
   );
 }
@@ -139,7 +152,7 @@ function ScaleSelect({
             title={STEP_NAMES[i]}
             onClick={() => onChange(step)}
             className={
-              "h-6 rounded-md transition " +
+              "h-6 rounded-none transition " +
               STEP_COLORS[i] +
               (active ? " ring-2 ring-slate-900/70 ring-offset-1" : " opacity-30 hover:opacity-60")
             }

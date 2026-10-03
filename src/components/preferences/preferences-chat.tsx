@@ -50,7 +50,7 @@ export function PreferencesChat({ onImportance }: { onImportance: (i: Importance
   }
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3">
+    <div className="flex h-full flex-col border border-emerald-100 bg-emerald-50/50 p-3">
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto text-sm" aria-live="polite">
         <Bubble role="assistant" text={GREETING} />
         {messages.map((m, i) => (
@@ -69,7 +69,7 @@ export function PreferencesChat({ onImportance }: { onImportance: (i: Importance
               key={e}
               type="button"
               onClick={() => send(e)}
-              className="rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-xs text-emerald-900 hover:bg-emerald-50"
+              className="border border-emerald-200 bg-white px-2.5 py-1 text-xs font-light text-emerald-900 hover:bg-emerald-50"
             >
               {e}
             </button>
@@ -90,7 +90,7 @@ export function PreferencesChat({ onImportance }: { onImportance: (i: Importance
           maxLength={500}
           placeholder="e.g. I love parks and running…"
           aria-label="Describe your preferences"
-          className="min-w-0 flex-1 rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-emerald-400"
+          className="min-w-0 flex-1 rounded-none border border-border bg-white px-3 py-2 text-sm font-light outline-none focus:border-emerald-400"
         />
         <Button
           type="button"
@@ -98,7 +98,7 @@ export function PreferencesChat({ onImportance }: { onImportance: (i: Importance
           aria-label="Send"
           disabled={pending || !input.trim()}
           onClick={() => send(input)}
-          className="shrink-0 bg-emerald-600 text-white hover:bg-emerald-700"
+          className="shrink-0 rounded-none bg-emerald-700 text-white hover:bg-emerald-800"
         >
           <Send className="size-4" />
         </Button>
@@ -113,7 +113,7 @@ function Bubble({ role, text, muted }: { role: ChatMessage["role"]; text: string
     <div className={user ? "flex justify-end" : "flex justify-start"}>
       <div
         className={[
-          "max-w-[85%] rounded-2xl px-3 py-1.5",
+          "max-w-[85%] px-3 py-1.5",
           user ? "bg-emerald-600 text-white" : "bg-white text-foreground shadow-sm",
           muted ? "text-muted-foreground" : "",
         ].join(" ")}
