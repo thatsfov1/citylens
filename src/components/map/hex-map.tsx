@@ -8,9 +8,11 @@ import { cellPolygon } from "@/lib/h3/grid";
 import { KRAKOW_BOUNDS, boundaryFeature, outsideMaskFeature } from "@/lib/h3/mask";
 import { calculatePersonalScore } from "@/lib/scoring/personal-score";
 import { percentileRanks } from "@/lib/scoring/percentile";
+import { BAND_COLORS, bandOf, bandZones } from "@/lib/map/zones";
 import { CATEGORIES, type CategoryWeights, type HexData, type MapMode } from "@/types";
 
 const SOURCE = "hexes";
+const ZONES_SOURCE = "zones";
 
 // Once zoomed in by more than this (zoom levels) beyond the "whole city fits" view,
 // the recenter button appears.
@@ -30,41 +32,28 @@ const KEEP_VISIBLE_LAYERS = [
 // Worker files are copied to /public/maplibre by scripts/copy-maplibre-worker.mjs.
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
-// Diverging scale on percentile rank within the city (for the selected mode):
-// the middle of the distribution stays invisible; only clearly weaker (red) or
-// stronger (green) areas are tinted. Weaker match ≠ worse place.
-const WEAK = "217,69,59";
-const STRONG = "18,145,90";
-const rgba = (rgb: string, a: number) => `rgba(${rgb},${a})`;
+// Five match bands (quintiles of the percentile rank within the city, for the selected
+// mode): red → orange → yellow → light green → green. Same-band neighbours are dissolved
+// into one zone, so borders appear only where the band changes. Weaker match ≠ worse place.
+const ZONE_ALPHA = 0.62;
+const hexToRgba = (hex: string, a: number) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+};
+const BAND_FILLS = BAND_COLORS.map((c) => hexToRgba(c, ZONE_ALPHA));
 
-export const LEGEND_GRADIENT = `linear-gradient(to right, ${rgba(WEAK, 1)}, #e5e7eb 35%, #e5e7eb 65%, ${rgba(STRONG, 1)})`;
+export const LEGEND_GRADIENT = `linear-gradient(to right, ${BAND_COLORS.map(
+  (c, i) => `${c} ${i * 20}%, ${c} ${(i + 1) * 20}%`,
+).join(", ")})`;
 
 const pctProp = (mode: MapMode) => `pct_${mode}`;
 
-const colorExpression = (mode: MapMode) =>
-  [
-    "interpolate",
-    ["linear"],
-    ["get", pctProp(mode)],
-    0, rgba(WEAK, 0.85),
-    0.15, rgba(WEAK, 0.7),
-    0.33, rgba(WEAK, 0),
-    0.67, rgba(STRONG, 0),
-    0.85, rgba(STRONG, 0.7),
-    1, rgba(STRONG, 0.85),
-  ] as maplibregl.ExpressionSpecification;
-
-// Thin white outline only around tinted hexes, so neutral hexes stay invisible.
-const outlineOpacityExpression = (mode: MapMode) =>
-  [
-    "interpolate",
-    ["linear"],
-    ["get", pctProp(mode)],
-    0, 0.7,
-    0.33, 0,
-    0.67, 0,
-    1, 0.7,
-  ] as maplibregl.ExpressionSpecification;
+const zoneColorExpression = [
+  "match",
+  ["get", "band"],
+  ...BAND_FILLS.slice(0, -1).flatMap((c, i) => [i, c]),
+  BAND_FILLS[BAND_FILLS.length - 1],
+] as unknown as maplibregl.ExpressionSpecification;
 
 type Props = {
   hexes: HexData[];
@@ -82,13 +71,17 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
   const fitRef = useRef<{ zoom: number; center: [number, number] } | null>(null);
   const [zoomedIn, setZoomedIn] = useState(false);
 
-  const geojson = useMemo<GeoJSON.FeatureCollection>(() => {
+  const { geojson, zones } = useMemo(() => {
     const personal = hexes.map((h) => calculatePersonalScore(h.scores, weights));
     const pct: Record<string, number[]> = { forYou: percentileRanks(personal) };
     for (const c of CATEGORIES) {
       pct[c] = percentileRanks(hexes.map((h) => h.scores[c]));
     }
-    return {
+    const cells = hexes.map((h) => h.h3Index);
+    const zones = Object.fromEntries(
+      Object.entries(pct).map(([m, v]) => [m, bandZones(cells, v.map(bandOf))]),
+    ) as Record<MapMode, GeoJSON.FeatureCollection>;
+    const geojson: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
       features: hexes.map(({ h3Index, scores }, i) => ({
         type: "Feature",
@@ -103,13 +96,14 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
         geometry: { type: "Polygon", coordinates: [cellPolygon(h3Index)] },
       })),
     };
+    return { geojson, zones };
   }, [hexes, weights]);
 
   // Latest values for the one-time map setup (updated before it runs).
-  const initial = useRef({ geojson, mode, selected });
+  const initial = useRef({ geojson, zones, mode, selected });
   useEffect(() => {
     onSelectRef.current = onSelect;
-    initial.current = { geojson, mode, selected };
+    initial.current = { geojson, zones, mode, selected };
   });
 
   useEffect(() => {
@@ -171,7 +165,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
     });
 
     map.on("load", () => {
-      const { geojson, mode, selected } = initial.current;
+      const { geojson, zones, mode, selected } = initial.current;
 
       // Veil everything outside Kraków, then redraw airports above the veil.
       map.addSource("mask", { type: "geojson", data: outsideMaskFeature });
@@ -199,25 +193,28 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
         },
       });
 
+      map.addSource(ZONES_SOURCE, { type: "geojson", data: zones[mode] });
+      map.addLayer({
+        id: "zone-fill",
+        type: "fill",
+        source: ZONES_SOURCE,
+        paint: { "fill-color": zoneColorExpression, "fill-antialias": false },
+      });
+      map.addLayer({
+        id: "zone-line",
+        type: "line",
+        source: ZONES_SOURCE,
+        layout: { "line-join": "round" },
+        paint: { "line-color": "#ffffff", "line-width": 1, "line-opacity": 0.85 },
+      });
+
+      // Invisible per-hex layer: hit target for hover / click.
       map.addSource(SOURCE, { type: "geojson", data: geojson });
       map.addLayer({
         id: "hex-fill",
         type: "fill",
         source: SOURCE,
-        paint: {
-          "fill-color": colorExpression(mode),
-          "fill-color-transition": { duration: 350 },
-        },
-      });
-      map.addLayer({
-        id: "hex-line",
-        type: "line",
-        source: SOURCE,
-        paint: {
-          "line-color": "#ffffff",
-          "line-width": 0.6,
-          "line-opacity": outlineOpacityExpression(mode),
-        },
+        paint: { "fill-color": "#000000", "fill-opacity": 0 },
       });
       map.addLayer({
         id: "hex-hover",
@@ -268,14 +265,16 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
     (map.getSource(SOURCE) as maplibregl.GeoJSONSource).setData(geojson);
-  }, [geojson]);
+    (map.getSource(ZONES_SOURCE) as maplibregl.GeoJSONSource).setData(zones[mode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mode handled by the effect below
+  }, [geojson, zones]);
 
-  // Mode switch → recolor via paint expression (no data reload).
+  // Mode switch → swap the dissolved zones.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
-    map.setPaintProperty("hex-fill", "fill-color", colorExpression(mode));
-    map.setPaintProperty("hex-line", "line-opacity", outlineOpacityExpression(mode));
+    (map.getSource(ZONES_SOURCE) as maplibregl.GeoJSONSource).setData(zones[mode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- zones handled by the effect above
   }, [mode]);
 
   useEffect(() => {
