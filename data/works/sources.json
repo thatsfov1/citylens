@@ -1,0 +1,18 @@
+{
+  "zdmk-works": {
+    "url": "https://zdmk.krakow.pl/zestawienie-prac-w-miescie/",
+    "name": "ZDMK Kraków – Zestawienie prac w mieście"
+  },
+  "zdmk-starowislna": {
+    "url": "https://zdmk.krakow.pl/nasze-dzialania/remont-ul-starowislnej-odpowiedzia-na-pogarszajacy-sie-stan-torowiska/",
+    "name": "ZDMK Kraków – Remont ul. Starowiślnej"
+  },
+  "krakow-azory": {
+    "url": "https://krakow.pl/aktualnosci/337889,26,komunikat,krakow_otrzyma_172_76_mln_zl_z_unii_europejskiej_na_tramwaj_na_azory.html",
+    "name": "krakow.pl – Tramwaj na Azory"
+  },
+  "krakow-tram-plans": {
+    "url": "https://www.krakow.pl/aktualnosci/279980,26,komunikat,krakowska_komunikacja___szybko_i_sprawnie_.html",
+    "name": "krakow.pl – Krakowska komunikacja: szybko i sprawnie"
+  }
+}
