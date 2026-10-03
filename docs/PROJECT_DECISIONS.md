@@ -144,6 +144,27 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   category; transport = up to 8 rail/tram + 6 bus stops. Failure ⇒ the panel just stays text-only.
 - Pins: default categories = active map mode, or the two top-weighted in "For You"; chips in the panel toggle
   the rest. Greenery is shown as park outlines, not points. Pins are MapLibre circle/symbol layers (no sprites).
+- **Camera gotcha:** the view-lock in `sync()` (see "Map view lock") calls `jumpTo()` while the map is at the
+  minimum zoom, which cancels any running `flyTo`. `hex-map.tsx` therefore sets `flyingRef` before our own
+  `flyTo` and `sync()` skips the lock/clamp until `moveend`. Any new programmatic camera move from the
+  fit-to-city view needs the same flag.
+- **Why a new table instead of more `indicators`:** pins need every place's coordinates; storing them in
+  `hex_scores.indicators` would duplicate the same POI across neighbouring hexes. Selection (reach, caps)
+  happens at request time in `selectPlaces`, so the caps can change without recomputing anything.
+- Only the sample was used to build the UI; the pin/list/fly-in behaviour has not been verified against the
+  full-city data yet.
+
+### TODO for the colleague with the full OSM extracts (`data/osm/full/`)
+
+1. `git pull`, then apply the migration `supabase/migrations/20261003000300_places.sql` if the live DB lacks it
+   (it is already applied to the shared Supabase project).
+2. `OSM_DIR=data/osm/full npx tsx scripts/osm/export-places.ts` → regenerates `supabase/seed-places.sql`
+   (all POIs + green areas ≥ 0.5 ha). Commit it only if its size is reasonable; otherwise load it and keep it out of git.
+3. Load it into Supabase with write access (Supabase MCP / SQL editor / service role). The file starts with
+   `truncate … restart identity`, so it replaces the demo rows; the inserts are chunked (500 POIs / 50 green areas per statement).
+4. Check `GET /api/hexes/<id>/places` for a central and an outer hex (expect pins in range, parks present).
+5. Spot-check on the map: fly-in, rings, pins per mode, park outlines, list hover/click. Tune `CAP`/`BUS_CAP` in
+   `src/lib/data/places.ts` and the 0.5 ha green threshold in the export script if it feels crowded or sparse.
 
 ## 7. Code layout & ownership
 

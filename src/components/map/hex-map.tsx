@@ -109,6 +109,8 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
   const [showTop, setShowTop] = useState(false);
   const showTopRef = useRef(showTop);
   const onHoverPlaceRef = useRef(onHoverPlace);
+  // True while our own flyTo runs: the view-lock in sync() must not jumpTo() (it would cancel the flight).
+  const flyingRef = useRef(false);
   const beforeDrill = useRef<{ center: [number, number]; zoom: number } | null>(null);
 
   const pinsGeoJson = useMemo<GeoJSON.FeatureCollection>(
@@ -210,6 +212,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       if (!fit) return;
       const z = map.getZoom();
       setZoomedIn(z > fit.zoom + RECENTER_THRESHOLD);
+      if (flyingRef.current) return;
       const locked = z <= fit.zoom + 0.01;
       if (locked) {
         map.dragPan.disable();
@@ -230,6 +233,10 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     if (fitRef.current) map.jumpTo(fitRef.current);
     sync();
     map.on("move", sync);
+    map.on("moveend", () => {
+      flyingRef.current = false;
+      sync();
+    });
     map.on("resize", () => {
       applyFit();
       if (fitRef.current && map.getZoom() < fitRef.current.zoom) map.jumpTo(fitRef.current);
@@ -483,6 +490,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       const [lat, lng] = cellToLatLng(selected);
       const right = window.innerWidth >= 640 ? SIDEBAR_WIDTH + FIT_PADDING : 0;
       const bottom = window.innerWidth >= 640 ? 0 : window.innerHeight * 0.5;
+      flyingRef.current = true;
       map.flyTo({
         center: [lng, lat],
         zoom: Math.max(map.getZoom(), DRILL_ZOOM),
@@ -493,6 +501,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     } else if (beforeDrill.current) {
       const { center, zoom } = beforeDrill.current;
       beforeDrill.current = null;
+      flyingRef.current = true;
       map.flyTo({ center, zoom, padding: { top: 0, left: 0, right: 0, bottom: 0 }, duration: 700 });
     }
   }, [selected]);
