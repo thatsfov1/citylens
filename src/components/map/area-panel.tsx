@@ -1,9 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Check, Info, MapPin, ShieldCheck, X } from "lucide-react";
+import { Check, ChevronRight, Info, MapPin, ShieldCheck, Wind, X } from "lucide-react";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
-import { SAFETY_NOT_INCLUDED, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
+import { AIR_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describeAirLevel, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
 import type { HexSource } from "@/lib/supabase/hex-scores";
 import {
   CATEGORIES,
@@ -24,6 +24,8 @@ type Props = {
   scores: CategoryScores | null;
   /** Safety indicators level 0–100; null = no data for this area. */
   safety?: number | null;
+  /** Air quality 0–100 (higher = cleaner); null = no station in reach for this area. */
+  air?: number | null;
   /** Minimum safety level chosen by the user (0 = off). */
   minSafety?: number;
   district: string | null;
@@ -37,8 +39,10 @@ type Props = {
   worksSlot?: ReactNode;
 };
 
-export function AreaPanel({ scores, safety = null, minSafety = 0, district, indicators, source, weights, onClose, placesSlot, worksSlot }: Props) {
+export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, onClose, placesSlot, worksSlot }: Props) {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
+  // Bars are relative to the largest weight, so the top priority fills the bar.
+  const maxWeight = Math.max(...CATEGORIES.map((c) => weights[c]), 0.0001);
 
   if (!scores) {
     return (
@@ -50,6 +54,7 @@ export function AreaPanel({ scores, safety = null, minSafety = 0, district, indi
         <h3 className="mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           We understood
         </h3>
+        <p className="mt-1 text-[11px] text-muted-foreground">Share of your priorities; bars are relative to the largest.</p>
         <ul className="mt-3 space-y-2.5">
           {byWeight.map((c) => (
             <li key={c} className="text-sm">
@@ -62,7 +67,7 @@ export function AreaPanel({ scores, safety = null, minSafety = 0, district, indi
               <div className="mt-1 h-1.5 rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-emerald-500 transition-all"
-                  style={{ width: `${weights[c] * 100}%` }}
+                  style={{ width: `${(weights[c] / maxWeight) * 100}%` }}
                 />
               </div>
             </li>
@@ -105,16 +110,19 @@ export function AreaPanel({ scores, safety = null, minSafety = 0, district, indi
       <ul className="mt-5 space-y-3">
         {byWeight.map((c) => (
           <li key={c} className="text-sm">
-            <div className="flex justify-between">
-              <span>
-                {CATEGORY_LABELS[c]}
-                <span className="ml-1.5 text-xs text-muted-foreground">
-                  weight {Math.round(weights[c] * 100)}%
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-1">
+                  <ChevronRight className="size-3.5 text-muted-foreground transition-transform group-open:rotate-90" />
+                  {CATEGORY_LABELS[c]}
+                  <span className="ml-1.5 text-xs text-muted-foreground">
+                    weight {Math.round(weights[c] * 100)}%
+                  </span>
                 </span>
-              </span>
-              <span className="font-semibold tabular-nums">{scores[c]}</span>
-            </div>
-            {facts && <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{facts[c]}</p>}
+                <span className="font-semibold tabular-nums">{scores[c]}</span>
+              </summary>
+              {facts && <p className="mt-0.5 pl-5 text-xs leading-snug text-muted-foreground">{facts[c]}</p>}
+            </details>
             <div className="mt-1 h-1.5 rounded-full bg-muted">
               <div
                 className="h-full rounded-full bg-slate-800 transition-all"
@@ -128,6 +136,8 @@ export function AreaPanel({ scores, safety = null, minSafety = 0, district, indi
       {(safety !== null || minSafety > 0) && (
         <SafetySection safety={safety} minSafety={minSafety} indicators={indicators} />
       )}
+
+      {air !== null && <AirSection air={air} indicators={indicators} />}
 
       {placesSlot}
 
@@ -159,6 +169,40 @@ export function AreaPanel({ scores, safety = null, minSafety = 0, district, indi
           ? "Scores are calculated from OpenStreetMap data within about 1 km of the area’s centre."
           : "Demo uses simulated scores, not real city data."}
       </p>
+    </div>
+  );
+}
+
+function AirSection({ air, indicators }: { air: number; indicators: HexIndicators | null }) {
+  const facts = indicators ? describeAir(indicators) : [];
+  const level = indicators ? describeAirLevel(indicators) : null;
+  return (
+    <div className="mt-4 rounded-2xl border border-border/70 p-3.5">
+      <div className="flex items-center justify-between text-sm">
+        <span className="flex items-center gap-1.5 font-semibold">
+          <Wind className="size-4 text-slate-700" />
+          Air quality
+        </span>
+        <span className="font-semibold tabular-nums">{air}/100</span>
+      </div>
+      <div className="mt-1.5 h-1.5 rounded-full bg-muted">
+        <div className="h-full rounded-full bg-slate-800 transition-all" style={{ width: `${air}%` }} />
+      </div>
+      {level && <p className="mt-1.5 text-xs text-slate-700">{level}</p>}
+      <details className="group mt-2">
+        <summary className="flex cursor-pointer list-none items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground">
+          <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
+          Details
+        </summary>
+        {facts.length > 0 && (
+          <ul className="mt-1.5 space-y-1 text-xs text-slate-700">
+            {facts.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{AIR_CAVEAT}</p>
+      </details>
     </div>
   );
 }
@@ -201,6 +245,11 @@ function SafetySection({
         </p>
       )}
 
+      <details className="group mt-2">
+        <summary className="flex cursor-pointer list-none items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground">
+          <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
+          Details
+        </summary>
       {parts.length > 0 && (
         <>
           <p className="mt-2.5 text-[11px] leading-snug text-muted-foreground">
@@ -256,6 +305,7 @@ function SafetySection({
         </details>
       )}
       <p className="mt-3 text-[11px] leading-snug text-muted-foreground">{SAFETY_NOT_INCLUDED}</p>
+      </details>
     </div>
   );
 }

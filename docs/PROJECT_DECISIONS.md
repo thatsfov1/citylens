@@ -148,6 +148,22 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   strips unknown keys, which silently dropped `radiusM` and the GTFS departure fields before this was fixed.
 - **Attribution:** OSM © contributors, ODbL — in `readme.md`, the landing page and the map legend.
 
+- **Air quality is NOT a category** (same pattern as safety). Optional per-cell `hex_scores.air_score` (nullable,
+  0–100, higher = cleaner), `HexData.air`, map mode `"air"` (hidden when no cell has air data), a panel section with
+  the facts and a caveat. It never enters the weighted score or the LLM prompt. Source: **GIOŚ** public API
+  (`api.gios.gov.pl`, no key), built by `scripts/air/build-air.ts` into `data/air/stations.json` (committed, so the
+  demo is offline). Only the last ~3 days of hourly values are served, so each station holds a **recent snapshot
+  mean**, not an annual figure. Of Kraków's 9 stations only 6 report live PM (manual sensors return 400): PM10 at 5
+  stations, PM2.5 at 2. **PM10 drives the score** (city-wide comparable); PM2.5 is shown where interpolated.
+  `src/lib/data/air.ts`: inverse-distance² interpolation within `AIR_REACH_M` = 6 km (beyond it: no data, never
+  "clean"); score is linear PM10 15 → 100 … 100 µg/m³ → 0. Map colours are percentile bands, like safety. Run
+  `npx tsx scripts/air/compute.ts` to generate `supabase/air_seed.sql` (updates existing rows only; does not need the
+  full OSM extracts); `scripts/osm/compute.ts` also writes air when `data/air/stations.json` exists.
+  **Deploy order matters:** `loadHexes` selects `air_score`, so apply migration `20261003000600_air_score.sql`
+  *before* deploying this code, otherwise the query fails and the app silently falls back to mock data.
+  Refresh: `npx tsx scripts/air/build-air.ts`, then `scripts/air/compute.ts`. Copy: "air-quality indicators",
+  "estimated between stations" — never "polluted area". Attribution: GIOŚ in the legend and panel caveat.
+
 ## 5. LLM (Gemini) decisions
 
 - Server-only (`src/lib/llm/gemini.ts`, `GEMINI_API_KEY`, optional `GEMINI_MODEL`). Key never
@@ -251,6 +267,10 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
 ## District overlay
 
 - District borders and names are drawn by us from `hex_scores.district` (`districtLayers` in `src/lib/map/zones.ts`): a dissolved, hex-aligned outline per district plus a bold, haloed label above the colour zones. Basemap `place` labels are hidden so they no longer clash with the hexagons. Hexes without a district get no border/label.
+
+## Gradient heatmap
+
+- The map colouring is a smooth raster, not banded zones: `heatPixels` (`src/lib/map/heat-field.ts`) blends each hex's percentile with its neighbours (Gaussian, σ 0.4 km), maps it through the red→green ramp and clips it to the Kraków outline; shown as a MapLibre `image` source (`heat-raster`). No-data hexes stay grey and are not blended into coloured neighbours. Hexes remain the interaction unit (invisible `hex-fill` hit target, tooltips, selection). `bandOf`/`BAND_LABELS` are still used for labels.
 
 ## Construction & planned works (warnings in the hexagon panel)
 

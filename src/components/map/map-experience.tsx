@@ -143,6 +143,7 @@ export function MapExperience({
         <AreaPanel
           scores={hex?.scores ?? null}
           safety={hex?.safety ?? null}
+          air={hex?.air ?? null}
           minSafety={minSafety}
           district={hex?.district ?? null}
           indicators={details?.indicators ?? null}
