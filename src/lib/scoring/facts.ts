@@ -48,10 +48,13 @@ function kindLabel(kind: string): string {
 // Seeds computed before these were excluded from scoring may still list them as "nearest".
 const IGNORED_KINDS = new Set(["vacant", "disused", "closed", "no"]);
 
-function describeNearest(n: { name: string | null; kind: string; distanceM: number }): string {
-  const what = n.name ? `${n.name} (${kindLabel(n.kind)})` : `a ${kindLabel(n.kind)}`;
+function describeNearest(n: { name: string | null; kind: string; distanceM: number; departuresPerHour?: number }): string {
+  const service = n.departuresPerHour !== undefined ? `, ~${perHour(n.departuresPerHour)} departures/h` : "";
+  const what = n.name ? `${n.name} (${kindLabel(n.kind)}${service})` : `a ${kindLabel(n.kind)}${service}`;
   return `${what}, ${metres(n.distanceM)} away`;
 }
+
+const perHour = (d: number) => (d >= 10 ? Math.round(d) : Math.round(d * 10) / 10);
 
 /** One-line, data-backed description of a category in this cell. */
 export function describeCategory(category: Category, ind: HexIndicators): string {
@@ -66,9 +69,12 @@ export function describeCategory(category: Category, ind: HexIndicators): string
   const i = ind[category];
   const [one, many] = NOUNS[category];
   if (!i.nearest) return `no ${many} within ${(i.radiusM ?? 1000) / 1000} km`;
+  // GTFS-backed transport also reports how often those stops are served.
+  const service =
+    i.departuresPerHourWithin500 !== undefined ? ` (~${perHour(i.departuresPerHourWithin500)} departures/h on weekdays)` : "";
   const count =
     i.within500 > 0
-      ? `${i.within500} ${i.within500 === 1 ? one : many} within 500 m`
+      ? `${i.within500} ${i.within500 === 1 ? one : many} within 500 m${service}`
       : i.within1000 > 0
         ? `none within 500 m`
         : `none within 1 km`;

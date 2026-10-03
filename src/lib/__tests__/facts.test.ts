@@ -34,3 +34,22 @@ test("explainMatch uses facts when given and generic text otherwise", () => {
   const generic = explainMatch(scores, weights);
   assert.ok(generic.reasons[0].includes("top priority"));
 });
+
+test("transport facts include measured service frequency when GTFS data is present", () => {
+  const gtfs = {
+    ...ind,
+    transport: {
+      raw: 9,
+      within500: 4,
+      within1000: 12,
+      departuresPerHourWithin500: 37.46,
+      nearest: { name: "Rondo Mogilskie", kind: "tram_stop", distanceM: 120, departuresPerHour: 14.2 },
+    },
+  };
+  assert.equal(
+    describeCategory("transport", gtfs),
+    "4 stops and stations within 500 m (~37 departures/h on weekdays); nearest: Rondo Mogilskie (tram stop, ~14 departures/h), 120 m away",
+  );
+  // Seeds computed from OSM only keep the old wording.
+  assert.match(describeCategory("transport", ind), /^1 stop or station within 500 m; nearest: Prusy Rondo \(bus stop\), 470 m away$/);
+});

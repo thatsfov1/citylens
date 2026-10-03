@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { assembleRings, haversine, pointInPolygon, type Ring } from "../data/geo";
 import { classifyPoi, parseGreen, ringAreaM2, type GreenArea, type Poi } from "../data/osm";
+import { gtfsStopWeight, gtfsToPois } from "../data/gtfs";
 import { distanceWeight, findDistrict, normalizeRaw, scoreGreenery, scorePoiCategory } from "../data/score-hex";
 
 const center: [number, number] = [19.9372, 50.0614];
@@ -116,4 +117,33 @@ test("normalizeRaw is monotonic, bounded and handles all-zero", () => {
   assert.deepEqual(out, [...out].sort((a, b) => a - b));
   assert.ok(out.every((v) => v >= 0 && v <= 100));
   assert.deepEqual(normalizeRaw([0, 0, 0]), [0, 0, 0]);
+});
+
+test("GTFS stop weight grows with service and is capped", () => {
+  assert.equal(gtfsStopWeight(4), 1);
+  assert.equal(gtfsStopWeight(0.8), 0.2);
+  assert.equal(gtfsStopWeight(20), 5);
+  assert.equal(gtfsStopWeight(65), 5);
+});
+
+test("frequent stops outscore rare ones and report departures", () => {
+  const file = {
+    source: "test",
+    serviceDate: "20261006",
+    window: "6:00–22:00",
+    stops: [
+      { id: "a", name: "Frequent", at: north(100), mode: "tram" as const, departuresPerHour: 12, routes: 3 },
+      { id: "b", name: "Rare", at: north(120), mode: "bus" as const, departuresPerHour: 1, routes: 1 },
+    ],
+  };
+  const pois = gtfsToPois(file);
+  const both = scorePoiCategory(center, pois);
+  const rareOnly = scorePoiCategory(center, pois.filter((p) => p.name === "Rare"));
+  assert.ok(both.raw > rareOnly.raw * 5);
+  assert.equal(both.departuresPerHourWithin500, 13);
+  assert.equal(both.nearest?.name, "Frequent");
+  assert.equal(both.nearest?.departuresPerHour, 12);
+  // OSM-only POIs carry no frequency fields.
+  const osm = scorePoiCategory(center, [{ category: "transport", kind: "bus_stop", weight: 1, name: null, at: north(100) }]);
+  assert.equal(osm.departuresPerHourWithin500, undefined);
 });

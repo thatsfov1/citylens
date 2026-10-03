@@ -104,7 +104,18 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   tested against polygons) `+ 0.4 × proximity to the nearest ≥1 ha green area`.
 - **Normalisation:** per category, `log1p(raw) / log1p(p95)` capped at 100, so a few dense hot
   spots don't flatten the rest of the city. Order of cells is preserved.
-- **Transport = OSM stops only** (bus, tram, rail stations/halts). GTFS is a possible later upgrade.
+- **Transport = GTFS service frequency** (replaces OSM stop counts). `scripts/gtfs/build.ts` downloads the three
+  official ZTP Kraków feeds (`GTFS_KRK_A` MPK buses, `GTFS_KRK_T` MPK trams, `GTFS_KRK_M` Mobilis suburban buses —
+  M matters: without it outer districts like Nowa Huta lost whole bus lines), counts weekday departures per stop between
+  06:00 and 22:00 on `SERVICE_DATE` (a normal Tuesday) and writes `data/gtfs/stops.json` (committed, ~0.5 MB; raw feeds in
+  `data/gtfs/full/`, gitignored). Services running on that date come from `calendar_dates.txt` (weekday flags in
+  `calendar.txt` are all 0). `compute.ts` turns each stop into a transport POI with weight `min(departures/h, 20) / 4`
+  (4 departures/h ≈ the old bus-stop weight 1; cap so one hub can't dominate) and keeps only OSM **rail stations**
+  (weight 5), since the city feeds have no trains. Without `data/gtfs/stops.json` it falls back to OSM stops.
+  Indicators gain optional `departuresPerHourWithin500` and `nearest.departuresPerHour`; the UI sentence mentions
+  "~N departures/h on weekdays". Result vs OSM-only: cells with transport 0 went 38 → 2; centre and tram corridors stay on top.
+  Refresh when the timetable changes: `npx tsx scripts/gtfs/build.ts` (delete `data/gtfs/full/` first to re-download,
+  and update `SERVICE_DATE` — the feeds only list a few weeks), then recompute the seed.
 - **Attribution:** OSM © contributors, ODbL — in `readme.md`, the landing page and the map legend.
 
 ## 5. LLM (Gemini) decisions
@@ -159,7 +170,7 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
 
 ## 10. Not done yet (candidates)
 
-- GTFS-based transport scoring (departures per stop).
+- GTFS extras: weekend/night service, stop-to-stop travel time (e.g. to the centre), rail timetables (SKA/Koleje Małopolskie).
 - Future-city timeline / planned investments (P2, lower priority than a stable core).
 - Rebuilding scores with better culture coverage or other data sources.
 - Multiple cities, auth, saved preferences (P3).

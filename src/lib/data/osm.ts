@@ -13,6 +13,8 @@ export type Poi = {
   weight: number;
   name: string | null;
   at: LngLat;
+  /** Transport only, from GTFS: average weekday departures per hour. */
+  departuresPerHour?: number;
 };
 
 export type GreenArea = {

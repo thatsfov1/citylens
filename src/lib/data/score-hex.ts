@@ -28,7 +28,7 @@ export const CATEGORY_DISTANCE_SCALE: Record<PoiCategory, number> = {
   transport: 1,
 };
 
-export type Nearest = { name: string | null; kind: string; distanceM: number };
+export type Nearest = { name: string | null; kind: string; distanceM: number; departuresPerHour?: number };
 
 export type PoiIndicators = {
   /** Reach (m) used for this category; absent in rows scored before per-category radii. */
@@ -37,6 +37,8 @@ export type PoiIndicators = {
   within500: number;
   within1000: number;
   nearest: Nearest | null;
+  /** Transport with GTFS data: total weekday departures per hour of all stops within 500 m. */
+  departuresPerHourWithin500?: number;
 };
 
 export type GreenIndicators = {
@@ -54,16 +56,25 @@ export function scorePoiCategory(center: LngLat, pois: Poi[], scale = 1): PoiInd
   let within500 = 0;
   let within1000 = 0;
   let nearest: Nearest | null = null;
+  let departures500: number | null = null;
   for (const p of pois) {
     const d = haversine(center, p.at);
     if (d > radiusM) continue;
     raw += p.weight * distanceWeight(d, scale);
     if (d <= 1000) within1000++;
-    if (d <= 500) within500++;
+    if (d <= 500) {
+      within500++;
+      if (p.departuresPerHour !== undefined) departures500 = (departures500 ?? 0) + p.departuresPerHour;
+    }
     // Prefer named features for the explanation, falling back to the closest of any kind.
-    if (!nearest || d < nearest.distanceM) nearest = { name: p.name, kind: p.kind, distanceM: Math.round(d) };
+    if (!nearest || d < nearest.distanceM) {
+      nearest = { name: p.name, kind: p.kind, distanceM: Math.round(d) };
+      if (p.departuresPerHour !== undefined) nearest.departuresPerHour = p.departuresPerHour;
+    }
   }
-  return { radiusM, raw, within500, within1000, nearest };
+  const out: PoiIndicators = { radiusM, raw, within500, within1000, nearest };
+  if (departures500 !== null) out.departuresPerHourWithin500 = Math.round(departures500 * 10) / 10;
+  return out;
 }
 
 /** Distance in metres from a point to a ring's edge (local planar approximation). */

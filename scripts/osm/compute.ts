@@ -4,6 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { cellToLatLng } from "h3-js";
 import { cellPolygon, getDemoCells } from "../../src/lib/h3/grid";
 import { parseDistricts, parseGreen, parsePois, type PoiCategory } from "../../src/lib/data/osm";
+import { gtfsToPois, type GtfsFile } from "../../src/lib/data/gtfs";
 import { CATEGORY_DISTANCE_SCALE, findDistrict, normalizeRaw, scoreGreenery, scorePoiCategory } from "../../src/lib/data/score-hex";
 import type { LngLat } from "../../src/lib/data/geo";
 import type { Category } from "../../src/types";
@@ -24,6 +25,15 @@ function main() {
   const cells = getDemoCells();
   const poiCats: PoiCategory[] = ["sport", "culture", "shopping", "transport"];
   const byCat = Object.fromEntries(poiCats.map((c) => [c, pois.filter((p) => p.category === c)])) as Record<PoiCategory, typeof pois>;
+
+  // Transport: measured GTFS service for bus/tram (built by scripts/gtfs/build.ts); OSM only adds rail stations,
+  // which the city feeds don't cover. Without data/gtfs/stops.json we fall back to OSM stops.
+  const gtfsPath = process.env.GTFS_FILE ?? "data/gtfs/stops.json";
+  if (existsSync(gtfsPath)) {
+    const gtfs = gtfsToPois(JSON.parse(readFileSync(gtfsPath, "utf8")) as GtfsFile);
+    byCat.transport = [...byCat.transport.filter((p) => p.kind === "rail_station"), ...gtfs];
+    console.log("transport: GTFS", gtfs.length, "stops + OSM rail stations");
+  } else console.log("transport: OSM stops only (no", gtfsPath + ")");
 
   const rows = cells.map((h3Index) => {
     const [lat, lng] = cellToLatLng(h3Index);
