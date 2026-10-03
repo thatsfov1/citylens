@@ -13,18 +13,11 @@ const EXAMPLES = [
   "Quiet, green, near shops",
 ];
 
-export function PreferencesChat({
-  onImportance,
-  onReview,
-}: {
-  onImportance: (i: Importance) => void;
-  onReview: () => void;
-}) {
+export function PreferencesChat({ onImportance }: { onImportance: (i: Importance) => void }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [understood, setUnderstood] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,10 +41,7 @@ export function PreferencesChat({
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as ChatResult;
       setMessages([...next, { role: "assistant", text: data.reply }]);
-      if (data.importance) {
-        onImportance(data.importance);
-        setUnderstood(true);
-      }
+      if (data.importance) onImportance(data.importance);
     } catch {
       setError("The assistant is unavailable — you can still set the levels below.");
     } finally {
@@ -71,16 +61,6 @@ export function PreferencesChat({
       </div>
 
       {error && <p className="mt-2 text-xs text-amber-700">{error}</p>}
-
-      {understood && (
-        <button
-          type="button"
-          onClick={onReview}
-          className="mt-2 self-start rounded-full bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700"
-        >
-          Review &amp; adjust →
-        </button>
-      )}
 
       {messages.length === 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
