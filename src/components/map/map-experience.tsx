@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Hexagon } from "lucide-react";
 import { AreaPanel } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
+import { OsmAttribution } from "@/components/osm-attribution";
 import { ModeSelector } from "./mode-selector";
 import { importanceToQuery, type Importance } from "@/lib/scoring/preferences";
 import { normalizeWeights } from "@/lib/scoring/weights";
@@ -60,6 +61,7 @@ function Legend({ mode }: { mode: MapMode }) {
       <div className="mt-1 text-[10px] text-muted-foreground">
         Relative to the rest of Kraków · untinted = average
       </div>
+      <OsmAttribution className="pointer-events-auto mt-1" />
     </div>
   );
 }
