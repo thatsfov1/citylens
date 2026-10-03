@@ -390,3 +390,7 @@ changes a score.
   (only if > 0), and a +/✓ compare button. Native tooltips on hover. Safety, air and works open a floating info window (same `SafetySection` / `AirSection` / `WorksWarnings` content);
   the compare badge adds/removes the area (max 3). They replace the chip row and the "Add to comparison" button that used to be in the side panel.
 - Areas in the comparison keep a dashed outline on the map (`hex-compared` layer) while another area is selected.
+- Compared areas also keep their places on the map: `MapExperience` fetches `/api/hexes/[h3]/places` for each compared area (cached) and merges them with the selected area's before passing them to `HexMap`
+  (deduped by place id / park). The side-panel place lists still show only the selected area.
+- **Filters window:** the minimum safety level and the education stage filter moved out of the side panel (which stays a summary) into a "Filters" button + floating window at the top left
+  (count of active filters on the button). The stage filter is still also inside the education category detail.

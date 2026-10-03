@@ -651,6 +651,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
   const compareAdded = badges?.compare.added ?? false;
   const compareFull = badges?.compare.full ?? false;
   const hasBadges = badges !== undefined;
+  const hasCompared = (compared?.length ?? 0) > 0;
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !selected || !hasBadges) return;
@@ -740,9 +741,9 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
-    (map.getSource(PLACES_SOURCE) as maplibregl.GeoJSONSource).setData(selected ? pinsGeoJson : EMPTY);
-    (map.getSource(GREEN_SOURCE) as maplibregl.GeoJSONSource).setData(selected ? greenGeoJson : EMPTY);
-  }, [selected, pinsGeoJson, greenGeoJson]);
+    (map.getSource(PLACES_SOURCE) as maplibregl.GeoJSONSource).setData(selected || hasCompared ? pinsGeoJson : EMPTY);
+    (map.getSource(GREEN_SOURCE) as maplibregl.GeoJSONSource).setData(selected || hasCompared ? greenGeoJson : EMPTY);
+  }, [selected, hasCompared, pinsGeoJson, greenGeoJson]);
 
   useEffect(() => {
     const map = mapRef.current;

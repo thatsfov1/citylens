@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, GraduationCap, Hexagon, ShieldCheck, X } from "lucide-react";
+import { ArrowLeft, GraduationCap, Hexagon, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 import { AirSection, AreaPanel, SafetySection, type PanelView } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { CompareTray } from "./compare-tray";
@@ -164,16 +164,47 @@ export function MapExperience({
     return g.ongoing.length + g.planned.length;
   }, [works]);
   // Education pins follow the selected life stages; a school of unknown level counts for both school stages.
-  const placesView = useMemo(
-    () =>
-      places && {
-        ...places,
-        places: places.places.filter(
-          (p) => p.category !== "education" || (EDUCATION_KIND_STAGES[p.kind] ?? []).some((s) => stages.includes(s)),
-        ),
-      },
-    [places, stages],
+  const forStages = useMemo(
+    () => (r: PlacesResponse): PlacesResponse => ({
+      ...r,
+      places: r.places.filter(
+        (p) => p.category !== "education" || (EDUCATION_KIND_STAGES[p.kind] ?? []).some((s) => stages.includes(s)),
+      ),
+    }),
+    [stages],
   );
+  const placesView = useMemo(() => places && forStages(places), [places, forStages]);
+  // Compared areas keep their places on the map: fetched per area (cached), merged with the selected area's.
+  const [comparedPlaces, setComparedPlaces] = useState<Record<string, PlacesResponse>>({});
+  useEffect(() => {
+    if (source !== "supabase") return;
+    const ctrl = new AbortController();
+    for (const id of compared) {
+      fetchCached<PlacesResponse>(`/api/hexes/${id}/places`, ctrl.signal)
+        .then((d) => d && setComparedPlaces((m) => (m[id] ? m : { ...m, [id]: d })))
+        .catch(() => {});
+    }
+    return () => ctrl.abort();
+  }, [compared, source]);
+  const mapPlaces = useMemo(() => {
+    const extra = compared.map((id) => comparedPlaces[id]).filter((r): r is PlacesResponse => !!r).map(forStages);
+    if (extra.length === 0) return placesView;
+    const all = [...(placesView ? [placesView] : []), ...extra];
+    const seen = new Set<number>();
+    const seenGreen = new Set<string>();
+    return {
+      places: all.flatMap((r) => r.places).filter((p) => !seen.has(p.id) && seen.add(p.id)),
+      green: {
+        type: "FeatureCollection" as const,
+        features: all
+          .flatMap((r) => r.green.features)
+          .filter((f) => {
+            const key = `${f.properties?.name ?? ""}|${f.properties?.areaHa ?? ""}`;
+            return !seenGreen.has(key) && seenGreen.add(key);
+          }),
+      },
+    } satisfies PlacesResponse;
+  }, [placesView, compared, comparedPlaces, forStages]);
   // "Your first match": once, on load with real data, fly to one of the strongest areas and explain it.
   // The ranking is fixed at that moment so "Compare another area" walks a stable list.
   const [first, setFirst] = useState<{ ids: string[]; i: number } | null>(null);
@@ -206,6 +237,11 @@ export function MapExperience({
   const [badgeInfo, setBadgeInfo] = useState<{ hex: string | null; kind: "safety" | "air" | "works" | null }>({ hex: null, kind: null });
   const openBadge = badgeInfo.hex === selected ? badgeInfo.kind : null;
 
+  // Filters (safety level, education stages) live in their own window so the side panel stays a summary.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const hasFilters = hasSafety || showStageFilter;
+  const activeFilters = (minSafety > 0 ? 1 : 0) + (hasStages && stages.length < EDUCATION_STAGES.length ? 1 : 0);
+
   const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
   const [focusPlace, setFocusPlace] = useState<{ id: number; n: number } | null>(null);
 
@@ -217,7 +253,7 @@ export function MapExperience({
         mode={mode}
         selected={selected}
         onSelect={setSelected}
-        places={placesView}
+        places={mapPlaces}
         pinCategories={pinCategories}
         hoveredPlace={hoveredPlace}
         onHoverPlace={setHoveredPlace}
@@ -236,6 +272,20 @@ export function MapExperience({
         }
         onBadge={(kind) => (kind === "compare" ? toggleCompared() : setBadgeInfo({ hex: selected, kind }))}
       />
+
+      {filtersOpen && hasFilters && (
+        <section className="absolute inset-x-3 top-28 z-10 space-y-4 rounded-2xl border border-border/70 bg-white/95 p-4 shadow-2xl backdrop-blur sm:inset-x-auto sm:left-4 sm:top-16 sm:w-[22rem]">
+          <button
+            onClick={() => setFiltersOpen(false)}
+            aria-label="Close filters"
+            className="absolute right-2 top-2 rounded-full p-1.5 text-muted-foreground hover:bg-muted"
+          >
+            <X className="size-4" />
+          </button>
+          {hasSafety && <SafetyFilter value={minSafety} onChange={changeMinSafety} inline />}
+          {showStageFilter && <StageFilter value={stages} onToggle={toggleStage} inline />}
+        </section>
+      )}
 
       {openBadge && hex && (
         <section className="absolute inset-x-3 top-28 z-10 max-h-[40%] overflow-y-auto rounded-2xl border border-border/70 bg-white/95 px-4 pb-4 pt-3 shadow-2xl backdrop-blur sm:inset-x-auto sm:bottom-6 sm:right-[24rem] sm:top-auto sm:max-h-[60%] sm:w-[24rem]">
@@ -257,6 +307,7 @@ export function MapExperience({
       )}
 
       <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center gap-3 p-3 sm:flex-row sm:items-start sm:justify-between sm:p-4">
+        <div className="pointer-events-auto flex items-center gap-2">
         <Link
           href={`/?${importanceToQuery(importance)}`}
           className="pointer-events-auto flex items-center gap-2 rounded-full border border-border/70 bg-white/90 py-1.5 pl-2.5 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur hover:bg-white"
@@ -265,6 +316,20 @@ export function MapExperience({
           <Hexagon className="size-4 text-emerald-600" />
           Adjust preferences
         </Link>
+        {hasFilters && (
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((v) => !v)}
+            aria-expanded={filtersOpen}
+            className={`flex items-center gap-1.5 rounded-full border py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur ${
+              filtersOpen ? "border-slate-800 bg-slate-800 text-white" : "border-border/70 bg-white/90 hover:bg-white"
+            }`}
+          >
+            <SlidersHorizontal className="size-4" />
+            Filters{activeFilters > 0 ? ` · ${activeFilters}` : ""}
+          </button>
+        )}
+        </div>
         <div className="pointer-events-auto max-w-full sm:absolute sm:left-1/2 sm:-translate-x-1/2">
           <ModeSelector mode={mode} onChange={setMode} hasSafety={hasSafety} />
         </div>
@@ -285,8 +350,6 @@ export function MapExperience({
             onDismiss={() => setFirst(null)}
           />
         )}
-        {!view && showStageFilter && <StageFilter value={stages} onToggle={toggleStage} />}
-        {!view && hasSafety && <SafetyFilter value={minSafety} onChange={changeMinSafety} />}
         <AreaPanel
           scores={hex?.scores ?? null}
           safety={hex?.safety ?? null}
@@ -361,9 +424,9 @@ function StageFilter({ value, onToggle, inline = false }: { value: EducationStag
   );
 }
 
-function SafetyFilter({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function SafetyFilter({ value, onChange, inline = false }: { value: number; onChange: (v: number) => void; inline?: boolean }) {
   return (
-    <div className="border-b border-border/70 px-5 py-3">
+    <div className={inline ? "" : "border-b border-border/70 px-5 py-3"}>
       <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         <ShieldCheck className="size-3.5" />
         Minimum safety level
