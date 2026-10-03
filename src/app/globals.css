@@ -7,7 +7,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-bricolage);
+  --font-display: var(--font-fraunces);
+  --color-bark: #6E3511;
+  --color-sage: #91AC67;
+  --color-moss: #597928;
+  --color-cream: #FCECD8;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);

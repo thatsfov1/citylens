@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Check, Drama, Dumbbell, ShoppingBag, TramFront, Trees, X, type LucideIcon } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CATEGORIES, type Category } from "@/types";
 import {
@@ -14,12 +14,22 @@ import {
   type Levels,
 } from "./landing-copy";
 
-const ICONS: Record<Category, LucideIcon> = {
-  sport: Dumbbell,
-  culture: Drama,
-  greenery: Trees,
-  shopping: ShoppingBag,
-  transport: TramFront,
+// Emoji render as Apple Color Emoji on macOS / iOS.
+const EMOJI: Record<Category, string> = {
+  sport: "🏃",
+  culture: "🎭",
+  greenery: "🌳",
+  shopping: "🛍️",
+  transport: "🚋",
+};
+
+/** Hand-picked, deterministic spots (lg+) in the side margins; below lg the circles wrap in a row. */
+const POSITION: Record<Category, string> = {
+  sport: "lg:left-[6%] lg:top-[16%]",
+  culture: "lg:right-[7%] lg:top-[10%]",
+  greenery: "lg:left-[12%] lg:top-[56%]",
+  shopping: "lg:right-[11%] lg:top-[46%]",
+  transport: "lg:right-[18%] lg:top-[78%]",
 };
 
 /** How the panel was opened: hover closes it again when the pointer leaves, the others don't. */
@@ -35,9 +45,9 @@ type Props = {
 
 export function CategoryOrbit({ levels, open, onOpenChange, onConfirm }: Props) {
   return (
-    <ul aria-label="Kategorie" className="flex flex-wrap items-start justify-center gap-x-3 gap-y-5 sm:gap-x-5">
+    <ul aria-label="Kategorie" className="flex flex-wrap items-start justify-center gap-x-3 gap-y-5 sm:gap-x-5 lg:static">
       {CATEGORIES.map((c, i) => (
-        <li key={c}>
+        <li key={c} className={cn("lg:absolute", POSITION[c])}>
           <CategoryBubble
             category={c}
             index={i}
@@ -71,7 +81,6 @@ function CategoryBubble({
   const triggerRef = useRef<HTMLButtonElement>(null);
   // Focusing the trigger programmatically (after closing) must not reopen the panel.
   const suppressFocusOpen = useRef(false);
-  const Icon = ICONS[category];
   const style = CATEGORY_STYLE[category];
   const { label } = CATEGORY_PL[category];
 
@@ -129,23 +138,23 @@ function CategoryBubble({
           if (!open) onOpenChange({ category, via: "click" });
           else if (open.via === "hover") onOpenChange({ category, via: "click" });
         }}
-        className="group flex flex-col items-center gap-1.5 rounded-3xl p-1 outline-none focus-visible:ring-4 focus-visible:ring-emerald-600/40"
+        className="group flex flex-col items-center gap-1.5 rounded-3xl p-1 outline-none focus-visible:ring-4 focus-visible:ring-moss/40"
       >
         <span
           className={cn(
-            "animate-float relative flex size-14 items-center justify-center rounded-[1.4rem] border-2 shadow-md shadow-slate-900/10 transition-transform group-hover:scale-110 group-active:scale-95 sm:size-16",
+            "animate-float relative flex size-16 items-center justify-center rounded-full border-2 shadow-md shadow-bark/10 transition-transform group-hover:scale-110 group-active:scale-95 sm:size-20 lg:size-24",
             style.tile,
           )}
           style={{ animationDelay: `${-index * 1.1}s` }}
         >
-          <Icon className="size-7 sm:size-8" strokeWidth={2.2} />
+          <span aria-hidden className="text-3xl leading-none sm:text-4xl lg:text-5xl">{EMOJI[category]}</span>
           {value && (
-            <span className="animate-pop absolute -right-2 -top-2 rounded-full border-2 border-white bg-slate-900 px-1.5 text-[11px] font-semibold leading-5 text-white">
+            <span className="animate-pop absolute -right-2 -top-2 rounded-full border-2 border-white bg-bark px-1.5 text-[11px] font-semibold leading-5 text-white">
               {levelToPercent(value)}%
             </span>
           )}
         </span>
-        <span className="text-sm font-semibold text-slate-800">{label}</span>
+        <span className="text-sm font-semibold text-bark">{label}</span>
       </button>
 
       {open && (
@@ -179,7 +188,6 @@ function LevelPanel({
   const radioRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const style = CATEGORY_STYLE[category];
   const { label, hint } = CATEGORY_PL[category];
-  const Icon = ICONS[category];
   const shown = hovered ?? draft;
 
   function onRadioKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -196,30 +204,30 @@ function LevelPanel({
       role="dialog"
       aria-label={`Ważność kategorii ${label}`}
       className={cn(
-        "animate-expand fixed left-1/2 top-1/2 z-40 w-[min(19rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-[2rem] border-2 bg-white p-4 shadow-2xl shadow-slate-900/20",
+        "animate-expand fixed left-1/2 top-1/2 z-40 w-[min(19rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-[2rem] border-2 bg-white p-4 shadow-2xl shadow-bark/20",
         "lg:absolute lg:left-1/2 lg:top-0 lg:translate-y-[-1rem]",
         style.tile.split(" ")[1],
       )}
     >
       <div className="flex items-start gap-3">
-        <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-2xl border-2", style.tile)}>
-          <Icon className="size-6" strokeWidth={2.2} />
+        <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-full border-2", style.tile)}>
+          <span aria-hidden className="text-2xl leading-none">{EMOJI[category]}</span>
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-base font-bold text-slate-900">{label}</p>
-          <p className="text-xs leading-snug text-slate-600">{hint}</p>
+          <p className="text-base font-bold text-bark">{label}</p>
+          <p className="text-xs leading-snug text-bark/70">{hint}</p>
         </div>
         <button
           type="button"
           onClick={onClose}
           aria-label="Zamknij"
-          className="-mr-1 -mt-1 rounded-full p-1.5 text-slate-500 outline-none hover:bg-slate-100 focus-visible:ring-4 focus-visible:ring-emerald-600/40"
+          className="-mr-1 -mt-1 rounded-full p-1.5 text-bark/70 outline-none hover:bg-bark/10 focus-visible:ring-4 focus-visible:ring-moss/40"
         >
           <X className="size-4" />
         </button>
       </div>
 
-      <p className="mt-3 text-sm font-medium text-slate-700">Jak ważna jest dla Ciebie ta kategoria?</p>
+      <p className="mt-3 text-sm font-medium text-bark">Jak ważna jest dla Ciebie ta kategoria?</p>
       <div
         role="radiogroup"
         aria-label={`Ważność: ${label}`}
@@ -244,16 +252,16 @@ function LevelPanel({
               onPointerEnter={() => setHovered(n)}
               onFocus={() => setHovered(null)}
               className={cn(
-                "flex-1 rounded-xl border-2 outline-none transition-all duration-150 focus-visible:ring-4 focus-visible:ring-emerald-600/40",
-                filled ? cn(style.fill, "border-slate-900/20") : "border-slate-200 bg-slate-100 hover:bg-slate-200",
-                draft === n && "ring-2 ring-slate-900 ring-offset-2",
+                "flex-1 rounded-xl border-2 outline-none transition-all duration-150 focus-visible:ring-4 focus-visible:ring-moss/40",
+                filled ? cn(style.fill, "border-bark/20") : "border-bark/20 bg-bark/10 hover:bg-bark/20",
+                draft === n && "ring-2 ring-bark ring-offset-2",
               )}
               style={{ height: `${1.75 + n * 0.5}rem` }}
             />
           );
         })}
       </div>
-      <p aria-live="polite" className="mt-2 h-5 text-center text-sm font-semibold text-slate-800">
+      <p aria-live="polite" className="mt-2 h-5 text-center text-sm font-semibold text-bark">
         {shown ? `${levelToPercent(shown)}% ważności · ${LEVEL_NAMES[shown]}` : "Wybierz poziom"}
       </p>
 
@@ -261,7 +269,7 @@ function LevelPanel({
         type="button"
         disabled={draft === null}
         onClick={() => draft && onConfirm(draft)}
-        className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-emerald-700 text-sm font-semibold text-white outline-none transition hover:bg-emerald-800 focus-visible:ring-4 focus-visible:ring-emerald-600/40 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-600"
+        className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-moss text-sm font-semibold text-white outline-none transition hover:bg-bark focus-visible:ring-4 focus-visible:ring-moss/40 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-bark/15 disabled:text-bark/60"
       >
         <Check className="size-4" />
         {saved ? "Zaktualizuj" : "Zatwierdź"}
