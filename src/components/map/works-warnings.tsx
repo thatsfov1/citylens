@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { ExternalLink, TriangleAlert } from "lucide-react";
-import { fmtDay, summarizeWorks, distanceLabel } from "@/lib/data/works";
+import { fmtDay, summarizeWorks } from "@/lib/data/works";
 import type { WorkNearby } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -14,7 +14,7 @@ const LABEL_STYLE: Record<string, string> = {
 /** Warning block: ongoing and planned works within ~1 km, each with its official source. Renders nothing if none. */
 export function WorksWarnings({ works }: { works: WorkNearby[] }) {
   const summary = useMemo(() => summarizeWorks(works, new Date()), [works]);
-  if (summary.warnings.length === 0 && !summary.permits) return null;
+  if (summary.warnings.length === 0) return null;
 
   return (
     <section className="mt-5 rounded-2xl border border-amber-300/70 bg-amber-50/70 p-3.5">
@@ -35,18 +35,6 @@ export function WorksWarnings({ works }: { works: WorkNearby[] }) {
             <SourceLink name={w.sourceName} url={w.sourceUrl} asOf={w.publishedAt} />
           </li>
         ))}
-        {summary.permits && (
-          <li className="text-xs leading-snug">
-            <p className="text-slate-700">
-              <span className="font-medium text-slate-900">
-                {summary.permits.count} tree-removal permit{summary.permits.count === 1 ? "" : "s"} for investments
-              </span>{" "}
-              issued within 1 km in the last 12 months (nearest {distanceLabel(summary.permits.nearestM)}). A permit
-              suggests construction is being prepared; no schedule is published.
-            </p>
-            <SourceLink name={summary.permits.sourceName} url={summary.permits.sourceUrl} asOf={null} />
-          </li>
-        )}
       </ul>
       <p className="mt-3 text-[11px] leading-snug text-amber-900/80">
         Dates come from the cited official announcements and may change. Timing is only shown when the source states it.
