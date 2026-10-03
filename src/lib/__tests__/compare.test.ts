@@ -39,3 +39,8 @@ test("compareAreas: rows with zero weight sink below the rows that matter, even 
   const c = compareAreas([mk("a", 50, 50), { ...mk("b", 50, 50), scores: { sport: 100, culture: 10, greenery: 50, shopping: 10, transport: 50, education: 10 } }], ["a", "b"], w);
   assert.notEqual(c.rows[0].category, "sport");
 });
+
+test("compareAreas: areas sharing a district get numbered labels", () => {
+  const c = compareAreas([mk("a", 1, 1, "Podgórze"), mk("b", 2, 2, "Podgórze"), mk("c", 3, 3, "Czyżyny")], ["a", "b", "c"], w);
+  assert.deepEqual(c.areas.map((a) => a.label), ["Podgórze 1", "Podgórze 2", "Czyżyny"]);
+});

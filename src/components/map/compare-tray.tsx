@@ -11,8 +11,6 @@ type Props = {
   onClear: () => void;
 };
 
-const areaName = (a: { district: string | null }, i: number) => a.district ?? `Area ${i + 1}`;
-
 /** Floating window beside the side panel: category scores for up to three areas the user is considering. Tap a column to open that area. */
 export function CompareTray({ comparison, selected, onSelect, onRemove, onClear }: Props) {
   const { areas, rows, matchLeads, summary } = comparison;
@@ -29,7 +27,7 @@ export function CompareTray({ comparison, selected, onSelect, onRemove, onClear 
         <p className="mt-2 text-sm leading-snug text-slate-800">
           {summary.kind === "close"
             ? "These areas match you about equally. Look at the rows below to see how they differ."
-            : `${areaName(areas[summary.index], summary.index)} is the stronger match for you (+${summary.gap})${
+            : `${areas[summary.index].label} is the stronger match for you (+${summary.gap})${
                 summary.driver ? `, mainly on ${CATEGORY_LABELS[summary.driver].toLowerCase()}` : ""
               }.`}
         </p>
@@ -38,15 +36,15 @@ export function CompareTray({ comparison, selected, onSelect, onRemove, onClear 
         <thead>
           <tr>
             <th className="w-[26%]" />
-            {areas.map((a, i) => (
+            {areas.map((a) => (
               <th key={a.h3Index} className="px-0.5 pb-1 align-top font-medium">
                 <div className="flex items-start justify-center gap-0.5">
                   <button
                     onClick={() => onSelect(a.h3Index)}
                     className={cn("truncate rounded px-1 py-0.5 hover:bg-muted", selected === a.h3Index && "bg-muted font-semibold")}
-                    title={a.district ?? `Area ${i + 1}`}
+                    title={a.label}
                   >
-                    {a.district ?? `Area ${i + 1}`}
+                    {a.label}
                   </button>
                   <button onClick={() => onRemove(a.h3Index)} aria-label="Remove from comparison" className="rounded p-0.5 text-muted-foreground hover:bg-muted">
                     <X className="size-3" />

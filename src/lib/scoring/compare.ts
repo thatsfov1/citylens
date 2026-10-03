@@ -3,7 +3,13 @@ import { calculatePersonalScore } from "./personal-score";
 
 export const MAX_COMPARED = 3;
 
-export type CompareArea = { h3Index: string; district: string | null; match: number };
+export type CompareArea = {
+  h3Index: string;
+  district: string | null;
+  /** Column title: the district, numbered when several chosen areas share it ("Podgórze 1", "Podgórze 2"). */
+  label: string;
+  match: number;
+};
 
 export type CompareRow = {
   category: Category;
@@ -32,11 +38,19 @@ const leaders = (values: number[]) => {
 /** Side-by-side category scores for the chosen areas, rows ordered by the user's weights. Deterministic, stored scores only. */
 export function compareAreas(hexes: HexData[], ids: string[], weights: CategoryWeights): Comparison {
   const chosen = ids.map((id) => hexes.find((h) => h.h3Index === id)).filter((h): h is HexData => !!h);
-  const areas = chosen.map((h) => ({
-    h3Index: h.h3Index,
-    district: h.district ?? null,
-    match: Math.round(calculatePersonalScore(h.scores, weights)),
-  }));
+  const base = chosen.map((h, i) => h.district ?? `Area ${i + 1}`);
+  const seen = new Map<string, number>();
+  const areas = chosen.map((h, i) => {
+    const n = (seen.get(base[i]) ?? 0) + 1;
+    seen.set(base[i], n);
+    const shared = base.filter((b) => b === base[i]).length > 1;
+    return {
+      h3Index: h.h3Index,
+      district: h.district ?? null,
+      label: shared ? `${base[i]} ${n}` : base[i],
+      match: Math.round(calculatePersonalScore(h.scores, weights)),
+    };
+  });
   const rows = CATEGORIES.map((category) => {
     const values = chosen.map((h) => h.scores[category]);
     return { category, weight: weights[category], values, leads: leaders(values) };
