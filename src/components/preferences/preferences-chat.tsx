@@ -43,7 +43,7 @@ export function PreferencesChat({ onImportance }: { onImportance: (i: Importance
       setMessages([...next, { role: "assistant", text: data.reply }]);
       if (data.importance) onImportance(data.importance);
     } catch {
-      setError("The assistant is unavailable — you can still set the sliders below.");
+      setError("The assistant is unavailable — you can still set the levels below.");
     } finally {
       setPending(false);
     }

@@ -13,11 +13,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { PreferencesChat } from "./preferences-chat";
 import {
   DEFAULT_IMPORTANCE,
+  IMPORTANCE_STEPS,
   importanceSchema,
+  snapImportance,
   importanceToQuery,
   type Importance,
 } from "@/lib/scoring/preferences";
@@ -44,7 +45,7 @@ export function PreferencesForm({ initial }: { initial?: Importance }) {
   const router = useRouter();
   const { control, handleSubmit, setValue } = useForm<Importance>({
     resolver: zodResolver(importanceSchema),
-    defaultValues: initial ?? DEFAULT_IMPORTANCE,
+    defaultValues: snapAll(initial ?? DEFAULT_IMPORTANCE),
   });
   const values = useWatch({ control }) as Importance;
   const weights = normalizeWeights({ ...DEFAULT_IMPORTANCE, ...values });
@@ -69,7 +70,7 @@ export function PreferencesForm({ initial }: { initial?: Importance }) {
 
       <PreferencesChat
         onImportance={(i) => {
-          for (const c of CATEGORIES) setValue(c, i[c], { shouldDirty: true });
+          for (const c of CATEGORIES) setValue(c, snapImportance(i[c]), { shouldDirty: true });
         }}
       />
 
@@ -96,15 +97,10 @@ export function PreferencesForm({ initial }: { initial?: Importance }) {
                 control={control}
                 name={c}
                 render={({ field }) => (
-                  <Slider
-                    aria-label={`${CATEGORY_LABELS[c]} importance`}
-                    value={[field.value]}
-                    min={0}
-                    max={100}
-                    step={5}
-                    onValueChange={(v) =>
-                      field.onChange(Array.isArray(v) ? v[0] : v)
-                    }
+                  <ScaleSelect
+                    label={`${CATEGORY_LABELS[c]} importance`}
+                    value={field.value}
+                    onChange={field.onChange}
                   />
                 )}
               />
@@ -122,5 +118,50 @@ export function PreferencesForm({ initial }: { initial?: Importance }) {
         <ArrowRight className="size-4" />
       </Button>
     </form>
+  );
+}
+
+function snapAll(i: Importance): Importance {
+  return Object.fromEntries(CATEGORIES.map((c) => [c, snapImportance(i[c])])) as Importance;
+}
+
+function ScaleSelect({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div>
+      <div role="radiogroup" aria-label={label} className="grid grid-cols-5 gap-1">
+        {IMPORTANCE_STEPS.map((step) => {
+          const active = snapImportance(value) === step;
+          return (
+            <button
+              key={step}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => onChange(step)}
+              className={
+                "h-8 rounded-lg border text-xs font-medium tabular-nums transition-colors " +
+                (active
+                  ? "border-emerald-600 bg-emerald-600 text-white"
+                  : "border-border bg-white text-muted-foreground hover:border-emerald-300 hover:bg-emerald-50")
+              }
+            >
+              {step}
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+        <span>Don’t care</span>
+        <span>Essential</span>
+      </div>
+    </div>
   );
 }

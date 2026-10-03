@@ -9,9 +9,9 @@ test("parses a follow-up question (no weights yet)", () => {
   assert.equal(r.importance, null);
 });
 
-test("parses weights and snaps them to steps of 5", () => {
+test("parses weights and snaps them to the 0/25/50/75/100 scale", () => {
   const r = parseChatOutput(JSON.stringify({ reply: "Got it.", importance: imp }));
-  assert.deepEqual(r.importance, { sport: 60, culture: 0, greenery: 100, shopping: 10, transport: 80 });
+  assert.deepEqual(r.importance, { sport: 50, culture: 0, greenery: 100, shopping: 0, transport: 75 });
 });
 
 test("rejects out-of-range, missing and malformed output", () => {

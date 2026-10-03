@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { importanceSchema } from "../scoring/preferences";
+import { importanceSchema, snapImportance } from "../scoring/preferences";
 
 export const MAX_MESSAGES = 12;
 export const MAX_MESSAGE_CHARS = 500;
@@ -36,7 +36,7 @@ export function parseChatOutput(raw: string): ChatResult {
   const parsed = chatOutputSchema.parse(JSON.parse(raw));
   if (!parsed.importance) return parsed;
   const rounded = Object.fromEntries(
-    Object.entries(parsed.importance).map(([k, v]) => [k, Math.round(v / 5) * 5]),
+    Object.entries(parsed.importance).map(([k, v]) => [k, snapImportance(v)]),
   ) as ChatResult["importance"];
   return { ...parsed, importance: rounded };
 }
