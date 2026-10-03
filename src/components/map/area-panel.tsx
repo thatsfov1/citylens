@@ -133,7 +133,7 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
         <SafetySection safety={safety} minSafety={minSafety} indicators={indicators} />
       )}
 
-      {air !== null && <AirSection indicators={indicators} />}
+      {air !== null && <AirSection air={air} indicators={indicators} />}
 
       {placesSlot}
 
@@ -169,7 +169,7 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
   );
 }
 
-function AirSection({ indicators }: { indicators: HexIndicators | null }) {
+function AirSection({ air, indicators }: { air: number; indicators: HexIndicators | null }) {
   const facts = indicators ? describeAir(indicators) : [];
   const level = indicators ? describeAirLevel(indicators) : null;
   return (
@@ -179,16 +179,26 @@ function AirSection({ indicators }: { indicators: HexIndicators | null }) {
           <Wind className="size-4 text-slate-700" />
           Air quality
         </span>
+        <span className="font-semibold tabular-nums">{air}/100</span>
+      </div>
+      <div className="mt-1.5 h-1.5 rounded-full bg-muted">
+        <div className="h-full rounded-full bg-slate-800 transition-all" style={{ width: `${air}%` }} />
       </div>
       {level && <p className="mt-1.5 text-xs text-slate-700">{level}</p>}
-      {facts.length > 0 && (
-        <ul className="mt-2 space-y-1 text-xs text-slate-700">
-          {facts.map((f) => (
-            <li key={f}>{f}</li>
-          ))}
-        </ul>
-      )}
-      <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{AIR_CAVEAT}</p>
+      <details className="group mt-2">
+        <summary className="flex cursor-pointer list-none items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground">
+          <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
+          Details
+        </summary>
+        {facts.length > 0 && (
+          <ul className="mt-1.5 space-y-1 text-xs text-slate-700">
+            {facts.map((f) => (
+              <li key={f}>{f}</li>
+            ))}
+          </ul>
+        )}
+        <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{AIR_CAVEAT}</p>
+      </details>
     </div>
   );
 }

@@ -69,9 +69,9 @@ test("PM2.5 is used for the score only when PM10 is missing", () => {
 test("air level follows the PM10 bands, falling back to PM2.5", () => {
   const base = { stations: 1, nearest: { name: "A", distanceM: 1 }, asOf: "2026-10-03" };
   assert.equal(airLevel({ ...base, pm10: 15 }), "good");
-  assert.equal(airLevel({ ...base, pm10: 30 }), "fair");
-  assert.equal(airLevel({ ...base, pm10: 45 }), "moderate");
-  assert.equal(airLevel({ ...base, pm10: 80 }), "poor");
-  assert.equal(airLevel({ ...base, pm10: 300 }), "very poor");
-  assert.equal(airLevel({ ...base, pm25: 15 }), "fair");
+  assert.equal(airLevel({ ...base, pm10: 30 }), "normal");
+  assert.equal(airLevel({ ...base, pm10: 45 }), "bad");
+  assert.equal(airLevel({ ...base, pm10: 80 }), "bad");
+  assert.equal(airLevel({ ...base, pm10: 300 }), "very bad");
+  assert.equal(airLevel({ ...base, pm25: 15 }), "normal");
 });

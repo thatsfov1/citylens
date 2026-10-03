@@ -185,7 +185,7 @@ export function describeAir(ind: HexIndicators): string[] {
 /** One-line, plain-language reading of the air for a quick look; null when the area has no air data. */
 export function describeAirLevel(ind: HexIndicators): string | null {
   if (!ind.air) return null;
-  return `Recently ${airLevel(ind.air)} here: handy for a quick eyeball, not a precise reading.`;
+  return `Usually ${airLevel(ind.air)} here: handy for a quick eyeball, not a precise reading.`;
 }
 
 /** What the air-quality figure can and cannot tell you. Shown in the panel. */

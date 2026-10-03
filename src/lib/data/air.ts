@@ -80,11 +80,11 @@ export function interpolateAir(center: LngLat, file: AirFile): AirIndicator | nu
   };
 }
 
-export const AIR_LEVELS = ["good", "fair", "moderate", "poor", "very poor"] as const;
+export const AIR_LEVELS = ["good", "normal", "bad", "very bad"] as const;
 export type AirLevel = (typeof AIR_LEVELS)[number];
 
-/** Upper bounds (µg/m³) of the first four levels, following the European Air Quality Index bands. */
-const LEVEL_BOUNDS = { pm10: [20, 40, 50, 100], pm25: [10, 20, 25, 50] } as const;
+/** Upper bounds (µg/m³) of the first three levels, loosely following the European Air Quality Index bands. */
+const LEVEL_BOUNDS = { pm10: [20, 40, 100], pm25: [10, 20, 50] } as const;
 
 /** Plain-language level for quick reading; uses PM10 like the score, PM2.5 only when PM10 is missing. */
 export function airLevel(air: AirIndicator): AirLevel {
