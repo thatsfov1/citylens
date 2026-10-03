@@ -2,7 +2,7 @@
 // Usage: npx tsx scripts/osm/compute.ts   (needs data/osm/*.json from scripts/osm/fetch.ts)
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { cellToLatLng } from "h3-js";
-import { getDemoCells } from "../../src/lib/h3/grid";
+import { cellPolygon, getDemoCells } from "../../src/lib/h3/grid";
 import { parseDistricts, parseGreen, parsePois, type PoiCategory } from "../../src/lib/data/osm";
 import { findDistrict, normalizeRaw, scoreGreenery, scorePoiCategory } from "../../src/lib/data/score-hex";
 import type { LngLat } from "../../src/lib/data/geo";
@@ -41,11 +41,12 @@ function main() {
   const values = rows.map((r, i) => {
     const { greenery, ...rest } = r.indicators;
     const ind = JSON.stringify({ ...rest, greenery }, (k, v) => (k === "raw" ? Math.round(v * 1000) / 1000 : v));
-    return `(${q(r.h3Index)},${scores.sport[i]},${scores.culture[i]},${scores.greenery[i]},${scores.shopping[i]},${scores.transport[i]},${r.district ? q(r.district) : "null"},${q(ind)}::jsonb)`;
+    const wkt = `POLYGON((${cellPolygon(r.h3Index).map(([x, y]) => `${x.toFixed(6)} ${y.toFixed(6)}`).join(",")}))`;
+    return `(${q(r.h3Index)},ST_GeomFromText('${wkt}',4326),${scores.sport[i]},${scores.culture[i]},${scores.greenery[i]},${scores.shopping[i]},${scores.transport[i]},${r.district ? q(r.district) : "null"},${q(ind)}::jsonb)`;
   });
   writeFileSync(
     "supabase/seed.sql",
-    `insert into public.hex_scores (h3_index, sport_score, culture_score, greenery_score, shopping_score, transport_score, district, indicators) values\n${values.join(",\n")}\non conflict (h3_index) do update set sport_score=excluded.sport_score, culture_score=excluded.culture_score, greenery_score=excluded.greenery_score, shopping_score=excluded.shopping_score, transport_score=excluded.transport_score, district=excluded.district, indicators=excluded.indicators;\n`,
+    `insert into public.hex_scores (h3_index, geometry, sport_score, culture_score, greenery_score, shopping_score, transport_score, district, indicators) values\n${values.join(",\n")}\non conflict (h3_index) do update set geometry=excluded.geometry, sport_score=excluded.sport_score, culture_score=excluded.culture_score, greenery_score=excluded.greenery_score, shopping_score=excluded.shopping_score, transport_score=excluded.transport_score, district=excluded.district, indicators=excluded.indicators;\n`,
   );
   console.log("wrote supabase/seed.sql with", rows.length, "rows;", rows.filter((r) => !r.district).length, "without district");
 }
