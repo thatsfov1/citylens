@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Sparkles } from "lucide-react";
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ChatMessage, ChatResult } from "@/lib/llm/chat-schema";
 import type { Importance } from "@/lib/scoring/preferences";
@@ -13,11 +13,18 @@ const EXAMPLES = [
   "Quiet, green, near shops",
 ];
 
-export function PreferencesChat({ onImportance }: { onImportance: (i: Importance) => void }) {
+export function PreferencesChat({
+  onImportance,
+  onReview,
+}: {
+  onImportance: (i: Importance) => void;
+  onReview: () => void;
+}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [understood, setUnderstood] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,7 +48,10 @@ export function PreferencesChat({ onImportance }: { onImportance: (i: Importance
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as ChatResult;
       setMessages([...next, { role: "assistant", text: data.reply }]);
-      if (data.importance) onImportance(data.importance);
+      if (data.importance) {
+        onImportance(data.importance);
+        setUnderstood(true);
+      }
     } catch {
       setError("The assistant is unavailable — you can still set the levels below.");
     } finally {
@@ -50,13 +60,8 @@ export function PreferencesChat({ onImportance }: { onImportance: (i: Importance
   }
 
   return (
-    <div className="mb-6 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3">
-      <div className="mb-2 flex items-center gap-2 text-xs font-medium text-emerald-800">
-        <Sparkles className="size-3.5" />
-        Describe it in your own words
-      </div>
-
-      <div className="max-h-52 space-y-2 overflow-y-auto text-sm" aria-live="polite">
+    <div className="flex h-full flex-col rounded-2xl border border-emerald-100 bg-emerald-50/50 p-3">
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto text-sm" aria-live="polite">
         <Bubble role="assistant" text={GREETING} />
         {messages.map((m, i) => (
           <Bubble key={i} role={m.role} text={m.text} />
@@ -66,6 +71,16 @@ export function PreferencesChat({ onImportance }: { onImportance: (i: Importance
       </div>
 
       {error && <p className="mt-2 text-xs text-amber-700">{error}</p>}
+
+      {understood && (
+        <button
+          type="button"
+          onClick={onReview}
+          className="mt-2 self-start rounded-full bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700"
+        >
+          Review &amp; adjust →
+        </button>
+      )}
 
       {messages.length === 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
