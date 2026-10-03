@@ -26,9 +26,12 @@ export function selectPlaces(center: LngLat, pois: RawPoi[]): Place[] {
   for (const c of PLACE_CATEGORIES) {
     const own = withDist.filter((p) => p.category === c);
     if (c === "transport") {
+      // Capped per group (rail/tram vs bus), then merged back into one nearest-first list.
       out.push(
-        ...own.filter((p) => p.kind !== "bus_stop").slice(0, TRANSPORT_OTHER_CAP),
-        ...own.filter((p) => p.kind === "bus_stop").slice(0, BUS_CAP),
+        ...[
+          ...own.filter((p) => p.kind !== "bus_stop").slice(0, TRANSPORT_OTHER_CAP),
+          ...own.filter((p) => p.kind === "bus_stop").slice(0, BUS_CAP),
+        ].sort((a, b) => a.distanceM - b.distanceM),
       );
     } else {
       out.push(...own.slice(0, CAP));

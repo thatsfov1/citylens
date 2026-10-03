@@ -32,6 +32,8 @@ describe("selectPlaces", () => {
     const out = selectPlaces(center, pois);
     assert.equal(out.filter((p) => p.kind === "bus_stop").length, 6);
     assert.equal(out.some((p) => p.kind === "rail_station"), true);
+    const d = out.map((p) => p.distanceM);
+    assert.deepEqual(d, [...d].sort((a, b) => a - b));
   });
 });
 
