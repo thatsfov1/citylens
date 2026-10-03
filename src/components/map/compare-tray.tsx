@@ -11,9 +11,11 @@ type Props = {
   onClear: () => void;
 };
 
+const areaName = (a: { district: string | null }, i: number) => a.district ?? `Area ${i + 1}`;
+
 /** Side-by-side category scores for up to three areas the user is considering. Tap a column to open that area. */
 export function CompareTray({ comparison, selected, onSelect, onRemove, onClear }: Props) {
-  const { areas, rows, matchLeads } = comparison;
+  const { areas, rows, matchLeads, summary } = comparison;
   if (areas.length === 0) return null;
   return (
     <section className="border-b border-border/70 px-5 py-3">
@@ -23,6 +25,15 @@ export function CompareTray({ comparison, selected, onSelect, onRemove, onClear 
           Clear
         </button>
       </div>
+      {summary && (
+        <p className="mt-2 text-sm leading-snug text-slate-800">
+          {summary.kind === "close"
+            ? "These areas match you about equally. Look at the rows below to see how they differ."
+            : `${areaName(areas[summary.index], summary.index)} is the stronger match for you (+${summary.gap})${
+                summary.driver ? `, mainly on ${CATEGORY_LABELS[summary.driver].toLowerCase()}` : ""
+              }.`}
+        </p>
+      )}
       <table className="mt-2 w-full table-fixed text-xs">
         <thead>
           <tr>
@@ -56,9 +67,9 @@ export function CompareTray({ comparison, selected, onSelect, onRemove, onClear 
           </tr>
           {rows.map((r) => (
             <tr key={r.category} className="border-t border-border/40">
-              <td className="py-0.5 text-muted-foreground">{CATEGORY_LABELS[r.category]}</td>
+              <td className={cn("py-0.5 text-muted-foreground", r.weight === 0 && "opacity-50")}>{CATEGORY_LABELS[r.category]}</td>
               {r.values.map((v, i) => (
-                <td key={areas[i].h3Index} className={cn("py-0.5 text-center tabular-nums", r.leads[i] && "font-semibold text-emerald-700")}>
+                <td key={areas[i].h3Index} className={cn("py-0.5 text-center tabular-nums", r.weight === 0 && "opacity-50", r.leads[i] && "font-semibold text-emerald-700")}>
                   {v}
                 </td>
               ))}
@@ -67,7 +78,7 @@ export function CompareTray({ comparison, selected, onSelect, onRemove, onClear 
         </tbody>
       </table>
       <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
-        Green marks the higher score in each row. A lower score is a different fit, not a worse place.
+        Rows that differ most for your priorities come first; green marks the higher score. A lower score is a different fit, not a worse place.
       </p>
     </section>
   );

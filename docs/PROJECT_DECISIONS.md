@@ -381,3 +381,5 @@ changes a score.
 - "Add to comparison" in the area panel keeps up to 3 areas (`MAX_COMPARED`); `CompareTray` shows match % and the six category scores side by side, higher value per row in green
   (no leader on ties). Tap a column to open that area, × removes it. `compareAreas` (`src/lib/scoring/compare.ts`, tested) uses stored scores and the current weights only: deterministic, client-side,
   state lives in `MapExperience` and resets on reload (not in the URL yet). Copy: "a different fit, not a worse place".
+- Row order and summary: rows are sorted by weight × spread between the areas (what actually decides the comparison), then by weight; zero-weight rows are dimmed. A one-line summary
+  names the stronger match and the category adding most to its lead (weight × lead over the others' average), or says "about equally" when match scores are within 3 points. Deterministic, no LLM.

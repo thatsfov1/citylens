@@ -14,7 +14,14 @@ export type CompareRow = {
   leads: boolean[];
 };
 
-export type Comparison = { areas: CompareArea[]; rows: CompareRow[]; matchLeads: boolean[] };
+export type CompareSummary =
+  /** Match scores within `CLOSE_GAP` points: no winner is declared. */
+  | { kind: "close" }
+  | { kind: "leader"; index: number; gap: number; driver: Category | null };
+
+export type Comparison = { areas: CompareArea[]; rows: CompareRow[]; matchLeads: boolean[]; summary: CompareSummary | null };
+
+const CLOSE_GAP = 3;
 
 const leaders = (values: number[]) => {
   const max = Math.max(...values);
@@ -30,11 +37,29 @@ export function compareAreas(hexes: HexData[], ids: string[], weights: CategoryW
     district: h.district ?? null,
     match: Math.round(calculatePersonalScore(h.scores, weights)),
   }));
-  const rows = [...CATEGORIES]
-    .sort((a, b) => weights[b] - weights[a])
-    .map((category) => {
-      const values = chosen.map((h) => h.scores[category]);
-      return { category, weight: weights[category], values, leads: leaders(values) };
-    });
-  return { areas, rows, matchLeads: leaders(areas.map((a) => a.match)) };
+  const rows = CATEGORIES.map((category) => {
+    const values = chosen.map((h) => h.scores[category]);
+    return { category, weight: weights[category], values, leads: leaders(values) };
+  });
+  // Rows that decide the comparison first: weight × spread between the areas, then by weight.
+  const impact = (r: CompareRow) => r.weight * (Math.max(...r.values) - Math.min(...r.values));
+  rows.sort((a, b) => impact(b) - impact(a) || b.weight - a.weight);
+
+  let summary: CompareSummary | null = null;
+  if (areas.length >= 2) {
+    const matches = areas.map((a) => a.match);
+    const best = matches.indexOf(Math.max(...matches));
+    const gap = matches[best] - Math.max(...matches.filter((_, i) => i !== best));
+    if (gap < CLOSE_GAP) summary = { kind: "close" };
+    else {
+      // The category that adds most to the leader's lead over the average of the others, weighted by importance.
+      const lift = (r: CompareRow) => {
+        const others = r.values.filter((_, i) => i !== best);
+        return r.weight * (r.values[best] - others.reduce((x, y) => x + y, 0) / others.length);
+      };
+      const top = rows.reduce((m, r) => (lift(r) > lift(m) ? r : m));
+      summary = { kind: "leader", index: best, gap, driver: lift(top) > 0 ? top.category : null };
+    }
+  }
+  return { areas, rows, matchLeads: leaders(areas.map((a) => a.match)), summary };
 }
