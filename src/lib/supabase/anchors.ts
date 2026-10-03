@@ -11,10 +11,19 @@ const row = z.object({ name: z.string(), kind: z.string(), lat: z.number(), lng:
  * Nominatim lookup for streets and addresses. Null when nothing matches.
  */
 export async function resolveAnchor(query: string, radiusM: number): Promise<Anchor | null> {
+  return (await resolveAnchorDebug(query, radiusM)).anchor;
+}
+
+export type AnchorResolution = { query: string; source: "pois" | "nominatim" | "none"; anchor: Anchor | null };
+
+/** Same lookup as `resolveAnchor`, but also reports which source answered (for the debug view). */
+export async function resolveAnchorDebug(query: string, radiusM: number): Promise<AnchorResolution> {
   const poi = await resolveFromPois(query, radiusM);
-  if (poi) return poi;
+  if (poi) return { query, source: "pois", anchor: poi };
   const hit = await geocodeInKrakow(query);
-  return hit ? { name: hit.name, lat: hit.lat, lng: hit.lng, radiusM } : null;
+  return hit
+    ? { query, source: "nominatim", anchor: { name: hit.name, lat: hit.lat, lng: hit.lng, radiusM } }
+    : { query, source: "none", anchor: null };
 }
 
 async function resolveFromPois(query: string, radiusM: number): Promise<Anchor | null> {

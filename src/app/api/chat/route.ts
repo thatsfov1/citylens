@@ -3,7 +3,7 @@ import type { ChatResult } from "@/lib/llm/chat-schema";
 import { chatTurn } from "@/lib/llm/gemini";
 import { budgetToFilter } from "@/lib/scoring/rent";
 import { DEFAULT_COMMUTE_MIN, type Workplace } from "@/lib/scoring/commute";
-import { resolveAnchor } from "@/lib/supabase/anchors";
+import { resolveAnchorDebug } from "@/lib/supabase/anchors";
 
 // Tiny in-memory per-IP limiter — enough to protect the demo key from accidental loops.
 const WINDOW_MS = 10 * 60 * 1000;
@@ -30,10 +30,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { nearPlace, budget, workplace, hasCar, ...output } = await chatTurn(body.data.messages);
+    const modelOutput = await chatTurn(body.data.messages);
+    const { nearPlace, budget, workplace, hasCar, ...output } = modelOutput;
     // Coordinates come from our data, never from the model; an unknown name is silently dropped.
-    const anchor = nearPlace ? await resolveAnchor(nearPlace.query, nearPlace.radiusM) : null;
-    const place = workplace ? await resolveAnchor(workplace.query, 1000) : null;
+    const anchorLookup = nearPlace ? await resolveAnchorDebug(nearPlace.query, nearPlace.radiusM) : null;
+    const workplaceLookup = workplace ? await resolveAnchorDebug(workplace.query, 1000) : null;
+    const anchor = anchorLookup?.anchor ?? null;
+    const place = workplaceLookup?.anchor ?? null;
     const work: Workplace | null = place
       ? {
           name: place.name,
@@ -43,7 +46,16 @@ export async function POST(request: Request) {
           maxMin: workplace?.maxMin ?? DEFAULT_COMMUTE_MIN,
         }
       : null;
-    return Response.json({ ...output, anchor, rent: budgetToFilter(budget), work, car: hasCar === true } satisfies ChatResult);
+    const model = { ...modelOutput, reply: undefined };
+    const rent = budgetToFilter(budget);
+    return Response.json({
+      ...output,
+      anchor,
+      rent,
+      work,
+      car: hasCar === true,
+      debug: { model, anchorLookup, workplaceLookup },
+    } satisfies ChatResult);
   } catch (err) {
     console.error("chat failed:", err instanceof Error ? err.message : err);
     return Response.json({ error: "The assistant is unavailable right now." }, { status: 503 });

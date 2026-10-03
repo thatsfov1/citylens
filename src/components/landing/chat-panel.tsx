@@ -20,6 +20,7 @@ export function ChatPanel({ onImportance }: Props) {
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [debug, setDebug] = useState<ChatResult["debug"] | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const greeting = useTypewriter(GREETING);
 
@@ -45,6 +46,7 @@ export function ChatPanel({ onImportance }: Props) {
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as ChatResult;
       setMessages([...next, { role: "assistant", text: data.reply }]);
+      setDebug(data.debug ?? null);
       if (data.importance) onImportance(data.importance, data.stages, data.anchor, data.rent, data.work, data.car === true);
     } catch {
       setError("Asystent jest chwilowo niedostępny. Spróbuj ponownie za chwilę.");
@@ -100,6 +102,8 @@ export function ChatPanel({ onImportance }: Props) {
           </p>
       )}
 
+      {debug && <DebugTab debug={debug} />}
+
       <form onSubmit={onSubmit} className="mt-5 flex gap-2 border-b border-stone-300 pb-2 focus-within:border-stone-700">
         <input
           value={input}
@@ -119,6 +123,20 @@ export function ChatPanel({ onImportance }: Props) {
         </button>
       </form>
     </section>
+  );
+}
+
+/** Collapsible view of what the LLM extracted and how places were resolved from our data. */
+function DebugTab({ debug }: { debug: NonNullable<ChatResult["debug"]> }) {
+  return (
+    <details className="mt-3 border border-stone-200 text-xs text-stone-600">
+      <summary className="cursor-pointer select-none px-3 py-2 font-medium text-stone-700">
+        Co przygotował model (podgląd)
+      </summary>
+      <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words border-t border-stone-200 bg-stone-50 p-3 font-mono text-[11px] leading-snug">
+        {JSON.stringify(debug, null, 2)}
+      </pre>
+    </details>
   );
 }
 

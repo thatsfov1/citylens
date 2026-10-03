@@ -65,6 +65,12 @@ export type ChatResult = Omit<ChatOutput, "nearPlace" | "budget" | "workplace" |
   anchor: Anchor | null;
   rent: RentFilter | null;
   work: Workplace | null;
+  /** What the model returned and how places were resolved; shown in the landing page's debug tab. */
+  debug: {
+    model: Omit<ChatOutput, "reply"> & { reply?: undefined };
+    anchorLookup: { query: string; source: "pois" | "nominatim" | "none"; anchor: Anchor | null } | null;
+    workplaceLookup: { query: string; source: "pois" | "nominatim" | "none"; anchor: Anchor | null } | null;
+  };
 };
 
 /** JSON schema handed to Gemini for structured output. */
