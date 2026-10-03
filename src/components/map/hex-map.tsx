@@ -7,6 +7,7 @@ import { cellToLatLng } from "h3-js";
 import { KRAKOW_CENTER, KRAKOW_INITIAL_ZOOM } from "@/lib/h3/config";
 import { cellPolygon } from "@/lib/h3/grid";
 import { GREEN_COLOR, PLACE_COLORS, circleRing, placeTitle } from "@/lib/map/places";
+import { placeIconId, registerPlaceIcons } from "@/lib/map/place-icons";
 import { KRAKOW_BOUNDS, boundaryFeature, outsideMaskFeature } from "@/lib/h3/mask";
 import { calculatePersonalScore } from "@/lib/scoring/personal-score";
 import { percentileRanks } from "@/lib/scoring/percentile";
@@ -121,7 +122,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         .map((p) => ({
           type: "Feature",
           id: p.id,
-          properties: { id: p.id, category: p.category, title: placeTitle(p) },
+          properties: { id: p.id, category: p.category, title: placeTitle(p), icon: placeIconId(p.category, p.kind) },
           geometry: { type: "Point", coordinates: [p.lng, p.lat] },
         })),
     }),
@@ -355,6 +356,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         source: GREEN_SOURCE,
         paint: { "line-color": GREEN_COLOR, "line-width": 1.5, "line-opacity": 0.9 },
       });
+      void registerPlaceIcons(map); // pins render as soon as the images land
       map.addSource(PLACES_SOURCE, { type: "geojson", data: EMPTY });
       const pinColor = [
         "match",
@@ -371,13 +373,13 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       });
       map.addLayer({
         id: "place-pins",
-        type: "circle",
+        type: "symbol",
         source: PLACES_SOURCE,
-        paint: {
-          "circle-radius": 7,
-          "circle-color": pinColor,
-          "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 2,
+        layout: {
+          "icon-image": ["get", "icon"],
+          "icon-size": 0.55,
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
         },
       });
       map.addLayer({
