@@ -35,3 +35,12 @@ test("picks the exact name first, then the more anchor-like kind", () => {
   assert.equal(pickCandidate("agh", c)?.lat, 3);
   assert.equal(pickCandidate("agh", []), null);
 });
+
+import { parseNominatim } from "../data/nominatim";
+
+test("parses a Nominatim hit and rejects junk", () => {
+  const hit = parseNominatim([{ name: "ulica Floriańska", display_name: "ulica Floriańska, Kraków", lat: "50.0643", lon: "19.9407" }]);
+  assert.deepEqual(hit, { name: "ulica Floriańska", lat: 50.0643, lng: 19.9407 });
+  assert.equal(parseNominatim([]), null);
+  assert.equal(parseNominatim({ error: "x" }), null);
+});

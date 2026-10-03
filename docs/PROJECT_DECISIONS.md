@@ -405,6 +405,9 @@ changes a score.
 - The anchor travels in the URL as `?near=lat,lng,radiusM,name`. On the map it is a **filter, not a score term**: hexes
   whose centre is beyond the radius are dimmed like the safety filter and left out of "Strongest areas"
   (`src/lib/scoring/anchor.ts`, deterministic, client-side). Weights and stored scores are untouched.
-- Limits: only named POIs in `pois` resolve (no streets or arbitrary addresses); the best match is picked automatically
+- Streets/addresses: when `pois` has no match, `src/lib/data/nominatim.ts` does one bounded Nominatim lookup (Kraków
+  box, 4 s timeout, best-effort: failure = no anchor). It returns a single point (the street's centre), so for a long
+  street the radius is measured from its middle. The demo path (named POIs) stays offline-safe.
+- Limits: a place missing from `pois` resolves only if Nominatim is reachable; the best match is picked automatically
   (exact name, then anchor-like kind), no disambiguation UI; no pin for the anchor on the map; "Adjust preferences"
   does not carry the anchor back to the landing page.
