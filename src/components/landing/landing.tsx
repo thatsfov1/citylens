@@ -22,6 +22,7 @@ export function Landing({ initial }: { initial?: Importance }) {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [rent, setRent] = useState<RentFilter | null>(null);
   const [workplace, setWorkplace] = useState<Workplace | null>(null);
+  const [car, setCar] = useState(false);
 
   return (
     <main className="relative isolate flex min-h-screen flex-col overflow-hidden bg-white text-[#222823]">
@@ -55,12 +56,13 @@ export function Landing({ initial }: { initial?: Importance }) {
           </div>
           <div className="w-full max-w-xl">
             <ChatPanel
-              onImportance={(i, nextStages, nextAnchor, nextRent, nextWork) => {
+              onImportance={(i, nextStages, nextAnchor, nextRent, nextWork, nextCar) => {
                 setImportance(i);
                 setStages(nextStages?.length ? nextStages : null);
                 setAnchor(nextAnchor);
                 setRent(nextRent);
                 setWorkplace(nextWork);
+                setCar(nextCar);
               }}
             />
             <Button
@@ -69,7 +71,7 @@ export function Landing({ initial }: { initial?: Importance }) {
               onClick={() => {
                 if (!importance) return;
                 const edu = importance.education > 0 && stages ? stagesToParam(stages) : null;
-                router.push(`/map?${importanceToQuery(importance)}${edu ? `&edu=${edu}` : ""}${anchor ? `&${anchorToQuery(anchor)}` : ""}${rent ? `&${rentToQuery(rent)}` : ""}${workplace ? `&${workplaceToQuery(workplace)}` : ""}`);
+                router.push(`/map?${importanceToQuery(importance)}${edu ? `&edu=${edu}` : ""}${anchor ? `&${anchorToQuery(anchor)}` : ""}${rent ? `&${rentToQuery(rent)}` : ""}${workplace ? `&${workplaceToQuery(workplace)}` : ""}${car ? "&car=1" : ""}`);
               }}
               className="mt-5 h-12 w-full justify-between rounded-none bg-[#252d27] px-5 text-sm font-normal text-white hover:bg-[#39443b] disabled:bg-stone-200 disabled:text-stone-500"
             >

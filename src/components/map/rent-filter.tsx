@@ -19,7 +19,7 @@ import {
 export const isRentActive = (f: Filter) => f.min > RENT_MIN || f.max < RENT_MAX;
 
 /** Monthly rent budget: two handles (the ends mean "no limit"), the flat size, and whether czynsz counts. */
-export function RentFilter({ value, onChange, inline = false }: { value: Filter; onChange: (v: Filter) => void; inline?: boolean }) {
+export function RentFilter({ value, onChange, inline = false, car = false }: { value: Filter; onChange: (v: Filter) => void; inline?: boolean; car?: boolean }) {
   const active = isRentActive(value);
   const fee = cityRent(value.rooms)?.fee ?? null;
   return (
@@ -94,6 +94,7 @@ export function RentFilter({ value, onChange, inline = false }: { value: Filter;
           Ads usually show the <b>base rent only</b>. The building fee (<b>czynsz administracyjny</b>) is added on top
           {fee ? `, typically about ${formatZl(fee)} for this flat size` : ""}, and utilities (media, internet) are
           often extra again. Check what an offer includes before you rely on the price.
+          {car && " A garage space or resident parking permit is usually an extra monthly cost too."}
         </p>
       </div>
 

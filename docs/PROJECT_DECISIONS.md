@@ -488,3 +488,29 @@ changes a score.
 - **Link preview:** `generateMetadata` in `src/app/map/page.tsx` describes the weights and rent budget in the link.
 - Limits: saved maps live in one browser only; a long link (weights + near + compared areas) is a few hundred characters;
   "Adjust preferences" still returns to the landing page with the weights only (not rent, compared areas or filters).
+
+
+## Parking for renters with a car
+
+- **Information only**: parking never enters the scores, never recolours or dims the map, and is for **renters** (no purchase,
+  garage ownership or permit logic). It appears only when the user switches on **"I have a car"** (Filters window; `?car=1`;
+  the landing chat can switch it on when the user says they drive: `hasCar`, which only copies the statement). With a workplace
+  and no stated travel mode, a driver gets mode `car`.
+- **Data is a committed snapshot, no runtime network call.** `scripts/parking/build.ts` fetches OpenStreetMap `amenity=parking`
+  (Overpass, same mirrors as `scripts/osm/fetch.ts`) and the city GIS (MSIP) parking meters layer
+  `Obserwatorium/K04_PARKOMETRY` (946 points, **state May 2019**), keeps the raw files in `data/parking/` and writes
+  `src/lib/data/parking-data.json` (about 300 KB, loaded lazily the first time the switch is on). A failed fetch keeps the old raw
+  file; `FETCH=0` rebuilds offline. Each source degrades on its own: a missing one shows "no data", never 0.
+- **What the card says** (`src/components/map/parking-card.tsx`, logic in `src/lib/scoring/parking.ts`): publicly usable
+  off-street car parks within 500 m / 1 km and the nearest; street parking (mapped as ~10,000 short segments, pooled per ~100 m
+  cell and counted as segments, not spaces, with how many are tagged paid or free); parking meters within 500 m ("probably paid",
+  dated); nearest park and ride. Private, customers-only and permit lots are counted separately and left out. Distances are
+  straight lines from the hexagon centre. No tariffs: the MSIP has no paid-zone (SPP) polygons and rates change, so the card links to the
+  official page (ZDMK, the former ZIKiT: `zdmk.krakow.pl/parkowanie/strefa-platnego-parkowania/...`).
+- **Always shown with the card:** a "No guarantee" notice (free spaces, permits, hours and prices are not in the data; it may be
+  out of date; check on site), the warning that a garage space or resident permit is usually an extra monthly cost (also in the
+  rent note when the switch is on), and a Sources line with links and dates (OpenStreetMap contributors / ODbL, MSIP meters, ZDMK).
+- Map: "P", "P+R" and meter pins around the open area (separate `parking-pins` source in `hex-map.tsx`, not part of the category pins),
+  with a legend entry and the same caveat.
+- Limits: OSM access/fee tags are incomplete (untagged lots count as public); street parking is not a space count; meters are from
+  2019; no pin tooltips yet; refresh the snapshot by re-running the script.
