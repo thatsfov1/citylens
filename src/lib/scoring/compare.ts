@@ -1,5 +1,5 @@
 import { CATEGORIES, type Category, type CategoryWeights, type HexData } from "../../types";
-import { calculatePersonalScore } from "./personal-score";
+import { calculatePersonalScore, type Scorer } from "./personal-score";
 
 export const MAX_COMPARED = 3;
 
@@ -36,7 +36,12 @@ const leaders = (values: number[]) => {
 };
 
 /** Side-by-side category scores for the chosen areas, rows ordered by the user's weights. Deterministic, stored scores only. */
-export function compareAreas(hexes: HexData[], ids: string[], weights: CategoryWeights): Comparison {
+export function compareAreas(
+  hexes: HexData[],
+  ids: string[],
+  weights: CategoryWeights,
+  score: Scorer = (s) => calculatePersonalScore(s, weights),
+): Comparison {
   const chosen = ids.map((id) => hexes.find((h) => h.h3Index === id)).filter((h): h is HexData => !!h);
   const base = chosen.map((h, i) => h.district ?? `Area ${i + 1}`);
   const seen = new Map<string, number>();
@@ -48,7 +53,7 @@ export function compareAreas(hexes: HexData[], ids: string[], weights: CategoryW
       h3Index: h.h3Index,
       district: h.district ?? null,
       label: shared ? `${base[i]} ${n}` : base[i],
-      match: Math.round(calculatePersonalScore(h.scores, weights)),
+      match: Math.round(score(h.scores)),
     };
   });
   const rows = CATEGORIES.map((category) => {

@@ -47,6 +47,18 @@ export function importanceFromQuery(
   return out;
 }
 
+/** `?avoid=shopping,culture`: categories the user wants less of. Unknown names are ignored. */
+export function avoidFromQuery(raw: string | string[] | undefined): Set<Category> {
+  const names = typeof raw === "string" ? raw.split(",") : [];
+  return new Set(CATEGORIES.filter((c) => names.includes(c)));
+}
+
+/** `null` when empty (no query parameter needed). */
+export function avoidToQuery(avoid: ReadonlySet<Category>): string | null {
+  const names = CATEGORIES.filter((c) => avoid.has(c));
+  return names.length ? names.join(",") : null;
+}
+
 /** Minimum safety level filter: 0 = off. Not an importance weight; hexes below it are dimmed on the map. */
 export const MIN_SAFETY_LEVELS = [
   { value: 0, label: "Off" },

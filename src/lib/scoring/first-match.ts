@@ -1,5 +1,5 @@
 import { CATEGORIES, type Category, type CategoryWeights, type HexData, type Place, type PlacesResponse } from "../../types";
-import { calculatePersonalScore } from "./personal-score";
+import { calculatePersonalScore, type Avoid, type Scorer } from "./personal-score";
 
 /** Share of cells offered as "first matches": the same top 10% the map highlights as strongest areas. */
 export const TOP_SHARE = 0.1;
@@ -8,10 +8,15 @@ export const TOP_SHARE = 0.1;
  * h3 indexes of the strongest matches, best first. Cells below the user's minimum safety level are skipped
  * (cells without safety data are not). Ties break by h3 index so the order is deterministic.
  */
-export function strongestAreas(hexes: HexData[], weights: CategoryWeights, minSafety = 0): string[] {
+export function strongestAreas(
+  hexes: HexData[],
+  weights: CategoryWeights,
+  minSafety = 0,
+  score: Scorer = (s) => calculatePersonalScore(s, weights),
+): string[] {
   const eligible = hexes.filter((h) => !(minSafety > 0 && h.safety != null && h.safety < minSafety));
   return eligible
-    .map((h) => ({ id: h.h3Index, score: calculatePersonalScore(h.scores, weights) }))
+    .map((h) => ({ id: h.h3Index, score: score(h.scores) }))
     .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
     .slice(0, Math.max(1, Math.ceil(hexes.length * TOP_SHARE)))
     .map((x) => x.id);
@@ -25,10 +30,10 @@ export type Contributor =
  * One real place behind the area's score, from the user's highest-weighted category that has one nearby:
  * the nearest place, or the largest green area for greenery. Null when nothing is in reach.
  */
-export function topContributor(places: PlacesResponse, weights: CategoryWeights): Contributor | null {
+export function topContributor(places: PlacesResponse, weights: CategoryWeights, avoid: Avoid = new Set()): Contributor | null {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
   for (const c of byWeight) {
-    if (weights[c] <= 0) continue;
+    if (weights[c] <= 0 || avoid.has(c)) continue; // a place the user wanted less of is no selling point
     if (c === "greenery") {
       const parks = places.green.features
         .map((f) => ({ name: (f.properties?.name as string | null) ?? null, areaHa: Number(f.properties?.areaHa) }))

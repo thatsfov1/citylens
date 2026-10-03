@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils";
 import type { ChatMessage, ChatResult } from "@/lib/llm/chat-schema";
 import type { Anchor } from "@/lib/scoring/anchor";
 import type { Importance } from "@/lib/scoring/preferences";
-import type { EducationStage } from "@/types";
+import type { Category, EducationStage } from "@/types";
 import { GREETING } from "./landing-copy";
 
 type Props = {
-  onImportance: (importance: Importance, stages: EducationStage[] | null, anchor: Anchor | null) => void;
+  onImportance: (importance: Importance, stages: EducationStage[] | null, anchor: Anchor | null, avoid: Category[] | null) => void;
 };
 
 export function ChatPanel({ onImportance }: Props) {
@@ -43,7 +43,7 @@ export function ChatPanel({ onImportance }: Props) {
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as ChatResult;
       setMessages([...next, { role: "assistant", text: data.reply }]);
-      if (data.importance) onImportance(data.importance, data.stages, data.anchor);
+      if (data.importance) onImportance(data.importance, data.stages, data.anchor, data.avoid ?? null);
     } catch {
       setError("Asystent jest chwilowo niedostępny. Spróbuj ponownie za chwilę.");
     } finally {

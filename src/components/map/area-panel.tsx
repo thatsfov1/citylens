@@ -1,5 +1,6 @@
 "use client";
 
+import type { Avoid, Scorer } from "@/lib/scoring/personal-score";
 import type { ReactNode } from "react";
 import { ArrowLeft, Check, ChevronRight, Info, MapPin, ShieldCheck, Wind, X } from "lucide-react";
 import { GREEN_COLOR, PLACE_COLORS } from "@/lib/map/places";
@@ -42,6 +43,8 @@ type Props = {
   indicators: HexIndicators | null;
   source: HexSource;
   weights: CategoryWeights;
+  /** The scorer behind the map colours and the categories the user wants less of. */
+  scoring?: { score: Scorer; avoid: Avoid };
   /** Education life stages the user selected; the education fact lists only these. */
   stages?: readonly EducationStage[];
   onClose: () => void;
@@ -61,7 +64,7 @@ type Props = {
   sensitivity?: Sensitivity | null;
 };
 
-export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksSlot, sensitivity }: Props) {
+export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, scoring, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksSlot, sensitivity }: Props) {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
   // Bars are relative to the largest weight, so the top priority fills the bar.
   const maxWeight = Math.max(...CATEGORIES.map((c) => weights[c]), 0.0001);
@@ -104,7 +107,7 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
   }
 
   const facts = indicators ? describeAll(indicators, stages) : undefined;
-  const ex = explainMatch(scores, weights, facts);
+  const ex = explainMatch(scores, weights, facts, scoring);
 
   if (view) {
     const back = (
@@ -191,7 +194,9 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
               <span className="flex items-center justify-between">
                 <span className="flex items-center gap-1">
                   {CATEGORY_LABELS[c]}
-                  <span className="ml-1.5 text-xs text-muted-foreground">weight {Math.round(weights[c] * 100)}%</span>
+                  <span className="ml-1.5 text-xs text-muted-foreground">
+                    weight {Math.round(weights[c] * 100)}%{scoring?.avoid.has(c) ? " · you want less" : ""}
+                  </span>
                 </span>
                 <span className="flex items-center gap-1 font-semibold tabular-nums">
                   {scores[c]}

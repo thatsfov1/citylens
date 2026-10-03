@@ -5,7 +5,7 @@ import {
   type CategoryScores,
   type CategoryWeights,
 } from "../../types";
-import { calculatePersonalScore } from "./personal-score";
+import { calculatePersonalScore, type Avoid, type Scorer } from "./personal-score";
 
 export type MatchLevel = "strong" | "moderate" | "weak";
 
@@ -37,8 +37,11 @@ export function explainMatch(
   weights: CategoryWeights,
   /** Optional data-backed sentences per category (see facts.ts); used instead of generic text. */
   facts?: Record<Category, string>,
+  /** The scorer behind the map colours and the categories the user wants less of; plain weighted sum when omitted. */
+  ctx?: { score: Scorer; avoid: Avoid },
 ): Explanation {
-  const score = Math.round(calculatePersonalScore(scores, weights));
+  const avoid = ctx?.avoid ?? new Set<Category>();
+  const score = Math.round(ctx ? ctx.score(scores) : calculatePersonalScore(scores, weights));
   const level = matchLevel(score);
 
   // Most important categories first.
@@ -50,7 +53,13 @@ export function explainMatch(
 
   for (const c of important) {
     const label = CATEGORY_LABELS[c];
-    if (scores[c] >= HIGH) {
+    if (avoid.has(c)) {
+      // The user wants less of this: little of it here is the good news.
+      if (scores[c] <= 100 - HIGH) reasons.push(`Little ${label.toLowerCase()} here, as you prefer${facts ? `: ${facts[c]}` : ""}.`);
+      else if (scores[c] > 100 - LOW) {
+        considerations.push(`There is more ${label.toLowerCase()} here than you wanted${facts ? `: ${facts[c]}` : ""}.`);
+      }
+    } else if (scores[c] >= HIGH) {
       reasons.push(
         facts
           ? `${label}: ${facts[c]}.`
@@ -69,7 +78,7 @@ export function explainMatch(
 
   // Low-priority categories that are weak don't matter; strong ones are a bonus.
   const bonus = CATEGORIES.filter(
-    (c: Category) => weights[c] < PRIORITY_WEIGHT && scores[c] >= 80,
+    (c: Category) => weights[c] < PRIORITY_WEIGHT && scores[c] >= 80 && !avoid.has(c),
   );
   for (const c of bonus) {
     reasons.push(`Bonus: ${CATEGORY_LABELS[c].toLowerCase()} is also strong here.`);

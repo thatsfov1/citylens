@@ -39,3 +39,10 @@ test("nearPlace is optional and validated", () => {
   assert.equal(r.nearPlace?.query, "AGH");
   assert.throws(() => parseChatOutput(JSON.stringify({ ...base, nearPlace: { query: "AGH", radiusM: 777 } })));
 });
+
+test("avoid is optional and limited to known categories", () => {
+  const base = { reply: "ok", importance: null, stages: null };
+  assert.equal(parseChatOutput(JSON.stringify(base)).avoid, undefined);
+  assert.deepEqual(parseChatOutput(JSON.stringify({ ...base, avoid: ["shopping"] })).avoid, ["shopping"]);
+  assert.throws(() => parseChatOutput(JSON.stringify({ ...base, avoid: ["noise"] })));
+});

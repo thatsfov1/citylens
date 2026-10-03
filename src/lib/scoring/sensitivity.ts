@@ -1,6 +1,6 @@
 import { CATEGORIES, type Category, type HexData } from "../../types";
 import { bandOf } from "../map/zones";
-import { calculatePersonalScore } from "./personal-score";
+import { createScorer, type Avoid } from "./personal-score";
 import { percentileRanks } from "./percentile";
 import type { Importance } from "./preferences";
 import { normalizeWeights } from "./weights";
@@ -19,9 +19,9 @@ export type Sensitivity = {
   fragile: Nudge[];
 };
 
-function bandUnder(hexes: HexData[], index: number, importance: Importance): number {
-  const weights = normalizeWeights(importance);
-  const pct = percentileRanks(hexes.map((h) => calculatePersonalScore(h.scores, weights)));
+function bandUnder(hexes: HexData[], index: number, importance: Importance, avoid: Avoid): number {
+  const score = createScorer(hexes, normalizeWeights(importance), avoid);
+  const pct = percentileRanks(hexes.map((h) => score(h.scores)));
   return bandOf(pct[index]);
 }
 
@@ -33,11 +33,12 @@ export function computeSensitivity(
   hexes: HexData[],
   h3Index: string,
   importance: Importance,
+  avoid: Avoid = new Set(),
 ): Sensitivity | null {
   const index = hexes.findIndex((h) => h.h3Index === h3Index);
   if (index < 0 || CATEGORIES.every((c) => importance[c] <= 0)) return null;
 
-  const baseBand = bandUnder(hexes, index, importance);
+  const baseBand = bandUnder(hexes, index, importance, avoid);
   const fragile: Nudge[] = [];
   for (const category of CATEGORIES) {
     const current = importance[category];
@@ -49,7 +50,7 @@ export function computeSensitivity(
       if (value === current) continue; // clamped: nothing changes
       const next = { ...importance, [category]: value };
       if (CATEGORIES.every((c) => next[c] <= 0)) continue;
-      const band = bandUnder(hexes, index, next);
+      const band = bandUnder(hexes, index, next, avoid);
       if (band !== baseBand) fragile.push({ category, direction, band });
     }
   }

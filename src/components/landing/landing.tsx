@@ -9,7 +9,7 @@ import { OsmAttribution } from "@/components/osm-attribution";
 import { importanceToQuery, type Importance } from "@/lib/scoring/preferences";
 import { stagesToParam } from "@/lib/scoring/education";
 import { anchorToQuery, type Anchor } from "@/lib/scoring/anchor";
-import type { EducationStage } from "@/types";
+import type { Category, EducationStage } from "@/types";
 import { ChatPanel } from "./chat-panel";
 
 export function Landing({ initial }: { initial?: Importance }) {
@@ -17,6 +17,7 @@ export function Landing({ initial }: { initial?: Importance }) {
   const [importance, setImportance] = useState<Importance | null>(initial ?? null);
   const [stages, setStages] = useState<EducationStage[] | null>(null);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
+  const [avoid, setAvoid] = useState<Category[] | null>(null);
 
   return (
     <main className="relative isolate flex min-h-screen flex-col overflow-hidden bg-white text-[#222823]">
@@ -47,10 +48,11 @@ export function Landing({ initial }: { initial?: Importance }) {
         <section className="relative flex items-center justify-center px-5 py-8 sm:px-8 lg:px-10">
           <div className="w-full max-w-xl">
             <ChatPanel
-              onImportance={(i, nextStages, nextAnchor) => {
+              onImportance={(i, nextStages, nextAnchor, nextAvoid) => {
                 setImportance(i);
                 setStages(nextStages?.length ? nextStages : null);
                 setAnchor(nextAnchor);
+                setAvoid(nextAvoid?.length ? nextAvoid : null);
               }}
             />
             {importance && (
@@ -58,7 +60,7 @@ export function Landing({ initial }: { initial?: Importance }) {
                 type="button"
                 onClick={() => {
                   const edu = importance.education > 0 && stages ? stagesToParam(stages) : null;
-                  router.push(`/map?${importanceToQuery(importance)}${edu ? `&edu=${edu}` : ""}${anchor ? `&${anchorToQuery(anchor)}` : ""}`);
+                  router.push(`/map?${importanceToQuery(importance)}${edu ? `&edu=${edu}` : ""}${anchor ? `&${anchorToQuery(anchor)}` : ""}${avoid ? `&avoid=${avoid.join(",")}` : ""}`);
                 }}
                 className="mt-5 h-12 w-full justify-between rounded-none bg-[#252d27] px-5 text-sm font-normal text-white hover:bg-[#39443b]"
               >

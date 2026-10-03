@@ -9,11 +9,11 @@ import { cellPolygon } from "@/lib/h3/grid";
 import { GREEN_COLOR, PLACE_COLORS, circleRing, placeTitle } from "@/lib/map/places";
 import { placeIconId, registerPlaceIcons } from "@/lib/map/place-icons";
 import { KRAKOW_BOUNDS, boundaryFeature, outsideMaskFeature } from "@/lib/h3/mask";
-import { calculatePersonalScore } from "@/lib/scoring/personal-score";
+import type { Scorer } from "@/lib/scoring/personal-score";
 import { percentileRanks } from "@/lib/scoring/percentile";
 import { BAND_COLORS, BAND_LABELS, bandOf, districtLayers, topZone } from "@/lib/map/zones";
 import { heatDataUrl, type HeatInput } from "@/lib/map/heat-field";
-import { CATEGORIES, type Category, type CategoryWeights, type HexData, type MapMode, type PlacesResponse } from "@/types";
+import { CATEGORIES, type Category, type HexData, type MapMode, type PlacesResponse } from "@/types";
 
 const SOURCE = "hexes";
 const HEAT_SOURCE = "heat";
@@ -110,7 +110,8 @@ type Tip = { x: number; y: number; district: string; label: string; value: strin
 
 type Props = {
   hexes: HexData[];
-  weights: CategoryWeights;
+  /** Personal match for a hexagon (relative to the city, see createScorer). */
+  score: Scorer;
   mode: MapMode;
   selected: string | null;
   onSelect: (h3Index: string | null) => void;
@@ -189,7 +190,7 @@ function cornerAt(selected: string, degrees: number): [number, number] {
   return cellToBoundary(selected).reduce((best, v) => (diff(v) < diff(best) ? v : best)) as [number, number];
 }
 
-export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, badges, compared, onBadge }: Props) {
+export function HexMap({ hexes, score, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, badges, compared, onBadge }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -224,7 +225,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
   const greenGeoJson = pinCategories.has("greenery") && places ? places.green : EMPTY;
 
   const { geojson, fields, tops } = useMemo(() => {
-    const personal = hexes.map((h) => calculatePersonalScore(h.scores, weights));
+    const personal = hexes.map((h) => score(h.scores));
     const pct: Record<string, number[]> = { forYou: percentileRanks(personal) };
     for (const c of CATEGORIES) {
       pct[c] = percentileRanks(hexes.map((h) => h.scores[c]));
@@ -275,7 +276,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       })),
     };
     return { geojson, fields, tops };
-  }, [hexes, weights, minSafety, outside]);
+  }, [hexes, score, minSafety, outside]);
 
   const districts = useMemo(() => districtLayers(hexes), [hexes]);
 

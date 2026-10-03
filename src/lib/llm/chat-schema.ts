@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EDUCATION_STAGES } from "../../types";
+import { CATEGORIES, EDUCATION_STAGES } from "../../types";
 import type { Anchor } from "../scoring/anchor";
 import { importanceSchema, snapImportance } from "../scoring/preferences";
 
@@ -28,6 +28,8 @@ export const chatOutputSchema = z.object({
   importance: importanceSchema.nullable(),
   /** Education life stages the user mentioned (e.g. a toddler → kindergarten); null when none were mentioned. */
   stages: z.array(z.enum(EDUCATION_STAGES)).nullable(),
+  /** Categories the user explicitly wants LESS of (quiet, few shops…); null/absent when none. */
+  avoid: z.array(z.enum(CATEGORIES)).nullish(),
   /** A place the user wants to be near, copied as they wrote it; the server resolves it from data. Null when none. */
   nearPlace: z
     .object({

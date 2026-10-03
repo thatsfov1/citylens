@@ -411,3 +411,18 @@ changes a score.
 - Limits: a place missing from `pois` resolves only if Nominatim is reachable; the best match is picked automatically
   (exact name, then anchor-like kind), no disambiguation UI; no pin for the anchor on the map; "Adjust preferences"
   does not carry the anchor back to the landing page.
+
+
+## Relative match score and "prefer less of"
+
+- **Personal match is relative to the city** (`createScorer`, `src/lib/scoring/personal-score.ts`): each category is
+  measured in standard deviations from the city mean, weighted, and mapped to 0–100 (50 = typical, 25 points per
+  deviation, clamped). A category where every hex scores 90–100 therefore can't decide the result just because it is the
+  biggest number. The stored category scores and the per-category breakdown are untouched; only the "match" number and
+  its colours change. `calculatePersonalScore` (plain weighted sum) remains the fallback when no scorer is passed.
+- **`avoid`** = categories the user wants LESS of (`?avoid=shopping,culture`; LLM field `avoid`; map "Filters → Prefer
+  less of"). Importance still says how much; the category's z-score is flipped. Importance 0 = "don't care" and is not
+  avoid. Explanations flip too ("Little shopping here, as you prefer" / "more shopping than you wanted") and the
+  first-match contributor skips avoided categories.
+- Measured on the 461 loaded hexes (top 10% for four different profiles): only 3 hexes were in all four sets with the
+  plain sum and 2 with the relative score, so dominance by one "good at everything" area is milder than feared on real data.

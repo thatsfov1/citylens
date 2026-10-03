@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, GraduationCap, Hexagon, MapPin, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
+import { ArrowLeft, GraduationCap, Hexagon, MapPin, Minus, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 import { AirSection, AreaPanel, SafetySection, type PanelView } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { CompareTray } from "./compare-tray";
@@ -21,12 +21,15 @@ import { fetchCached } from "@/lib/map/hex-cache";
 import { defaultPinCategories } from "@/lib/map/places";
 import { NO_DATA_COLOR } from "@/lib/map/zones";
 import { computeSensitivity } from "@/lib/scoring/sensitivity";
-import { MIN_SAFETY_LEVELS, importanceToQuery, type Importance } from "@/lib/scoring/preferences";
+import { MIN_SAFETY_LEVELS, avoidToQuery, importanceToQuery, type Importance } from "@/lib/scoring/preferences";
+import { createScorer } from "@/lib/scoring/personal-score";
 import { stagesToParam, withEducationStages } from "@/lib/scoring/education";
 import { formatRadius, hexesOutsideAnchor, type Anchor } from "@/lib/scoring/anchor";
 import { normalizeWeights } from "@/lib/scoring/weights";
 import type { HexSource, HexDetails } from "@/lib/supabase/hex-scores";
 import {
+  CATEGORIES,
+  CATEGORY_LABELS,
   EDUCATION_STAGES,
   EDUCATION_STAGE_LABELS,
   type Category,
@@ -44,6 +47,7 @@ export function MapExperience({
   initialMinSafety = 0,
   initialStages = [...EDUCATION_STAGES],
   anchor = null,
+  initialAvoid,
 }: {
   hexes: HexData[];
   source: HexSource;
@@ -54,6 +58,8 @@ export function MapExperience({
   initialStages?: EducationStage[];
   /** A place the user wants to be near (`?near=`): hexes beyond its radius are dimmed. */
   anchor?: Anchor | null;
+  /** Categories the user wants less of (`?avoid=`). */
+  initialAvoid?: ReadonlySet<Category>;
 }) {
   const [mode, setMode] = useState<MapMode>("forYou");
   // Safety is optional data: the view and the filter only appear when cells carry safety indicators.
@@ -81,6 +87,18 @@ export function MapExperience({
     window.history.replaceState(null, "", url);
   };
   const viewHexes = useMemo(() => withEducationStages(hexes, stages), [hexes, stages]);
+  // Categories the user wants less of (quiet, few shops…): their score counts in reverse. Kept in the URL.
+  const [avoid, setAvoid] = useState<ReadonlySet<Category>>(() => new Set(initialAvoid));
+  const toggleAvoid = (c: Category) => {
+    const next = new Set(avoid);
+    if (!next.delete(c)) next.add(c);
+    setAvoid(next);
+    const url = new URL(window.location.href);
+    const param = avoidToQuery(next);
+    if (param) url.searchParams.set("avoid", param);
+    else url.searchParams.delete("avoid");
+    window.history.replaceState(null, "", url);
+  };
   // Hexes beyond the anchor's radius; ignored when the place lies outside the city (nothing would be left).
   const outside = useMemo(() => {
     if (!anchor) return undefined;
@@ -90,9 +108,11 @@ export function MapExperience({
   const showStageFilter = hasStages && (mode === "education" || (mode === "forYou" && importance.education > 0));
   const [selected, setSelected] = useState<string | null>(null);
   const weights = useMemo(() => normalizeWeights(importance), [importance]);
+  // Match relative to the city, so a centre that is strong on everything cannot win every preference by default.
+  const score = useMemo(() => createScorer(viewHexes, weights, avoid), [viewHexes, weights, avoid]);
   const sensitivity = useMemo(
-    () => (selected ? computeSensitivity(viewHexes, selected, importance) : null),
-    [viewHexes, selected, importance],
+    () => (selected ? computeSensitivity(viewHexes, selected, importance, avoid) : null),
+    [viewHexes, selected, importance, avoid],
   );
   // Areas the user is considering (up to three), compared side by side.
   const [compared, setCompared] = useState<string[]>([]);
@@ -100,7 +120,7 @@ export function MapExperience({
     if (!selected) return;
     setCompared((c) => (c.includes(selected) ? c.filter((x) => x !== selected) : c.length < MAX_COMPARED ? [...c, selected] : c));
   };
-  const comparison = useMemo(() => compareAreas(viewHexes, compared, weights), [viewHexes, compared, weights]);
+  const comparison = useMemo(() => compareAreas(viewHexes, compared, weights, score), [viewHexes, compared, weights, score]);
   const hex = useMemo(
     () => (selected ? (viewHexes.find((h) => h.h3Index === selected) ?? null) : null),
     [viewHexes, selected],
@@ -222,14 +242,14 @@ export function MapExperience({
   useEffect(() => {
     if (autoPicked.current || source !== "supabase") return;
     autoPicked.current = true;
-    const ids = strongestAreas(outside ? viewHexes.filter((h) => !outside.has(h.h3Index)) : viewHexes, weights, minSafety);
+    const ids = strongestAreas(outside ? viewHexes.filter((h) => !outside.has(h.h3Index)) : viewHexes, weights, minSafety, score);
     if (ids.length === 0) return;
     // One-shot after mount on purpose: selecting here goes through the same fly-in as a click on the map.
     /* eslint-disable react-hooks/set-state-in-effect */
     setFirst({ ids, i: 0 });
     setSelected(ids[0]);
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [source, viewHexes, weights, minSafety, outside]);
+  }, [source, viewHexes, weights, minSafety, outside, score]);
   const compareAnother = () => {
     if (!first) return;
     const i = (first.i + 1) % first.ids.length;
@@ -239,9 +259,9 @@ export function MapExperience({
   // Only while its area is the selected one and the data-backed facts have loaded (no generic text).
   const firstMatch = useMemo(() => {
     if (!first || !hex || view || selected !== first.ids[first.i] || !details?.indicators) return null;
-    const ex = explainMatch(hex.scores, weights, describeAll(details.indicators, stages));
-    return { ex, contributor: placesView ? topContributor(placesView, weights) : null };
-  }, [first, hex, view, selected, details, weights, stages, placesView]);
+    const ex = explainMatch(hex.scores, weights, describeAll(details.indicators, stages), { score, avoid });
+    return { ex, contributor: placesView ? topContributor(placesView, weights, avoid) : null };
+  }, [first, hex, view, selected, details, weights, stages, placesView, score, avoid]);
 
   // Info window opened from a safety / air badge on the hexagon; tied to the hexagon like the panel detail.
   const [badgeInfo, setBadgeInfo] = useState<{ hex: string | null; kind: "safety" | "air" | "works" | null }>({ hex: null, kind: null });
@@ -249,8 +269,8 @@ export function MapExperience({
 
   // Filters (safety level, education stages) live in their own window so the side panel stays a summary.
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const hasFilters = hasSafety || showStageFilter;
-  const activeFilters = (minSafety > 0 ? 1 : 0) + (hasStages && stages.length < EDUCATION_STAGES.length ? 1 : 0);
+  const hasFilters = true; // "prefer less of" is always available
+  const activeFilters = avoid.size + (minSafety > 0 ? 1 : 0) + (hasStages && stages.length < EDUCATION_STAGES.length ? 1 : 0);
 
   const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
   const [focusPlace, setFocusPlace] = useState<{ id: number; n: number } | null>(null);
@@ -259,7 +279,7 @@ export function MapExperience({
     <div className="relative flex-1 overflow-hidden">
       <HexMap
         hexes={viewHexes}
-        weights={weights}
+        score={score}
         mode={mode}
         selected={selected}
         onSelect={setSelected}
@@ -293,6 +313,7 @@ export function MapExperience({
           >
             <X className="size-4" />
           </button>
+          <AvoidFilter importance={importance} value={avoid} onToggle={toggleAvoid} />
           {hasSafety && <SafetyFilter value={minSafety} onChange={changeMinSafety} inline />}
           {showStageFilter && <StageFilter value={stages} onToggle={toggleStage} inline />}
         </section>
@@ -376,6 +397,7 @@ export function MapExperience({
           indicators={details?.indicators ?? null}
           source={source}
           weights={weights}
+          scoring={{ score, avoid }}
           sensitivity={sensitivity}
           stages={stages}
           onClose={() => setSelected(null)}
@@ -408,6 +430,37 @@ export function MapExperience({
       />
 
       <Legend mode={mode} minSafety={minSafety} />
+    </div>
+  );
+}
+
+function AvoidFilter({ importance, value, onToggle }: { importance: Importance; value: ReadonlySet<Category>; onToggle: (c: Category) => void }) {
+  const cats = CATEGORIES.filter((c) => importance[c] > 0);
+  if (cats.length === 0) return null;
+  return (
+    <div className="mb-4">
+      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <Minus className="size-3.5" />
+        Prefer less of
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {cats.map((c) => (
+          <button
+            key={c}
+            type="button"
+            aria-pressed={value.has(c)}
+            onClick={() => onToggle(c)}
+            className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+              value.has(c) ? "border-slate-800 bg-slate-800 text-white" : "border-border bg-white hover:bg-muted"
+            }`}
+          >
+            {CATEGORY_LABELS[c]}
+          </button>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
+        Areas with less of the selected categories match better, for example quieter areas with fewer shops.
+      </p>
     </div>
   );
 }
