@@ -42,7 +42,7 @@ test("explanation reflects priorities and weak spots", () => {
   const weights = { sport: 0.25, culture: 0.3, greenery: 0.2, shopping: 0.05, transport: 0.2, education: 0 };
   const ex = explainMatch(scores, weights);
   assert.ok(ex.reasons.length > 0);
-  assert.ok(ex.considerations.some((c) => c.startsWith("Culture")));
+  assert.ok(ex.considerations.some((c) => c.includes("kultura")));
 });
 
 test("percentileRanks spans 0–1 and handles ties", async () => {

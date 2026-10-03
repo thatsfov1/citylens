@@ -18,17 +18,17 @@ export function CompareTray({ comparison, selected, onSelect, onRemove, onClear 
   return (
     <section className="pointer-events-auto absolute inset-x-3 top-44 max-h-[30%] overflow-y-auto rounded-2xl border border-border/70 bg-white/95 px-4 py-3 shadow-2xl backdrop-blur sm:inset-x-auto sm:right-[24rem] sm:top-16 sm:max-h-[calc(100%-5.5rem)] sm:w-[26rem]">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Comparing {areas.length}</div>
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Porównanie: {areas.length}</div>
         <button onClick={onClear} className="text-[11px] text-muted-foreground underline-offset-2 hover:underline">
-          Clear
+          Wyczyść
         </button>
       </div>
       {summary && (
         <p className="mt-2 text-sm leading-snug text-slate-800">
           {summary.kind === "close"
-            ? "These areas match you about equally. Look at the rows below to see how they differ."
-            : `${areas[summary.index].label} is the stronger match for you (+${summary.gap})${
-                summary.driver ? `, mainly on ${CATEGORY_LABELS[summary.driver].toLowerCase()}` : ""
+            ? "Te obszary pasują do Ciebie mniej więcej tak samo. Zobacz wiersze poniżej, aby sprawdzić, czym się różnią."
+            : `${areas[summary.index].label} pasuje do Ciebie lepiej (+${summary.gap})${
+                summary.driver ? `, głównie w kategorii „${CATEGORY_LABELS[summary.driver].toLowerCase()}”` : ""
               }.`}
         </p>
       )}
@@ -46,7 +46,7 @@ export function CompareTray({ comparison, selected, onSelect, onRemove, onClear 
                   >
                     {a.label}
                   </button>
-                  <button onClick={() => onRemove(a.h3Index)} aria-label="Remove from comparison" className="rounded p-0.5 text-muted-foreground hover:bg-muted">
+                  <button onClick={() => onRemove(a.h3Index)} aria-label="Usuń z porównania" className="rounded p-0.5 text-muted-foreground hover:bg-muted">
                     <X className="size-3" />
                   </button>
                 </div>
@@ -56,7 +56,7 @@ export function CompareTray({ comparison, selected, onSelect, onRemove, onClear 
         </thead>
         <tbody>
           <tr className="border-t border-border/70">
-            <td className="py-1 text-muted-foreground">Match</td>
+            <td className="py-1 text-muted-foreground">Dopasowanie</td>
             {areas.map((a, i) => (
               <td key={a.h3Index} className={cn("py-1 text-center text-sm tabular-nums", matchLeads[i] ? "font-semibold text-emerald-700" : "")}>
                 {a.match}%
@@ -76,7 +76,7 @@ export function CompareTray({ comparison, selected, onSelect, onRemove, onClear 
         </tbody>
       </table>
       <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
-        Rows that differ most for your priorities come first; green marks the higher score. A lower score is a different fit, not a worse place.
+        Najpierw wiersze, które przy Twoich priorytetach różnią się najbardziej; zielony kolor oznacza wyższy wynik. Niższy wynik to inne dopasowanie, a nie gorsze miejsce.
       </p>
     </section>
   );

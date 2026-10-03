@@ -1,54 +1,59 @@
 import { EDUCATION_STAGES, type Category, type EducationStage, type HexIndicators } from "../../types";
+import { dec, plCount } from "../format/pl";
 import { airLevel } from "../data/air";
 import { CCTV_RADIUS_M, EMERGENCY_REACH_M, LIGHTING_RADIUS_M, NIGHTLIFE_RADIUS_M, partShares, type SafetyPart } from "../data/safety";
 
 // Turns stored OSM indicators into short, factual sentences. Deterministic; no LLM involved.
 
 const KIND_LABELS: Record<string, string> = {
-  sports_centre: "sports centre",
-  stadium: "stadium",
-  fitness_centre: "fitness centre",
-  swimming_pool: "swimming pool",
-  pitch: "sports pitch",
-  museum: "museum",
-  gallery: "gallery",
-  theatre: "theatre",
-  cinema: "cinema",
-  arts_centre: "arts centre",
-  library: "library",
-  community_centre: "community centre",
-  attraction: "tourist attraction",
-  viewpoint: "viewpoint",
-  music_venue: "music venue",
-  concert_hall: "concert hall",
-  nightclub: "nightclub",
-  historic_castle: "castle",
-  historic_monument: "monument",
-  historic_manor: "manor",
+  sports_centre: "centrum sportowe",
+  stadium: "stadion",
+  fitness_centre: "siłownia",
+  swimming_pool: "basen",
+  pitch: "boisko",
+  museum: "muzeum",
+  gallery: "galeria",
+  theatre: "teatr",
+  cinema: "kino",
+  arts_centre: "centrum sztuki",
+  library: "biblioteka",
+  community_centre: "dom kultury",
+  attraction: "atrakcja turystyczna",
+  viewpoint: "punkt widokowy",
+  music_venue: "klub muzyczny",
+  concert_hall: "sala koncertowa",
+  nightclub: "klub nocny",
+  historic_castle: "zamek",
+  historic_monument: "pomnik",
+  historic_manor: "dwór",
   historic_fort: "fort",
-  mall: "shopping mall",
-  department_store: "department store",
+  mall: "centrum handlowe",
+  department_store: "dom towarowy",
   supermarket: "supermarket",
-  rail_station: "railway station",
-  tram_stop: "tram stop",
-  bus_stop: "bus stop",
-  kindergarten: "kindergarten",
-  childcare: "nursery",
-  primary_school: "primary school",
-  secondary_school: "secondary school",
-  school: "school",
-  university: "university",
-  college: "college",
+  convenience: "sklep osiedlowy",
+  rail_station: "stacja kolejowa",
+  tram_stop: "przystanek tramwajowy",
+  bus_stop: "przystanek autobusowy",
+  kindergarten: "przedszkole",
+  childcare: "żłobek",
+  primary_school: "szkoła podstawowa",
+  secondary_school: "szkoła średnia",
+  school: "szkoła",
+  university: "uniwersytet",
+  college: "uczelnia",
 };
 
-const NOUNS: Record<Exclude<Category, "greenery" | "education">, [singular: string, plural: string]> = {
-  sport: ["sports facility", "sports facilities"],
-  culture: ["cultural venue", "cultural venues"],
-  shopping: ["shop", "shops"],
-  transport: ["stop or station", "stops and stations"],
+/** [one, few, many]: "1 sklep", "2 sklepy", "5 sklepów" (many doubles as the genitive plural: "brak sklepów"). */
+type Noun = [one: string, few: string, many: string];
+
+const NOUNS: Record<Exclude<Category, "greenery" | "education">, Noun> = {
+  sport: ["obiekt sportowy", "obiekty sportowe", "obiektów sportowych"],
+  culture: ["miejsce kultury", "miejsca kultury", "miejsc kultury"],
+  shopping: ["sklep", "sklepy", "sklepów"],
+  transport: ["przystanek lub stacja", "przystanki lub stacje", "przystanków lub stacji"],
 };
 
-const metres = (m: number) => (m >= 950 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`);
+const metres = (m: number) => (m >= 950 ? `${(m / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(m / 10) * 10} m`);
 
 function kindLabel(kind: string): string {
   return KIND_LABELS[kind] ?? kind.replace(/_/g, " ");
@@ -58,9 +63,9 @@ function kindLabel(kind: string): string {
 const IGNORED_KINDS = new Set(["vacant", "disused", "closed", "no"]);
 
 function describeNearest(n: { name: string | null; kind: string; distanceM: number; departuresPerHour?: number }): string {
-  const service = n.departuresPerHour !== undefined ? `, ~${perHour(n.departuresPerHour)} departures/h` : "";
-  const what = n.name ? `${n.name} (${kindLabel(n.kind)}${service})` : `a ${kindLabel(n.kind)}${service}`;
-  return `${what}, ${metres(n.distanceM)} away`;
+  const service = n.departuresPerHour !== undefined ? `, ~${perHour(n.departuresPerHour)} odjazdów/godz.` : "";
+  const what = n.name ? `${n.name} (${kindLabel(n.kind)}${service})` : `${kindLabel(n.kind)}${service}`;
+  return `${what}, ${metres(n.distanceM)} stąd`;
 }
 
 const perHour = (d: number) => (d >= 10 ? Math.round(d) : Math.round(d * 10) / 10);
@@ -71,52 +76,52 @@ export function describeCategory(category: Category, ind: HexIndicators): string
     const g = ind.greenery;
     const cover = Math.round(g.coverShare * 100);
     const park = g.nearestPark
-      ? `${g.nearestPark.name ?? "A green area"} (${g.nearestPark.areaHa} ha), ${g.nearestPark.distanceM === 0 ? "you are inside it" : `${metres(g.nearestPark.distanceM)} away`}`
-      : "no large park within 1 km";
-    return `${park}; ~${cover}% green cover within 500 m`;
+      ? `${g.nearestPark.name ?? "Teren zielony"} (${String(g.nearestPark.areaHa).replace(".", ",")} ha), ${g.nearestPark.distanceM === 0 ? "jesteś w jego granicach" : `${metres(g.nearestPark.distanceM)} stąd`}`
+      : "brak dużego parku w promieniu 1 km";
+    return `${park}; ~${cover}% terenów zielonych w promieniu 500 m`;
   }
   if (category === "education") return describeEducation(ind);
   const i = ind[category];
-  const [one, many] = NOUNS[category];
-  if (!i.nearest) return `no ${many} within ${(i.radiusM ?? 1000) / 1000} km`;
+  const noun = NOUNS[category];
+  if (!i.nearest) return `brak: ${noun[2]} w promieniu ${(i.radiusM ?? 1000) / 1000} km`;
   // GTFS-backed transport also reports how often those stops are served.
   const service =
-    i.departuresPerHourWithin500 !== undefined ? ` (~${perHour(i.departuresPerHourWithin500)} departures/h on weekdays)` : "";
+    i.departuresPerHourWithin500 !== undefined ? ` (~${perHour(i.departuresPerHourWithin500)} odjazdów/godz. w dni robocze)` : "";
   const count =
     i.within500 > 0
-      ? `${i.within500} ${i.within500 === 1 ? one : many} within 500 m${service}`
+      ? `${plCount(i.within500, ...noun)} w promieniu 500 m${service}`
       : i.within1000 > 0
-        ? `none within 500 m`
-        : `none within 1 km`;
+        ? `brak w promieniu 500 m`
+        : `brak w promieniu 1 km`;
   if (IGNORED_KINDS.has(i.nearest.kind)) return count;
-  return `${count}; nearest: ${describeNearest(i.nearest)}`;
+  return `${count}; najbliżej: ${describeNearest(i.nearest)}`;
 }
 
 /** Plain-words limits of the education score, shown next to it. */
 export const EDUCATION_CAVEAT =
-  "Counts schools and kindergartens nearby (OpenStreetMap). It says nothing about quality, free places or which school your address is assigned to.";
+  "Liczy pobliskie szkoły i przedszkola (OpenStreetMap). Nic nie mówi o jakości, wolnych miejscach ani o tym, do której szkoły przypisany jest Twój adres.";
 
-const STAGE_NOUNS: Record<EducationStage, [singular: string, plural: string]> = {
-  kindergarten: ["kindergarten or nursery", "kindergartens and nurseries"],
-  primary: ["primary school", "primary schools"],
-  secondary: ["secondary school", "secondary schools"],
-  university: ["university or college", "universities and colleges"],
+const STAGE_NOUNS: Record<EducationStage, Noun> = {
+  kindergarten: ["przedszkole lub żłobek", "przedszkola lub żłobki", "przedszkoli lub żłobków"],
+  primary: ["szkoła podstawowa", "szkoły podstawowe", "szkół podstawowych"],
+  secondary: ["szkoła średnia", "szkoły średnie", "szkół średnich"],
+  university: ["uczelnia", "uczelnie", "uczelni"],
 };
 
 /**
- * Education access for the selected life stages, one clause per stage ("2 primary schools within 1 km; nearest: …").
+ * Education access for the selected life stages, one clause per stage ("2 szkoły podstawowe w promieniu 1 km; najbliżej: …").
  * Counts come from the stored per-stage indicators; nothing is generated.
  */
 export function describeEducation(ind: HexIndicators, stages: readonly EducationStage[] = EDUCATION_STAGES): string {
   const edu = ind.education;
-  if (!edu) return "no education data for this area yet";
+  if (!edu) return "brak jeszcze danych o edukacji dla tego obszaru";
   const parts = EDUCATION_STAGES.filter((s) => stages.includes(s)).map((s) => {
     const i = edu.stages[s];
-    const [one, many] = STAGE_NOUNS[s];
-    if (!i.nearest) return `no ${many} within ${(i.radiusM ?? 1000) / 1000} km`;
+    const noun = STAGE_NOUNS[s];
+    if (!i.nearest) return `brak: ${noun[2]} w promieniu ${(i.radiusM ?? 1000) / 1000} km`;
     const n = i.within1000;
     const near = describeNearest(i.nearest);
-    return n > 0 ? `${n} ${n === 1 ? one : many} within 1 km; nearest: ${near}` : `nearest ${one}: ${near}`;
+    return n > 0 ? `${plCount(n, ...noun)} w promieniu 1 km; najbliżej: ${near}` : `${noun[0]}: brak w promieniu 1 km; najbliżej: ${near}`;
   });
   return parts.join(" · ");
 }
@@ -166,9 +171,9 @@ export function describeSafetyParts(ind: HexIndicators): SafetyPartInfo[] {
     out.push(
       info(
         "crime",
-        "Reported crime",
-        "Crimes reported by the police in this police area, per 1,000 residents, compared with the other areas. Fewer is better.",
-        `${crime.per1000} reported crimes per 1,000 residents in police area ${crime.area} (${crime.year}); city: ${crime.cityPer1000}`,
+        "Zgłoszone przestępstwa",
+        "Przestępstwa zgłoszone policji w tym rejonie, na 1000 mieszkańców, w porównaniu z innymi obszarami. Im mniej, tym lepiej.",
+        `${dec(crime.per1000)} zgłoszonych przestępstw na 1000 mieszkańców w rejonie policji ${crime.area} (${crime.year}); średnia dla miasta: ${dec(crime.cityPer1000)}`,
       ),
     );
   }
@@ -176,9 +181,9 @@ export function describeSafetyParts(ind: HexIndicators): SafetyPartInfo[] {
     out.push(
       info(
         "lighting",
-        "Street lighting at night",
-        `Of the streets and paths within ${metres(LIGHTING_RADIUS_M)} that OpenStreetMap mappers tagged as lit or unlit, the share that is lit. Well-lit streets feel safer after dark. Compared with the other areas of Kraków.`,
-        `${lighting.lit} of ${lighting.segments} tagged street segments are lit (mappers rarely tag “unlit”, so this leans optimistic)`,
+        "Oświetlenie ulic nocą",
+        `Spośród ulic i ścieżek w promieniu ${metres(LIGHTING_RADIUS_M)}, które autorzy map w OpenStreetMap oznaczyli jako oświetlone lub nieoświetlone, odsetek oświetlonych. Dobrze oświetlone ulice dają większe poczucie bezpieczeństwa po zmroku. W porównaniu z innymi obszarami Krakowa.`,
+        `${lighting.lit} z ${lighting.segments} oznaczonych odcinków ulic jest oświetlonych (rzadko oznacza się „nieoświetlone”, więc wynik jest raczej optymistyczny)`,
       ),
     );
   }
@@ -186,21 +191,21 @@ export function describeSafetyParts(ind: HexIndicators): SafetyPartInfo[] {
     out.push(
       info(
         "cctv",
-        "Cameras (CCTV)",
-        `Surveillance cameras mapped in OpenStreetMap within ${metres(CCTV_RADIUS_M)}. More cameras means more of the area is watched. Compared with the other areas.`,
-        `${cctv.cameras} mapped ${cctv.cameras === 1 ? "camera" : "cameras"} within ${metres(CCTV_RADIUS_M)}`,
+        "Kamery (monitoring)",
+        `Kamery monitoringu zmapowane w OpenStreetMap w promieniu ${metres(CCTV_RADIUS_M)}. Więcej kamer oznacza, że większa część obszaru jest obserwowana. W porównaniu z innymi obszarami.`,
+        `${plCount(cctv.cameras, "zmapowana kamera", "zmapowane kamery", "zmapowanych kamer")} w promieniu ${metres(CCTV_RADIUS_M)}`,
       ),
     );
   }
   if (emergency) {
     const near = (label: string, d: number | null) => (d === null ? null : `${label} ${metres(d)}`);
-    const list = [near("police", emergency.police), near("fire station", emergency.fire), near("hospital or clinic", emergency.hospital)].filter(Boolean);
+    const list = [near("policja", emergency.police), near("straż pożarna", emergency.fire), near("szpital lub przychodnia", emergency.hospital)].filter(Boolean);
     out.push(
       info(
         "emergency",
-        "Help nearby",
-        `Distance to the nearest police station (counts 40%), fire station (30%) and hospital or clinic (30%), up to ${metres(EMERGENCY_REACH_M)}. Closer help scores higher. Compared with the other areas.`,
-        list.length > 0 ? `Nearest: ${list.join(", ")}` : `No police, fire station or hospital within ${metres(EMERGENCY_REACH_M)}`,
+        "Pomoc w pobliżu",
+        `Odległość do najbliższego komisariatu policji (liczy się w 40%), jednostki straży pożarnej (30%) i szpitala lub przychodni (30%), do ${metres(EMERGENCY_REACH_M)}. Im bliżej pomoc, tym wyższy wynik. W porównaniu z innymi obszarami.`,
+        list.length > 0 ? `Najbliżej: ${list.join(", ")}` : `Brak policji, straży pożarnej i szpitala w promieniu ${metres(EMERGENCY_REACH_M)}`,
       ),
     );
   }
@@ -212,36 +217,38 @@ export function describeAir(ind: HexIndicators): string[] {
   const a = ind.air;
   if (!a) return [];
   const out: string[] = [];
-  if (a.pm10 !== undefined) out.push(`PM10 about ${a.pm10} µg/m³`);
-  if (a.pm25 !== undefined) out.push(`PM2.5 about ${a.pm25} µg/m³`);
+  if (a.pm10 !== undefined) out.push(`PM10 ok. ${a.pm10} µg/m³`);
+  if (a.pm25 !== undefined) out.push(`PM2.5 ok. ${a.pm25} µg/m³`);
   out.push(
-    `Interpolated from ${a.stations} ${a.stations === 1 ? "station" : "stations"}; the nearest, ${a.nearest.name}, is ${metres(a.nearest.distanceM)} away`,
+    `Interpolowane z danych ${a.stations} stacji; najbliższa, ${a.nearest.name}, jest ${metres(a.nearest.distanceM)} stąd`,
   );
   return out;
 }
 
+const AIR_LEVEL_PL = { good: "dobra", normal: "umiarkowana", bad: "zła", "very bad": "bardzo zła" } as const;
+
 /** One-line, plain-language reading of the air for a quick look; null when the area has no air data. */
 export function describeAirLevel(ind: HexIndicators): string | null {
   if (!ind.air) return null;
-  return `Usually ${airLevel(ind.air)} here: handy for a quick eyeball, not a precise reading.`;
+  return `Jakość powietrza jest tu zwykle ${AIR_LEVEL_PL[airLevel(ind.air)]}: to szybka orientacja, a nie dokładny odczyt.`;
 }
 
 /** What the air-quality figure can and cannot tell you. Shown in the panel. */
 export const AIR_CAVEAT =
-  "A recent snapshot (mean of the last few days of hourly readings), not an annual average, and an estimate between a handful of official stations rather than a measurement at this spot. Air changes a lot with season and weather. Source: GIOŚ.";
+  "To aktualna migawka (średnia z ostatnich kilku dni odczytów godzinowych), a nie średnia roczna, i oszacowanie pomiędzy kilkoma oficjalnymi stacjami, a nie pomiar w tym miejscu. Jakość powietrza mocno zmienia się z sezonem i pogodą. Źródło: GIOŚ.";
 
 /** Night-time context shown next to the safety level. Informational: not part of the score. */
 export function describeNightlife(ind: HexIndicators): string | null {
   const n = ind.safety?.nightlife;
   if (!n) return null;
   return n.venues > 0
-    ? `${n.venues} ${n.venues === 1 ? "bar, pub or club" : "bars, pubs and clubs"} within ${metres(NIGHTLIFE_RADIUS_M)}`
-    : `No bars, pubs or clubs within ${metres(NIGHTLIFE_RADIUS_M)}`;
+    ? `${plCount(n.venues, "bar, pub lub klub", "bary, puby i kluby", "barów, pubów i klubów")} w promieniu ${metres(NIGHTLIFE_RADIUS_M)}`
+    : `Brak barów, pubów i klubów w promieniu ${metres(NIGHTLIFE_RADIUS_M)}`;
 }
 
 /** What the safety level can and cannot tell you. Shown in the panel. */
 export const SAFETY_NOT_INCLUDED =
-  "Not included: crime and incident statistics (the police publish them only as press figures, not as open data), road accidents, and citizen reports (no public export). The level describes the surroundings, not what happened there, and it is not a verdict on an area.";
+  "Nie uwzględniono: statystyk przestępstw i zdarzeń (policja publikuje je tylko jako informacje prasowe, a nie dane otwarte), wypadków drogowych ani zgłoszeń mieszkańców (brak publicznego eksportu). Poziom opisuje otoczenie, a nie to, co się tam wydarzyło, i nie jest oceną obszaru.";
 
 /** Short facts for tests and plain-text uses: the fact line of every indicator. */
 export function describeSafety(ind: HexIndicators): string[] {

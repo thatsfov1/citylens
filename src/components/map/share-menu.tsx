@@ -14,7 +14,7 @@ type Props = {
   summary: string[];
 };
 
-const dateLabel = () => new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const dateLabel = () => new Date().toLocaleDateString("pl-PL", { day: "numeric", month: "short" });
 
 /** "Share" pill in the top-right corner: copy a link that reopens this exact view, or save it on this device. */
 export function ShareMenu({ getUrl, getQuery, summary }: Props) {
@@ -31,7 +31,7 @@ export function ShareMenu({ getUrl, getQuery, summary }: Props) {
   const toggle = () => {
     if (open) return setOpen(false);
     setUrl(getUrl());
-    setName(`Kraków picks · ${dateLabel()}`);
+    setName(`Wybory dla Krakowa · ${dateLabel()}`);
     setSaved(loadSaved());
     setSaveNote(null);
     setCopied(false);
@@ -66,7 +66,7 @@ export function ShareMenu({ getUrl, getQuery, summary }: Props) {
   const save = () => {
     const r = saveMap({ name, query: getQuery() });
     setSaved(r.list);
-    setSaveNote(r.ok ? "Saved on this device." : "Your browser blocked saving here, so use the link instead.");
+    setSaveNote(r.ok ? "Zapisano na tym urządzeniu." : "Przeglądarka zablokowała zapis, użyj więc linku.");
   };
 
   return (
@@ -81,16 +81,16 @@ export function ShareMenu({ getUrl, getQuery, summary }: Props) {
         }`}
       >
         <Share2 className="size-4" />
-        Share
+        Udostępnij
       </button>
 
       {open && (
         <div
           role="dialog"
-          aria-label="Share this map"
+          aria-label="Udostępnij tę mapę"
           className="absolute left-1/2 top-full z-20 mt-2 w-[22rem] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-2xl border border-border/70 bg-white/95 p-4 shadow-2xl backdrop-blur sm:left-auto sm:right-0 sm:translate-x-0"
         >
-          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">The link reopens</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Link otwiera ponownie</div>
           <ul className="mt-1.5 space-y-0.5 text-sm text-slate-700">
             {summary.map((line) => (
               <li key={line} className="flex gap-2">
@@ -105,7 +105,7 @@ export function ShareMenu({ getUrl, getQuery, summary }: Props) {
               ref={urlField}
               readOnly
               value={url}
-              aria-label="Link to this map"
+              aria-label="Link do tej mapy"
               onFocus={(e) => e.currentTarget.select()}
               className="min-w-0 flex-1 truncate rounded-full border border-border/70 bg-muted/60 px-3 py-1.5 text-xs text-slate-600"
             />
@@ -115,28 +115,28 @@ export function ShareMenu({ getUrl, getQuery, summary }: Props) {
               className="flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-600 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
             >
               {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-              {copied ? "Copied" : "Copy link"}
+              {copied ? "Skopiowano" : "Kopiuj link"}
             </button>
           </div>
           {canShare && (
             <button
               type="button"
-              onClick={() => navigator.share({ title: "Kraków matched to me", url }).catch(() => {})}
+              onClick={() => navigator.share({ title: "Kraków dopasowany do mnie", url }).catch(() => {})}
               className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full border border-border/70 py-1.5 text-sm font-medium hover:bg-muted"
             >
               <Share2 className="size-4" />
-              Share…
+              Udostępnij…
             </button>
           )}
 
           <div className="mt-4 border-t border-border/70 pt-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Save on this device</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Zapisz na tym urządzeniu</div>
             <div className="mt-1.5 flex gap-2">
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={60}
-                aria-label="Name of the saved map"
+                aria-label="Nazwa zapisanej mapy"
                 className="min-w-0 flex-1 rounded-full border border-border/70 px-3 py-1.5 text-sm"
               />
               <button
@@ -145,7 +145,7 @@ export function ShareMenu({ getUrl, getQuery, summary }: Props) {
                 className="flex shrink-0 items-center gap-1.5 rounded-full border border-border/70 px-3.5 py-1.5 text-sm font-medium hover:bg-muted"
               >
                 <Bookmark className="size-4" />
-                Save
+                Zapisz
               </button>
             </div>
             {saveNote && (
@@ -155,7 +155,7 @@ export function ShareMenu({ getUrl, getQuery, summary }: Props) {
             )}
             {saved.length === 0 ? (
               <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
-                Saved maps appear here and on the start page, so you can come back to your picks. They stay in this browser only.
+                Zapisane mapy pojawiają się tutaj i na stronie startowej, więc możesz wrócić do swoich wyborów. Zostają tylko w tej przeglądarce.
               </p>
             ) : (
               <ul className="mt-2 space-y-0.5">
@@ -167,7 +167,7 @@ export function ShareMenu({ getUrl, getQuery, summary }: Props) {
                     <button
                       type="button"
                       onClick={() => setSaved(deleteSaved(s.id))}
-                      aria-label={`Delete ${s.name}`}
+                      aria-label={`Usuń ${s.name}`}
                       className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
                       <Trash2 className="size-3.5" />

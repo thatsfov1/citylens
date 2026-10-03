@@ -29,8 +29,8 @@ export type ParkingData = {
 /** Pin colours on the map and in the map key. */
 export const PARKING_COLORS = { carpark: "#1d4ed8", parkride: "#7c3aed", meter: "#64748b" } as const;
 
-export const METER_LABEL = "Parking meter: street parking nearby is probably paid";
-export const PARKING_CAVEAT = "Rough guide from public map data, not a guarantee of a free space.";
+export const METER_LABEL = "Parkometr: parkowanie przy ulicy w pobliżu jest prawdopodobnie płatne";
+export const PARKING_CAVEAT = "Orientacyjnie, na podstawie publicznych danych mapowych; nie gwarantuje wolnego miejsca.";
 
 export const NEAR_M = 500;
 export const FAR_M = 1000;
@@ -126,16 +126,16 @@ export function parkingPins(center: [number, number], data: ParkingData, radiusM
     ...data.carParks
       .filter((r) => isPublic(r[3]) && near(r))
       .map((r): ParkingPin => ({ kind: "carpark", lat: r[0], lng: r[1], label: carParkLabel(r) })),
-    ...data.parkRide.filter(near).map((r): ParkingPin => ({ kind: "parkride", lat: r[0], lng: r[1], label: `Park & ride: ${r[2]}` })),
+    ...data.parkRide.filter(near).map((r): ParkingPin => ({ kind: "parkride", lat: r[0], lng: r[1], label: `Parkuj i jedź (P+R): ${r[2]}` })),
     ...data.meters.filter(near).map((r): ParkingPin => ({ kind: "meter", lat: r[0], lng: r[1], label: METER_LABEL })),
   ];
 }
 
-const KIND_LABEL: Record<ParkingKind, string> = { surface: "Car park", garage: "Garage", other: "Car park" };
+const KIND_LABEL: Record<ParkingKind, string> = { surface: "Parking", garage: "Garaż", other: "Parking" };
 
 export function carParkLabel(r: CarParkRow): string {
-  const fee = r[4] === 1 ? ", paid" : r[4] === 0 ? ", free" : "";
-  const cap = r[5] > 0 ? `, about ${r[5]} spaces` : "";
+  const fee = r[4] === 1 ? ", płatny" : r[4] === 0 ? ", bezpłatny" : "";
+  const cap = r[5] > 0 ? `, ok. ${r[5]} miejsc` : "";
   return `${KIND_LABEL[r[2]]}${fee}${cap}`;
 }
 

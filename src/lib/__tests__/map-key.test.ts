@@ -21,9 +21,9 @@ test("parking entries appear only for people with a car, and the grey dot is nam
   const parking = withCar.find((s) => s.id === "parking");
   assert.deepEqual(parking?.entries.map((e) => e.id), ["carpark", "parkride", "meter"]);
   const meter = parking?.entries.find((e) => e.id === "meter");
-  assert.match(meter?.label ?? "", /meter/i);
+  assert.match(meter?.label ?? "", /parkometr/i);
   assert.match(meter?.meaning ?? "", /paid/i);
-  assert.match(parking?.note ?? "", /not a guarantee/i);
+  assert.match(parking?.note ?? "", /nie gwarantuje/i);
 });
 
 test("compared outline and workplace route follow their state", () => {

@@ -683,9 +683,9 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
       const noSafety = m === "safety" && props.safety == null;
       const value = m === "forYou" ? props.personal : props[m];
       const label = noSafety
-        ? "No safety data"
+        ? "Brak danych o bezpieczeństwie"
         : m !== "forYou" && m !== "safety" && props[m] === 0
-          ? "Nothing nearby"
+          ? "Nic w pobliżu"
           : BAND_LABELS[bandOf(props[pctProp(m)] as number)];
       setTip({
         x: e.point.x,
@@ -693,9 +693,9 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
         district: (props.district as string) || "Kraków",
         label:
           m !== "safety" && props.belowMin === 1
-            ? `${label} · ${props.outside === 1 ? "outside your chosen radius" : "below your minimum safety"}`
+            ? `${label} · ${props.outside === 1 ? "poza wybranym promieniem" : "poniżej minimalnego bezpieczeństwa"}`
             : m !== "safety" && props.overBudget === 1
-              ? `${label} · few offers within your rent budget`
+              ? `${label} · mało ofert w Twoim budżecie`
               : label,
         value: noSafety ? "" : `${Math.round(value as number)}`,
       });
@@ -795,13 +795,13 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
       markers.push(new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map));
     };
     const open = (kind: BadgeKind) => () => onBadgeRef.current?.(kind);
-    if (safetyBadge !== null) place(badgeElement("safety", safetyBadge, "Safety indicators: click for details", open("safety")), 150);
-    if (airBadge !== null) place(badgeElement("air", airBadge, "Air quality: click for details", open("air")), 30);
+    if (safetyBadge !== null) place(badgeElement("safety", safetyBadge, "Wskaźniki bezpieczeństwa: kliknij, aby zobaczyć szczegóły", open("safety")), 150);
+    if (airBadge !== null) place(badgeElement("air", airBadge, "Jakość powietrza: kliknij, aby zobaczyć szczegóły", open("air")), 30);
     if (worksBadge > 0) {
-      const title = `${worksBadge} ${worksBadge === 1 ? "work" : "works"} nearby: click for details`;
+      const title = `Prace w pobliżu: ${worksBadge}. Kliknij, aby zobaczyć szczegóły`;
       place(badgeElement("works", worksBadge, title, open("works"), "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"), 210);
     }
-    const compareTitle = compareAdded ? "Remove from comparison" : compareFull ? "Comparison full (3 areas)" : "Add to comparison";
+    const compareTitle = compareAdded ? "Usuń z porównania" : compareFull ? "Porównanie pełne (3 obszary)" : "Dodaj do porównania";
     place(
       badgeElement(
         compareAdded ? "check" : "plus",
@@ -978,7 +978,7 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
             : "border-border/70 bg-white/95 hover:bg-white"
         }`}
       >
-        Strongest areas
+        Najmocniejsze obszary
       </button>
       <button
         type="button"
@@ -990,7 +990,7 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
             : "border-border/70 bg-white/95 hover:bg-white"
         }`}
       >
-        District borders
+        Granice dzielnic
       </button>
       </div>
       {pinTip && (
@@ -1019,10 +1019,10 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
         <button
           type="button"
           onClick={recenter}
-          aria-label="Center map on Kraków"
+          aria-label="Wyśrodkuj mapę na Krakowie"
           className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 rounded-full border border-border/70 bg-white/95 px-4 py-2 text-sm font-medium shadow-lg backdrop-blur hover:bg-white sm:left-auto sm:right-[25rem] sm:translate-x-0"
         >
-          Center map
+          Wyśrodkuj mapę
         </button>
       )}
     </div>

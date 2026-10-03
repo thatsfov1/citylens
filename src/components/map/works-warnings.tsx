@@ -1,14 +1,15 @@
 "use client";
 
 import { useMemo } from "react";
+import { plPlural } from "@/lib/format/pl";
 import { ExternalLink, TriangleAlert } from "lucide-react";
 import { fmtDay, groupWorks, type WorkWarning } from "@/lib/data/works";
 import type { WorkNearby } from "@/types";
 import { cn } from "@/lib/utils";
 
 const LABEL_STYLE: Record<string, string> = {
-  Ongoing: "bg-amber-100 text-amber-900",
-  Planned: "bg-sky-100 text-sky-900",
+  "W trakcie": "bg-amber-100 text-amber-900",
+  Planowane: "bg-sky-100 text-sky-900",
 };
 
 /** Time view of works within ~1 km: under way, planned, and permits without a schedule. Each with its official source. Renders nothing if none. */
@@ -20,22 +21,22 @@ export function WorksWarnings({ works }: { works: WorkNearby[] }) {
     <section className="mt-5 rounded-2xl border border-amber-300/70 bg-amber-50/70 p-3.5">
       <h3 className="flex items-center gap-1.5 text-sm font-semibold text-amber-900">
         <TriangleAlert className="size-4" />
-        What’s changing nearby
+        Co zmienia się w okolicy
       </h3>
-      <Group title="Under way now" items={groups.ongoing} />
-      <Group title="Planned" items={groups.planned} />
+      <Group title="Trwają teraz" items={groups.ongoing} />
+      <Group title="Planowane" items={groups.planned} />
       {groups.permits && (
         <div className="mt-3.5">
-          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-amber-900/80">Permit issued, no schedule</h4>
+          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-amber-900/80">Wydano pozwolenie, brak harmonogramu</h4>
           <p className="mt-1 text-xs leading-snug text-slate-700">
-            {groups.permits.count} investment-related tree-removal {groups.permits.count === 1 ? "decision" : "decisions"} within 1 km (nearest ~
-            {Math.round(groups.permits.nearestM / 50) * 50} m). An investment is being prepared; no construction dates are published.
+            {groups.permits.count} {plPlural(groups.permits.count, "decyzja", "decyzje", "decyzji")} o wycince drzew związanej z inwestycją w promieniu 1 km (najbliższa ok.{" "}
+            {Math.round(groups.permits.nearestM / 50) * 50} m). Inwestycja jest przygotowywana; nie opublikowano terminów budowy.
           </p>
           <SourceLink name={groups.permits.sourceName} url={groups.permits.sourceUrl} asOf={null} />
         </div>
       )}
       <p className="mt-3 text-[11px] leading-snug text-amber-900/80">
-        Dates come from the cited official announcements and may change. This is information only: it does not change the match score.
+        Terminy pochodzą z przytoczonych oficjalnych ogłoszeń i mogą się zmienić. To tylko informacja: nie wpływa na wynik dopasowania.
       </p>
     </section>
   );
@@ -72,7 +73,7 @@ function SourceLink({ name, url, asOf }: { name: string; url: string; asOf: stri
       rel="noopener noreferrer"
       className="mt-1 inline-flex items-center gap-1 text-[11px] text-slate-600 underline-offset-2 hover:underline"
     >
-      Source: {name}
+      Źródło: {name}
       {asOf ? `, ${fmtDay(asOf)}` : ""}
       <ExternalLink className="size-3" />
     </a>

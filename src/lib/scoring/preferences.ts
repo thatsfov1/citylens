@@ -49,10 +49,10 @@ export function importanceFromQuery(
 
 /** Minimum safety level filter: 0 = off. Not an importance weight; hexes below it are dimmed on the map. */
 export const MIN_SAFETY_LEVELS = [
-  { value: 0, label: "Off" },
-  { value: 25, label: "Low" },
-  { value: 50, label: "Medium" },
-  { value: 75, label: "High" },
+  { value: 0, label: "Wył." },
+  { value: 25, label: "Niski" },
+  { value: 50, label: "Średni" },
+  { value: 75, label: "Wysoki" },
 ] as const;
 
 export function minSafetyFromQuery(params: Record<string, string | string[] | undefined>): number {

@@ -195,6 +195,13 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
 - Background is a swappable layer (`background.tsx`, `videoSrc` prop + dark scrim) so a Kraków video can be added without layout changes. Animations are plain CSS (`globals.css`), disabled under `prefers-reduced-motion`. No new dependencies.
 - `preferences-form.tsx` and `landing-map-preview.tsx` are no longer used by the landing page (kept in the repo).
 
+### Polish UI (map side)
+
+- The whole map UI is Polish: panels, explanations (`explain.ts`, `facts.ts`), rent/commute/share/works text, place kinds, `CATEGORY_LABELS` and band labels. `<html lang="pl">`.
+- Plural forms and decimal commas come from `src/lib/format/pl.ts` (`plPlural`, `plCount`, `dec`). Category names are never inflected: sentences use „kategoria „zieleń”” style so no case endings are needed.
+- In Polish copy "wynajem" = rent and "czynsz administracyjny" = the building fee (the English copy used "czynsz" for the fee).
+- Unchanged on purpose: API error messages, the unused `preferences-form`/`preferences-chat`, and LLM prompts.
+
 ### Hexagon drill-down: places on the map
 
 - Clicking a hex flies the camera in (zoom ≥ 14.2, padded for the side panel), draws dashed 500 m / 1 km

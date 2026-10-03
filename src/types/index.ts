@@ -15,10 +15,10 @@ export type EducationStage = (typeof EDUCATION_STAGES)[number];
 export type EducationStageScores = Record<EducationStage, number>;
 
 export const EDUCATION_STAGE_LABELS: Record<EducationStage, string> = {
-  kindergarten: "Kindergarten",
-  primary: "Primary school",
-  secondary: "Secondary school",
-  university: "University",
+  kindergarten: "Przedszkole",
+  primary: "Szkoła podstawowa",
+  secondary: "Szkoła średnia",
+  university: "Uczelnia",
 };
 
 export type CategoryScores = Record<Category, number>;
@@ -53,11 +53,11 @@ export type MapMode = "forYou" | Category | "safety";
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   sport: "Sport",
-  culture: "Culture",
-  greenery: "Greenery",
-  shopping: "Shopping",
+  culture: "Kultura",
+  greenery: "Zieleń",
+  shopping: "Zakupy",
   transport: "Transport",
-  education: "Education",
+  education: "Edukacja",
 };
 
 /** An OSM place behind a score, shown as a pin when a hexagon is opened. */

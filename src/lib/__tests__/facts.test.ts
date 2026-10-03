@@ -14,25 +14,25 @@ const ind: HexIndicators = {
 };
 
 test("describes categories from indicators", () => {
-  assert.match(describeCategory("shopping", ind), /37 shops within 500 m; nearest: Biedronka \(supermarket\), 70 m away/);
-  assert.match(describeCategory("sport", ind), /none within 500 m; nearest: a sports pitch, 820 m away/);
-  assert.match(describeCategory("culture", ind), /no cultural venues within 1 km/);
-  assert.match(describeCategory("greenery", ind), /Park Rzeczny Białucha \(1.6 ha\), 160 m away; ~8% green cover/);
+  assert.match(describeCategory("shopping", ind), /37 sklepów w promieniu 500 m; najbliżej: Biedronka \(supermarket\), 70 m stąd/);
+  assert.match(describeCategory("sport", ind), /brak w promieniu 500 m; najbliżej: boisko, 820 m stąd/);
+  assert.match(describeCategory("culture", ind), /brak: miejsc kultury w promieniu 1 km/);
+  assert.match(describeCategory("greenery", ind), /Park Rzeczny Białucha \(1,6 ha\), 160 m stąd; ~8% terenów zielonych/);
 });
 
 test("ignores vacant units as the nearest shop", () => {
   const v = { ...ind, shopping: { ...ind.shopping, nearest: { name: null, kind: "vacant", distanceM: 68 } } };
-  assert.equal(describeCategory("shopping", v), "37 shops within 500 m");
+  assert.equal(describeCategory("shopping", v), "37 sklepów w promieniu 500 m");
 });
 
 test("explainMatch uses facts when given and generic text otherwise", () => {
   const scores = { sport: 20, culture: 10, greenery: 90, shopping: 90, transport: 30, education: 50 };
   const weights = { sport: 0.1, culture: 0, greenery: 0.5, shopping: 0.1, transport: 0.3, education: 0 };
   const withFacts = explainMatch(scores, weights, describeAll(ind));
-  assert.ok(withFacts.reasons[0].startsWith("Greenery: Park Rzeczny"));
-  assert.ok(withFacts.considerations.some((c) => c.startsWith("Transport is below")));
+  assert.ok(withFacts.reasons[0].startsWith("Zieleń: Park Rzeczny"));
+  assert.ok(withFacts.considerations.some((c) => c.startsWith("Transport poniżej")));
   const generic = explainMatch(scores, weights);
-  assert.ok(generic.reasons[0].includes("top priority"));
+  assert.ok(generic.reasons[0].includes("głównemu priorytetowi"));
 });
 
 test("transport facts include measured service frequency when GTFS data is present", () => {
@@ -48,10 +48,10 @@ test("transport facts include measured service frequency when GTFS data is prese
   };
   assert.equal(
     describeCategory("transport", gtfs),
-    "4 stops and stations within 500 m (~37 departures/h on weekdays); nearest: Rondo Mogilskie (tram stop, ~14 departures/h), 120 m away",
+    "4 przystanki lub stacje w promieniu 500 m (~37 odjazdów/godz. w dni robocze); najbliżej: Rondo Mogilskie (przystanek tramwajowy, ~14 odjazdów/godz.), 120 m stąd",
   );
   // Seeds computed from OSM only keep the old wording.
-  assert.match(describeCategory("transport", ind), /^1 stop or station within 500 m; nearest: Prusy Rondo \(bus stop\), 470 m away$/);
+  assert.match(describeCategory("transport", ind), /^1 przystanek lub stacja w promieniu 500 m; najbliżej: Prusy Rondo \(przystanek autobusowy\), 470 m stąd$/);
 });
 
 test("safety facts list each indicator with its numbers, and nothing when there is no data", () => {
@@ -65,8 +65,8 @@ test("safety facts list each indicator with its numbers, and nothing when there 
   };
   const facts = describeSafety(withSafety);
   assert.equal(facts.length, 2);
-  assert.match(facts[0], /41.2 reported crimes per 1,000 residents in police area Komisariat V \(2025\); city: 52/);
-  assert.match(facts[1], /38 of 40 tagged street segments are lit/);
+  assert.match(facts[0], /41,2 zgłoszonych przestępstw na 1000 mieszkańców w rejonie policji Komisariat V \(2025\); średnia dla miasta: 52/);
+  assert.match(facts[1], /38 z 40 oznaczonych odcinków ulic jest oświetlonych/);
 });
 
 test("safety is explained indicator by indicator, with scores, shares and context", () => {
@@ -84,13 +84,13 @@ test("safety is explained indicator by indicator, with scores, shares and contex
   assert.deepEqual(parts.map((p) => p.key), ["lighting", "cctv", "emergency"]);
   assert.deepEqual(parts.map((p) => p.score), [80, 40, 60]);
   assert.equal(parts.reduce((s, p) => s + (p.sharePct ?? 0), 0), 100);
-  assert.equal(parts[1].fact, "1 mapped camera within 500 m");
-  assert.equal(parts[2].fact, "Nearest: police 640 m, hospital or clinic 1.9 km");
-  assert.equal(describeNightlife(withEnv), "6 bars, pubs and clubs within 300 m");
-  assert.equal(describeNightlife({ ...ind, safety: { nightlife: { venues: 0 } } }), "No bars, pubs or clubs within 300 m");
+  assert.equal(parts[1].fact, "1 zmapowana kamera w promieniu 500 m");
+  assert.equal(parts[2].fact, "Najbliżej: policja 640 m, szpital lub przychodnia 1,9 km");
+  assert.equal(describeNightlife(withEnv), "6 barów, pubów i klubów w promieniu 300 m");
+  assert.equal(describeNightlife({ ...ind, safety: { nightlife: { venues: 0 } } }), "Brak barów, pubów i klubów w promieniu 300 m");
   assert.equal(describeNightlife(ind), null);
   const none: HexIndicators = { ...ind, safety: { emergency: { police: null, fire: null, hospital: null } } };
-  assert.equal(describeSafetyParts(none)[0].fact, "No police, fire station or hospital within 3.0 km");
+  assert.equal(describeSafetyParts(none)[0].fact, "Brak policji, straży pożarnej i szpitala w promieniu 3,0 km");
 });
 
 test("education facts follow the selected stages and stay factual", () => {
@@ -114,9 +114,9 @@ test("education facts follow the selected stages and stay factual", () => {
   };
   assert.equal(
     describeEducation(edu, ["kindergarten"]),
-    "2 kindergartens and nurseries within 1 km; nearest: Przedszkole nr 5 (kindergarten), 220 m away",
+    "2 przedszkola lub żłobki w promieniu 1 km; najbliżej: Przedszkole nr 5 (przedszkole), 220 m stąd",
   );
-  assert.match(describeEducation(edu, ["secondary"]), /^no secondary schools within 1 km/);
-  assert.match(describeEducation(edu), /primary school within 1 km; nearest: SP 12/);
-  assert.match(describeEducation(ind), /no education data/); // rows scored before education existed
+  assert.match(describeEducation(edu, ["secondary"]), /^brak: szkół średnich w promieniu 1 km/);
+  assert.match(describeEducation(edu), /1 szkoła podstawowa w promieniu 1 km; najbliżej: SP 12/);
+  assert.match(describeEducation(ind), /brak jeszcze danych o edukacji/); // rows scored before education existed
 });

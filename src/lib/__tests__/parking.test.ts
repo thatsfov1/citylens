@@ -70,6 +70,6 @@ test("pins skip private lots and respect the radius", () => {
     }),
   );
   assert.deepEqual(pins.map((p) => p.kind).sort(), ["carpark", "meter", "parkride"]);
-  assert.equal(pins.find((p) => p.kind === "carpark")?.label, "Car park, paid, about 25 spaces");
-  assert.equal(carParkLabel([0, 0, "garage", "public", -1, 0]), "Garage");
+  assert.equal(pins.find((p) => p.kind === "carpark")?.label, "Parking, płatny, ok. 25 miejsc");
+  assert.equal(carParkLabel([0, 0, "garage", "public", -1, 0]), "Garaż");
 });

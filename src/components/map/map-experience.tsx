@@ -38,7 +38,8 @@ import { normalizeWeights } from "@/lib/scoring/weights";
 import { saveMap } from "@/lib/share/saved";
 import { parkingAround, parkingPins, type ParkingPin } from "@/lib/scoring/parking";
 import { DEFAULT_SHARE, applyShareState, buildShareUrl, savedQuery, type ShareState } from "@/lib/share/state";
-import { formatRentRange, DEFAULT_ROOMS, RENT_MAX, RENT_MIN, classifyHexes, rentToQuery, summarizeRent, type RentFilter as RentBudget } from "@/lib/scoring/rent";
+import { plPlural } from "@/lib/format/pl";
+import { formatRentRange, ROOMS_OPTIONS, DEFAULT_ROOMS, RENT_MAX, RENT_MIN, classifyHexes, rentToQuery, summarizeRent, type RentFilter as RentBudget } from "@/lib/scoring/rent";
 import type { HexSource, HexDetails } from "@/lib/supabase/hex-scores";
 import {
   CATEGORIES,
@@ -192,7 +193,7 @@ export function MapExperience({
   };
   const shareState = (): ShareState => ({ mode, selected, compared });
   const saveSharedCopy = () => {
-    const r = saveMap({ name: `Shared · ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`, query: savedQuery(currentSearch(), shareState()) });
+    const r = saveMap({ name: `Udostępniona · ${new Date().toLocaleDateString("pl-PL", { day: "numeric", month: "short" })}`, query: savedQuery(currentSearch(), shareState()) });
     setBannerSaved(r.ok);
   };
   const hex = useMemo(
@@ -370,16 +371,16 @@ export function MapExperience({
       .sort((a, b) => importance[b] - importance[a])
       .slice(0, 3)
       .map((c) => `${CATEGORY_LABELS[c]} ${Math.round(importance[c])}%`);
-    if (priorities.length) lines.push(`Priorities: ${priorities.join(", ")}`);
-    if (minSafety > 0) lines.push(`Minimum safety: ${MIN_SAFETY_LEVELS.find((l) => l.value === minSafety)?.label ?? minSafety}`);
-    if (rentActive) lines.push(`Rent budget: ${formatRentRange(rent)}${rent.fees ? " with czynsz" : ""}, ${rent.rooms}${rent.rooms === 3 ? "+" : ""} room${rent.rooms > 1 ? "s" : ""}`);
-    if (anchor && outside) lines.push(`Near ${anchor.name.split(",")[0]} · ${formatRadius(anchor.radiusM)}`);
-    if (workplace) lines.push(`Commute to ${workplace.name.split(",")[0]} · up to ${workplace.maxMin} min`);
-    if (mode !== "forYou") lines.push(`Tab: ${mode === "safety" ? "Safety" : CATEGORY_LABELS[mode]}`);
-    if (car) lines.push("Parking info on (I have a car)");
-    if (compared.length) lines.push(`${compared.length} compared area${compared.length > 1 ? "s" : ""}`);
-    if (hex) lines.push(`Open area: ${hex.district ?? "selected hexagon"}`);
-    return lines.length ? lines : ["Your preferences"];
+    if (priorities.length) lines.push(`Priorytety: ${priorities.join(", ")}`);
+    if (minSafety > 0) lines.push(`Minimalne bezpieczeństwo: ${MIN_SAFETY_LEVELS.find((l) => l.value === minSafety)?.label ?? minSafety}`);
+    if (rentActive) lines.push(`Budżet na wynajem: ${formatRentRange(rent)}${rent.fees ? " z czynszem administracyjnym" : ""}, ${ROOMS_OPTIONS.find((r) => r.value === rent.rooms)?.label ?? rent.rooms}`);
+    if (anchor && outside) lines.push(`W pobliżu: ${anchor.name.split(",")[0]} · ${formatRadius(anchor.radiusM)}`);
+    if (workplace) lines.push(`Dojazd do: ${workplace.name.split(",")[0]} · do ${workplace.maxMin} min`);
+    if (mode !== "forYou") lines.push(`Zakładka: ${mode === "safety" ? "Bezpieczeństwo" : CATEGORY_LABELS[mode]}`);
+    if (car) lines.push("Informacje o parkowaniu włączone (mam samochód)");
+    if (compared.length) lines.push(`${compared.length} ${plPlural(compared.length, "porównywany obszar", "porównywane obszary", "porównywanych obszarów")}`);
+    if (hex) lines.push(`Otwarty obszar: ${hex.district ?? "wybrany sześciokąt"}`);
+    return lines.length ? lines : ["Twoje preferencje"];
   }, [importance, minSafety, rentActive, rent, anchor, outside, workplace, car, mode, compared, hex]);
   const activeFilters = (minSafety > 0 ? 1 : 0) + (rentActive ? 1 : 0) + (car ? 1 : 0) + (hasStages && stages.length < EDUCATION_STAGES.length ? 1 : 0);
 
@@ -457,7 +458,7 @@ export function MapExperience({
         <section className="absolute inset-x-3 top-28 z-10 max-h-[40%] overflow-y-auto rounded-2xl border border-border/70 bg-white/95 px-4 pb-4 pt-3 shadow-2xl backdrop-blur sm:inset-x-auto sm:bottom-6 sm:right-[24rem] sm:top-auto sm:max-h-[60%] sm:w-[24rem]">
           <button
             onClick={() => setBadgeInfo({ hex: null, kind: null })}
-            aria-label="Close"
+            aria-label="Zamknij"
             className="absolute right-2 top-2 z-10 rounded-full p-1.5 text-muted-foreground hover:bg-muted"
           >
             <X className="size-4" />
@@ -480,7 +481,7 @@ export function MapExperience({
         >
           <ArrowLeft className="size-4" />
           <Hexagon className="size-4 text-emerald-600" />
-          Adjust preferences
+          Zmień preferencje
         </Link>
         {hasFilters && (
           <button
@@ -492,21 +493,21 @@ export function MapExperience({
             }`}
           >
             <SlidersHorizontal className="size-4" />
-            Filters{activeFilters > 0 ? ` · ${activeFilters}` : ""}
+            Filtry{activeFilters > 0 ? ` · ${activeFilters}` : ""}
           </button>
         )}
         {anchor && anchorOutside && (
           <span className="flex items-center gap-1.5 rounded-full border border-border/70 bg-white/90 py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur">
             <MapPin className="size-4 text-rose-600" />
-            Near {anchor.name.split(",")[0]} · {formatRadius(anchor.radiusM)}
+            W pobliżu: {anchor.name.split(",")[0]} · {formatRadius(anchor.radiusM)}
           </span>
         )}
         {workplace && commuteFit && (
           <span className="flex items-center gap-1.5 rounded-full border border-border/70 bg-white/90 py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur">
             <Briefcase className="size-4 text-sky-600" />
             {commuteFit.within > 0
-              ? `Work: ${workplace.name.split(",")[0]} · ≤ ${workplace.maxMin} min ${MODE_LABELS[workplace.mode]}`
-              : `No area within ${workplace.maxMin} min ${MODE_LABELS[workplace.mode]} · nearest ≈ ${commuteFit.nearestMin} min`}
+              ? `Praca: ${workplace.name.split(",")[0]} · ≤ ${workplace.maxMin} min ${MODE_LABELS[workplace.mode]}`
+              : `Brak obszaru w ${workplace.maxMin} min ${MODE_LABELS[workplace.mode]} · najbliższy ≈ ${commuteFit.nearestMin} min`}
           </span>
         )}
         </div>
@@ -659,44 +660,44 @@ function Legend({ mode, minSafety, rentActive, keyContext }: { mode: MapMode; mi
   return (
     <div className="pointer-events-none absolute left-3 top-28 rounded-xl border border-border/70 bg-white/90 px-3 py-2 shadow-lg shadow-black/5 backdrop-blur sm:bottom-6 sm:left-4 sm:top-auto">
       <div className="mb-1.5 text-[11px] font-medium text-slate-600">
-        {mode === "forYou" ? "Match for you" : mode === "safety" ? "Safety indicators" : "Category score"}
+        {mode === "forYou" ? "Dopasowanie dla Ciebie" : mode === "safety" ? "Wskaźniki bezpieczeństwa" : "Wynik kategorii"}
       </div>
       <div className="h-2 w-40 rounded-full" style={{ background: LEGEND_GRADIENT }} />
       <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-        <span>{mode === "forYou" ? "Weaker match" : mode === "safety" ? "Fewer in favour" : "Low"}</span>
-        <span>{mode === "forYou" ? "Stronger match" : mode === "safety" ? "More in favour" : "High"}</span>
+        <span>{mode === "forYou" ? "Słabsze dopasowanie" : mode === "safety" ? "Mniej na korzyść" : "Niski"}</span>
+        <span>{mode === "forYou" ? "Mocniejsze dopasowanie" : mode === "safety" ? "Więcej na korzyść" : "Wysoki"}</span>
       </div>
       {mode !== "forYou" && (
         <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <span className="size-2.5 rounded-sm" style={{ background: NO_DATA_COLOR }} />
-          {mode === "safety" ? "No safety data" : "Nothing nearby (no data)"}
+          {mode === "safety" ? "Brak danych o bezpieczeństwie" : "Nic w pobliżu (brak danych)"}
         </div>
       )}
       {mode !== "safety" && minSafety > 0 && (
         <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <span className="size-2.5 rounded-sm bg-slate-600/60" />
-          Below your minimum safety level
+          Poniżej Twojego minimalnego poziomu bezpieczeństwa
         </div>
       )}
       {mode !== "safety" && rentActive && (
         <>
           <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
             <span className="h-2.5 w-4 rounded-sm" style={{ background: "linear-gradient(90deg, rgba(71,85,105,0.62), rgba(71,85,105,0))" }} />
-            Fewer offers within your rent budget
+            Mniej ofert w Twoim budżecie
           </div>
           <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
             <span className="size-2.5 rounded-sm bg-slate-600/20" />
-            No rent data
+            Brak danych o wynajmie
           </div>
         </>
       )}
       {mode === "safety" && (
         <div className="mt-1 max-w-52 text-[10px] leading-snug text-muted-foreground">
-          Street lighting, cameras and police, fire and hospital access nearby (OpenStreetMap). Indicators, not a verdict on an area.
+          Oświetlenie ulic, kamery oraz dostęp do policji, straży pożarnej i szpitala w pobliżu (OpenStreetMap). To wskaźniki, a nie ocena obszaru.
         </div>
       )}
       <div className="mt-1 text-[10px] text-muted-foreground">
-        Five bands, relative to the rest of Kraków
+        Pięć pasm, względem reszty Krakowa
       </div>
       <button
         type="button"
@@ -705,7 +706,7 @@ function Legend({ mode, minSafety, rentActive, keyContext }: { mode: MapMode; mi
         className="pointer-events-auto mt-1.5 flex items-center gap-1 rounded-full border border-border/70 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-muted"
       >
         <Info className="size-3" aria-hidden />
-        Map key
+        Legenda mapy
         <ChevronDown className={`size-3 transition-transform ${keyOpen ? "rotate-180" : ""}`} aria-hidden />
       </button>
       {keyOpen && (

@@ -4,14 +4,14 @@ import { cn } from "@/lib/utils";
 export function OsmAttribution({ className }: { className?: string }) {
   return (
     <p className={cn("text-[10px] text-muted-foreground", className)}>
-      Map data ©{" "}
+      Dane mapy ©{" "}
       <a
         href="https://www.openstreetmap.org/copyright"
         target="_blank"
         rel="noopener noreferrer"
         className="underline underline-offset-2 hover:text-foreground"
       >
-        OpenStreetMap contributors
+        współtwórcy OpenStreetMap
       </a>
     </p>
   );

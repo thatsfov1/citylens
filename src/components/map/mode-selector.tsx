@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { CATEGORIES, CATEGORY_LABELS, type MapMode } from "@/types";
 
 const MODES: { id: MapMode; label: string }[] = [
-  { id: "forYou", label: "For You" },
+  { id: "forYou", label: "Dla Ciebie" },
   ...CATEGORIES.map((c) => ({ id: c as MapMode, label: CATEGORY_LABELS[c] })),
 ];
 
@@ -15,17 +15,17 @@ export function ModeSelector({
 }: {
   mode: MapMode;
   onChange: (m: MapMode) => void;
-  /** Show the Safety view only when the data has safety indicators. */
+  /** Show the safety view only when the data has safety indicators. */
   hasSafety?: boolean;
 }) {
   const modes = [
     ...MODES,
-    ...(hasSafety ? [{ id: "safety" as MapMode, label: "Safety" }] : []),
+    ...(hasSafety ? [{ id: "safety" as MapMode, label: "Bezpieczeństwo" }] : []),
   ];
   return (
     <div
       role="tablist"
-      aria-label="Map mode"
+      aria-label="Tryb mapy"
       className="flex max-w-full gap-1 overflow-x-auto rounded-full border border-border/70 bg-white/90 p-1 shadow-lg shadow-black/5 backdrop-blur"
     >
       {modes.map((m) => (

@@ -4,6 +4,7 @@ import { RentSection } from "./rent-filter";
 import { MODE_LABELS, formatMinutes, type TravelMode } from "@/lib/scoring/commute";
 import type { RentFilter, RentSummary } from "@/lib/scoring/rent";
 import type { ReactNode } from "react";
+import { plPlural } from "@/lib/format/pl";
 import { ArrowLeft, Briefcase, Bus, Check, ChevronRight, Footprints, Info, MapPin, ShieldCheck, TramFront, Wind, X } from "lucide-react";
 import type { TransitPlan } from "@/lib/data/transit";
 import { GREEN_COLOR, PLACE_COLORS } from "@/lib/map/places";
@@ -81,12 +82,12 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
       <div className="p-5">
         <div className="flex items-center gap-2 text-sm font-medium">
           <MapPin className="size-4 text-emerald-600" />
-          Click a hexagon to see how it matches you
+          Kliknij sześciokąt, aby zobaczyć, jak pasuje do Ciebie
         </div>
         <h3 className="mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          We understood
+          Zrozumieliśmy
         </h3>
-        <p className="mt-1 text-[11px] text-muted-foreground">Share of your priorities; bars are relative to the largest.</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">Udział Twoich priorytetów; paski są liczone względem największego.</p>
         <ul className="mt-3 space-y-2.5">
           {byWeight.map((c) => (
             <li key={c} className="text-sm">
@@ -106,8 +107,8 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
           ))}
         </ul>
         <p className="mt-6 text-xs leading-relaxed text-muted-foreground">
-          Only clearly stronger or weaker matches are tinted; hover any area to
-          explore it. A weaker match is not a worse place, just a different fit.
+          Barwione są tylko wyraźnie mocniejsze lub słabsze dopasowania; najedź na
+          dowolny obszar, aby go poznać. Słabsze dopasowanie to nie gorsze miejsce, tylko inne dopasowanie.
         </p>
       </div>
     );
@@ -123,14 +124,14 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
         className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" />
-        Overview
+        Przegląd
       </button>
     );
     return (
       <div className="p-5">
         <div className="flex items-center justify-between gap-4">
           {back}
-          <button onClick={onClose} aria-label="Close" className="rounded-full p-1.5 text-muted-foreground hover:bg-muted">
+          <button onClick={onClose} aria-label="Zamknij" className="rounded-full p-1.5 text-muted-foreground hover:bg-muted">
             <X className="size-4" />
           </button>
         </div>
@@ -159,7 +160,7 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Area match{district ? ` · ${district}` : ""}
+            Dopasowanie obszaru{district ? ` · ${district}` : ""}
           </div>
           <div className={cn("mt-1 text-5xl font-semibold tabular-nums", LEVEL_STYLE[ex.level])}>
             {ex.score}%
@@ -168,14 +169,14 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
         </div>
         <button
           onClick={onClose}
-          aria-label="Close"
+          aria-label="Zamknij"
           className="rounded-full p-1.5 text-muted-foreground hover:bg-muted"
         >
           <X className="size-4" />
         </button>
       </div>
 
-      <p className="mt-5 text-[11px] text-muted-foreground">Dots toggle pins on the map; tap a row for details.</p>
+      <p className="mt-5 text-[11px] text-muted-foreground">Kropki włączają pinezki na mapie; stuknij wiersz, aby zobaczyć szczegóły.</p>
       <ul className="mt-1.5 space-y-1">
         {byWeight.map((c) => (
           <li key={c} className="flex items-center gap-1">
@@ -183,8 +184,8 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
               <button
                 type="button"
                 aria-pressed={pins.has(c)}
-                aria-label={`${pins.has(c) ? "Hide" : "Show"} ${CATEGORY_LABELS[c]} pins on the map`}
-                title={pins.has(c) ? "Hide pins on the map" : "Show pins on the map"}
+                aria-label={`${pins.has(c) ? "Ukryj" : "Pokaż"} pinezki kategorii ${CATEGORY_LABELS[c]} na mapie`}
+                title={pins.has(c) ? "Ukryj pinezki na mapie" : "Pokaż pinezki na mapie"}
                 onClick={() => onTogglePin(c)}
                 className={cn(
                   "grid size-6 shrink-0 place-items-center rounded-full border transition-colors",
@@ -201,7 +202,7 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
               <span className="flex items-center justify-between">
                 <span className="flex items-center gap-1">
                   {CATEGORY_LABELS[c]}
-                  <span className="ml-1.5 text-xs text-muted-foreground">weight {Math.round(weights[c] * 100)}%</span>
+                  <span className="ml-1.5 text-xs text-muted-foreground">waga {Math.round(weights[c] * 100)}%</span>
                 </span>
                 <span className="flex items-center gap-1 font-semibold tabular-nums">
                   {scores[c]}
@@ -226,27 +227,27 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
         <div className="mt-4 rounded-xl border border-border/70 bg-muted/40 px-3 py-2.5 text-sm">
           <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             <Briefcase className="size-3.5" />
-            Commute
+            Dojazd do pracy
           </div>
           <p className="mt-1">
             <span className="font-semibold tabular-nums">
               {commute.approx ? "≈ " : "~"}
               {formatMinutes(commute.minutes)}
             </span>{" "}
-            {MODE_LABELS[commute.mode]} to {commute.workName}
+            {MODE_LABELS[commute.mode]} do: {commute.workName}
             {commute.distanceKm ? ` · ${commute.distanceKm.toFixed(1)} km` : ""}
           </p>
           {commute.transit && <TransitSteps plan={commute.transit} />}
           <p className={commute.minutes > commute.maxMin ? "mt-0.5 text-xs text-orange-600" : "mt-0.5 text-xs text-emerald-700"}>
             {commute.minutes > commute.maxMin
-              ? `${commute.minutes - commute.maxMin} min over your ${commute.maxMin} min limit`
-              : `Within your ${commute.maxMin} min limit`}
-            {commute.approx ? " · approximate estimate" : ""}
+              ? `${commute.minutes - commute.maxMin} min ponad Twój limit ${commute.maxMin} min`
+              : `W ramach Twojego limitu ${commute.maxMin} min`}
+            {commute.approx ? " · szacunek przybliżony" : ""}
           </p>
         </div>
       )}
 
-      <h3 className="mt-6 text-sm font-semibold">Why it matches you</h3>
+      <h3 className="mt-6 text-sm font-semibold">Dlaczego pasuje do Ciebie</h3>
       <ul className="mt-2 space-y-1.5">
         {ex.reasons.map((r) => (
           <li key={r} className="flex gap-2 text-sm text-slate-700">
@@ -258,7 +259,7 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
 
       {ex.considerations.length > 0 && (
         <>
-          <h3 className="mt-5 text-sm font-semibold">Things to consider</h3>
+          <h3 className="mt-5 text-sm font-semibold">Warto wziąć pod uwagę</h3>
           <ul className="mt-2 space-y-1.5">
             {ex.considerations.map((r) => (
               <li key={r} className="flex gap-2 text-sm text-slate-700">
@@ -272,8 +273,8 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
       {sensitivity && <SensitivitySection sensitivity={sensitivity} />}
       <p className="mt-5 text-[11px] text-muted-foreground">
         {source === "supabase"
-          ? "Scores are calculated from OpenStreetMap data within about 1 km of the area’s centre. Tap a category for details."
-          : "Demo uses simulated scores, not real city data."}
+          ? "Wyniki liczone są na podstawie danych OpenStreetMap w promieniu ok. 1 km od środka obszaru. Stuknij kategorię, aby zobaczyć szczegóły."
+          : "Demo używa symulowanych wyników, a nie rzeczywistych danych miasta."}
       </p>
     </div>
   );
@@ -297,7 +298,7 @@ function CategoryDetail({
   return (
     <div className="mt-4">
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {CATEGORY_LABELS[category]} · weight {Math.round(weight * 100)}%
+        {CATEGORY_LABELS[category]} · waga {Math.round(weight * 100)}%
       </div>
       <div className="mt-1 flex items-baseline gap-1.5">
         <span className="text-4xl font-semibold tabular-nums">{score}</span>
@@ -324,7 +325,7 @@ export function AirSection({ air, indicators }: { air: number; indicators: HexIn
       <div className="flex items-center justify-between text-sm">
         <span className="flex items-center gap-1.5 font-semibold">
           <Wind className="size-4 text-slate-700" />
-          Air quality
+          Jakość powietrza
         </span>
         <span className="font-semibold tabular-nums">{air}/100</span>
       </div>
@@ -335,7 +336,7 @@ export function AirSection({ air, indicators }: { air: number; indicators: HexIn
       <details open className="group mt-2">
         <summary className="flex cursor-pointer list-none items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground">
           <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
-          Details
+          Szczegóły
         </summary>
         {facts.length > 0 && (
           <ul className="mt-1.5 space-y-1 text-xs text-slate-700">
@@ -367,9 +368,9 @@ export function SafetySection({
       <div className="flex items-center justify-between text-sm">
         <span className="flex items-center gap-1.5 font-semibold">
           <ShieldCheck className="size-4 text-slate-700" />
-          Safety indicators
+          Wskaźniki bezpieczeństwa
         </span>
-        <span className="font-semibold tabular-nums">{safety === null ? "no data" : `${safety}/100`}</span>
+        <span className="font-semibold tabular-nums">{safety === null ? "brak danych" : `${safety}/100`}</span>
       </div>
       {safety !== null && (
         <div className="mt-1.5 h-1.5 rounded-full bg-muted">
@@ -379,25 +380,25 @@ export function SafetySection({
       {below && (
         <p className="mt-2 flex gap-2 text-xs text-amber-700">
           <Info className="mt-0.5 size-3.5 shrink-0" />
-          Below your minimum safety level, so it is greyed out on the map.
+          Poniżej Twojego minimalnego poziomu bezpieczeństwa, więc jest wyszarzony na mapie.
         </p>
       )}
       {safety === null && (
         <p className="mt-1.5 text-xs text-muted-foreground">
-          Too few mapped streets nearby to say anything. This area is not filtered out.
+          Zbyt mało zmapowanych ulic w pobliżu, by cokolwiek powiedzieć. Ten obszar nie jest odfiltrowywany.
         </p>
       )}
 
       <details open className="group mt-2">
         <summary className="flex cursor-pointer list-none items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground">
           <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
-          Details
+          Szczegóły
         </summary>
       {parts.length > 0 && (
         <>
           <p className="mt-2.5 text-[11px] leading-snug text-muted-foreground">
-            Each indicator is compared with the other built-up areas of Kraków (0 = lowest, 100 = highest) and the
-            results are combined by the shares below.
+            Każdy wskaźnik jest porównywany z innymi zabudowanymi obszarami Krakowa (0 = najniższy, 100 = najwyższy),
+            a wyniki łączone według poniższych udziałów.
           </p>
           <ul className="mt-2 space-y-2.5">
             {parts.map((p) => (
@@ -406,7 +407,7 @@ export function SafetySection({
                   <span className="font-medium text-slate-800">
                     {p.label}
                     {p.sharePct !== null && (
-                      <span className="ml-1.5 font-normal text-muted-foreground">counts {p.sharePct}%</span>
+                      <span className="ml-1.5 font-normal text-muted-foreground">liczy się w {p.sharePct}%</span>
                     )}
                   </span>
                   <span className="font-semibold tabular-nums">{p.score ?? "–"}</span>
@@ -425,10 +426,10 @@ export function SafetySection({
 
       {nightlife && (
         <div className="mt-3 rounded-xl bg-muted/60 px-2.5 py-2 text-xs">
-          <div className="font-medium text-slate-800">After dark (context, not scored)</div>
+          <div className="font-medium text-slate-800">Po zmroku (kontekst, bez wpływu na wynik)</div>
           <p className="mt-0.5 leading-snug text-muted-foreground">
-            {nightlife}. Nightlife can mean livelier streets late in the evening, and also more noise, so it is shown
-            but kept out of the score.
+            {nightlife}. Życie nocne może oznaczać żywsze ulice późnym wieczorem, ale też więcej hałasu, dlatego jest
+            pokazane, lecz nie wchodzi do wyniku.
           </p>
         </div>
       )}
@@ -436,7 +437,7 @@ export function SafetySection({
       {parts.length > 0 && (
         <details className="group mt-3 text-xs">
           <summary className="cursor-pointer select-none font-medium text-slate-800 marker:text-slate-400">
-            How is this measured?
+            Jak to jest mierzone?
           </summary>
           <ul className="mt-2 space-y-2 text-muted-foreground">
             {parts.map((p) => (
@@ -463,7 +464,7 @@ function TransitSteps({ plan }: { plan: TransitPlan }) {
             <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
               <Footprints className="mt-0.5 size-3.5 shrink-0" />
               <span>
-                Walk {leg.minutes} min ({leg.meters} m) to {leg.to}
+                Pieszo {leg.minutes} min ({leg.meters} m) do: {leg.to}
               </span>
             </li>
           ) : (
@@ -471,12 +472,12 @@ function TransitSteps({ plan }: { plan: TransitPlan }) {
               {leg.mode === "tram" ? <TramFront className="mt-0.5 size-3.5 shrink-0 text-sky-700" /> : <Bus className="mt-0.5 size-3.5 shrink-0 text-sky-700" />}
               <span>
                 <span className="font-semibold">
-                  {leg.mode === "tram" ? "Tram" : "Bus"} {leg.line}
+                  {leg.mode === "tram" ? "Tramwaj" : "Autobus"} {leg.line}
                 </span>{" "}
-                towards {leg.headsign}
+                w kierunku: {leg.headsign}
                 <br />
                 <span className="text-muted-foreground">
-                  Board at {leg.boardStop} ({leg.departs}) · get off at {leg.alightStop} ({leg.arrives}) · {leg.stops} {leg.stops === 1 ? "stop" : "stops"}, {leg.minutes} min
+                  Wsiądź: {leg.boardStop} ({leg.departs}) · wysiądź: {leg.alightStop} ({leg.arrives}) · {leg.stops} {plPlural(leg.stops, "przystanek", "przystanki", "przystanków")}, {leg.minutes} min
                 </span>
               </span>
             </li>
@@ -484,7 +485,7 @@ function TransitSteps({ plan }: { plan: TransitPlan }) {
         )}
       </ol>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        {plan.transfers === 0 ? "No transfers" : `${plan.transfers} ${plan.transfers === 1 ? "transfer" : "transfers"}`} · leave about {plan.leaveAt}, arrive {plan.arriveAt} · typical weekday morning, ZTP Kraków timetable
+        {plan.transfers === 0 ? "Bez przesiadek" : `${plan.transfers} ${plPlural(plan.transfers, "przesiadka", "przesiadki", "przesiadek")}`} · wyjście ok. {plan.leaveAt}, przyjazd {plan.arriveAt} · typowy poranek w dzień roboczy, rozkład ZTP Kraków
       </p>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Car, ExternalLink, Info } from "lucide-react";
+import { dec } from "@/lib/format/pl";
 import { kindLabel, type ParkingData, type ParkingFacts } from "@/lib/scoring/parking";
 
 /** The parking snapshot, loaded the first time it is needed so the first map load does not carry it. `null` = loading, `false` = failed. */
@@ -21,101 +22,101 @@ export function useParkingData(enabled: boolean): ParkingData | null | false {
 }
 
 const SOURCES = {
-  osm: { label: "OpenStreetMap contributors (ODbL)", href: "https://www.openstreetmap.org/copyright" },
-  msip: { label: "City of Kraków GIS (MSIP), parking meters", href: "https://msip.um.krakow.pl/arcgis/rest/services/Obserwatorium/K04_PARKOMETRY/MapServer" },
-  zdmk: { label: "Official paid parking area, rates and rules (ZDMK)", href: "https://zdmk.krakow.pl/parkowanie/strefa-platnego-parkowania/informacje-ogolne-i-oplaty/" },
+  osm: { label: "współtwórcy OpenStreetMap (ODbL)", href: "https://www.openstreetmap.org/copyright" },
+  msip: { label: "GIS Miasta Krakowa (MSIP), parkometry", href: "https://msip.um.krakow.pl/arcgis/rest/services/Obserwatorium/K04_PARKOMETRY/MapServer" },
+  zdmk: { label: "Oficjalna strefa płatnego parkowania, opłaty i zasady (ZDMK)", href: "https://zdmk.krakow.pl/parkowanie/strefa-platnego-parkowania/informacje-ogolne-i-oplaty/" },
 };
 
 const monthLabel = (ym: string | null) => {
   if (!ym) return null;
   const [y, m] = ym.split("-").map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  return new Date(y, m - 1, 1).toLocaleDateString("pl-PL", { month: "long", year: "numeric" });
 };
 
-const metres = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`);
+const metres = (m: number) => (m >= 1000 ? `${dec(m / 1000)} km` : `${m} m`);
 
 /** Parking around the open area, for renters with a car. Information only: no score, and always with its caveats and sources. */
 export function ParkingCard({ facts, data, district }: { facts: ParkingFacts | null; data: ParkingData | null | false; district: string | null }) {
-  const place = district ? `around this hexagon in ${district}` : "around this hexagon";
+  const place = district ? `wokół tego sześciokąta (${district})` : "wokół tego sześciokąta";
   return (
     <div className="mt-5 rounded-2xl border border-border/70 p-4">
       <div className="flex items-center gap-1.5 text-sm font-semibold">
         <Car className="size-4" />
-        Parking for renters with a car
+        Parkowanie dla najemców z samochodem
       </div>
 
       <div className="mt-2 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-[11px] leading-snug text-amber-900">
         <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
         <p>
-          <b>No guarantee.</b> This is a rough guide from public map data, not a promise of a free space. Free spaces,
-          resident permits, opening hours and prices are not in the data, and it may be out of date or incomplete. Check on
-          site before you rent. A garage space or resident permit is usually an <b>extra monthly cost</b>, so check what the
-          listing includes.
+          <b>Bez gwarancji.</b> To orientacyjny przewodnik na podstawie publicznych danych mapowych, a nie obietnica wolnego
+          miejsca. Wolnych miejsc, abonamentów dla mieszkańców, godzin otwarcia i cen nie ma w danych, a dane mogą być
+          nieaktualne lub niepełne. Sprawdź na miejscu, zanim wynajmiesz. Miejsce w garażu lub abonament dla mieszkańców to
+          zwykle <b>dodatkowy koszt miesięczny</b>, więc sprawdź, co obejmuje ogłoszenie.
         </p>
       </div>
 
       {data === false ? (
-        <p className="mt-3 text-sm text-muted-foreground">The parking data could not be loaded. Everything else on the map still works.</p>
+        <p className="mt-3 text-sm text-muted-foreground">Nie udało się wczytać danych o parkowaniu. Reszta mapy działa normalnie.</p>
       ) : !facts ? (
-        <p className="mt-3 text-sm text-muted-foreground">{data === null ? "Loading parking data…" : "Open an area to see parking around it."}</p>
+        <p className="mt-3 text-sm text-muted-foreground">{data === null ? "Wczytywanie danych o parkowaniu…" : "Otwórz obszar, aby zobaczyć parkowanie wokół niego."}</p>
       ) : (
         <ul className="mt-3 space-y-2 text-sm">
           <li>
-            <div className="font-medium">Car parks and garages</div>
+            <div className="font-medium">Parkingi i garaże</div>
             {facts.availability.osm ? (
               <div className="text-muted-foreground">
                 {facts.carParks.within1000 === 0
-                  ? `None found within 1 km ${place} (OpenStreetMap).`
-                  : `${facts.carParks.within500} within 500 m, ${facts.carParks.within1000} within 1 km${
-                      facts.carParks.nearest ? `. Nearest ${kindLabel(facts.carParks.nearest.kind)} about ${metres(facts.carParks.nearest.distanceM)} away${facts.carParks.nearest.fee === 1 ? ", paid" : facts.carParks.nearest.fee === 0 ? ", free" : ""}` : ""
+                  ? `Nie znaleziono w promieniu 1 km ${place} (OpenStreetMap).`
+                  : `${facts.carParks.within500} w promieniu 500 m, ${facts.carParks.within1000} w promieniu 1 km${
+                      facts.carParks.nearest ? `. Najbliżej: ${kindLabel(facts.carParks.nearest.kind)}, ok. ${metres(facts.carParks.nearest.distanceM)} stąd${facts.carParks.nearest.fee === 1 ? ", płatny" : facts.carParks.nearest.fee === 0 ? ", bezpłatny" : ""}` : ""
                     }.`}
-                {facts.carParks.restricted > 0 && ` ${facts.carParks.restricted} more are private or for customers only and are not counted.`}
+                {facts.carParks.restricted > 0 && ` Kolejnych ${facts.carParks.restricted} jest prywatnych lub tylko dla klientów i nie są liczone.`}
               </div>
             ) : (
-              <div className="text-muted-foreground">No OpenStreetMap parking data loaded.</div>
+              <div className="text-muted-foreground">Nie wczytano danych o parkowaniu z OpenStreetMap.</div>
             )}
           </li>
           <li>
-            <div className="font-medium">Street parking</div>
+            <div className="font-medium">Parkowanie przy ulicy</div>
             {facts.availability.osm ? (
               <div className="text-muted-foreground">
                 {facts.streets.within500 === 0
-                  ? "No street parking is mapped within 500 m. That may only mean it is not mapped."
-                  : `Street parking is mapped along ${facts.streets.within500} street segments within 500 m${
-                      facts.streets.paid + facts.streets.free > 0 ? ` (${facts.streets.paid} tagged paid, ${facts.streets.free} tagged free)` : ""
-                    }. Spaces and prices are not known.`}
+                  ? "W promieniu 500 m nie zmapowano parkowania przy ulicy. Może to oznaczać tylko brak w danych."
+                  : `Parkowanie przy ulicy zmapowano na ${facts.streets.within500} odcinkach ulic w promieniu 500 m${
+                      facts.streets.paid + facts.streets.free > 0 ? ` (${facts.streets.paid} oznaczonych jako płatne, ${facts.streets.free} jako bezpłatne)` : ""
+                    }. Liczba miejsc i ceny nie są znane.`}
               </div>
             ) : (
-              <div className="text-muted-foreground">No OpenStreetMap parking data loaded.</div>
+              <div className="text-muted-foreground">Nie wczytano danych o parkowaniu z OpenStreetMap.</div>
             )}
           </li>
           <li>
-            <div className="font-medium">Parking meters</div>
+            <div className="font-medium">Parkometry</div>
             {facts.availability.meters ? (
               <div className="text-muted-foreground">
                 {facts.meters.within500 === 0
-                  ? `No meters within 500 m in the city data${data ? ` (state ${monthLabel(data.metersAsOf)})` : ""}, so street parking here may be free, but that is not certain.`
-                  : `${facts.meters.within500} within 500 m, so street parking here is probably paid. The meter data is from ${data ? monthLabel(data.metersAsOf) : "2019"}.`}
+                  ? `Brak parkometrów w promieniu 500 m w danych miasta${data ? ` (stan: ${monthLabel(data.metersAsOf)})` : ""}, więc parkowanie przy ulicy może być tu bezpłatne, ale nie ma pewności.`
+                  : `${facts.meters.within500} w promieniu 500 m, więc parkowanie przy ulicy jest tu prawdopodobnie płatne. Dane o parkometrach pochodzą z: ${data ? monthLabel(data.metersAsOf) : "2019"}.`}
               </div>
             ) : (
-              <div className="text-muted-foreground">No parking meter data loaded.</div>
+              <div className="text-muted-foreground">Nie wczytano danych o parkometrach.</div>
             )}
           </li>
           <li>
-            <div className="font-medium">Park and ride</div>
+            <div className="font-medium">Parkuj i jedź (P+R)</div>
             <div className="text-muted-foreground">
               {!facts.availability.osm
-                ? "No OpenStreetMap parking data loaded."
+                ? "Nie wczytano danych o parkowaniu z OpenStreetMap."
                 : facts.parkRide.nearest
-                  ? `Nearest: ${facts.parkRide.nearest.name}, about ${metres(facts.parkRide.nearest.distanceM)} in a straight line.`
-                  : "None mapped nearby."}
+                  ? `Najbliżej: ${facts.parkRide.nearest.name}, ok. ${metres(facts.parkRide.nearest.distanceM)} w linii prostej.`
+                  : "Brak zmapowanych w pobliżu."}
             </div>
           </li>
         </ul>
       )}
 
       <p className="mt-3 text-[11px] leading-snug text-muted-foreground">
-        Sources:{" "}
+        Źródła:{" "}
         {[
           { ...SOURCES.osm, date: data ? data.retrieved.osm : null },
           { ...SOURCES.msip, date: data ? monthLabel(data.metersAsOf) : null },
@@ -128,7 +129,7 @@ export function ParkingCard({ facts, data, district }: { facts: ParkingFacts | n
             {s.date ? ` (${s.date})` : ""}
           </span>
         ))}
-        . Distances are straight lines from the hexagon centre.
+        . Odległości to linie proste od środka sześciokąta.
       </p>
       <a
         href={SOURCES.zdmk.href}
