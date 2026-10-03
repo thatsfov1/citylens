@@ -8,12 +8,13 @@ import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { OsmAttribution } from "@/components/osm-attribution";
 import { ModeSelector } from "./mode-selector";
 import { PlacesList } from "./places-list";
+import { WorksWarnings } from "./works-warnings";
 import { defaultPinCategories } from "@/lib/map/places";
 import { NO_DATA_COLOR } from "@/lib/map/zones";
 import { MIN_SAFETY_LEVELS, importanceToQuery, type Importance } from "@/lib/scoring/preferences";
 import { normalizeWeights } from "@/lib/scoring/weights";
 import type { HexSource, HexDetails } from "@/lib/supabase/hex-scores";
-import type { Category, HexData, MapMode, PlacesResponse } from "@/types";
+import type { Category, HexData, MapMode, PlacesResponse, WorkNearby } from "@/types";
 
 export function MapExperience({
   hexes,
@@ -76,6 +77,21 @@ export function MapExperience({
     };
   }, [selected, source]);
 
+  // Construction / renovation works near the selected hexagon. Failure just means no warning block.
+  const [works, setWorks] = useState<WorkNearby[]>([]);
+  useEffect(() => {
+    if (!selected || source !== "supabase") return;
+    const ctrl = new AbortController();
+    fetch(`/api/hexes/${selected}/works`, { signal: ctrl.signal })
+      .then((r) => (r.ok ? (r.json() as Promise<{ works: WorkNearby[] }>) : null))
+      .then((d) => setWorks(d?.works ?? []))
+      .catch(() => {});
+    return () => {
+      ctrl.abort();
+      setWorks([]);
+    };
+  }, [selected, source]);
+
   // Which categories are pinned: the active mode (or top preferences), adjustable with chips.
   // Overrides are tied to the (mode, hexagon) they were made in, so they reset on change.
   const pinKey = `${mode}|${selected}`;
@@ -133,6 +149,7 @@ export function MapExperience({
           source={source}
           weights={weights}
           onClose={() => setSelected(null)}
+          worksSlot={<WorksWarnings works={works} />}
           placesSlot={
             places && (
               <PlacesList
