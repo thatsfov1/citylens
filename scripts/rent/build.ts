@@ -12,10 +12,12 @@ const LISTINGS_FILE = "data/rent/listings.json";
 const OUT_FILE = "src/lib/data/rent-data.json";
 const MIN_N = 5;
 
-type Listing = { id: number; district: string; rooms: number; price: number; area: number | null };
+type Listing = { id: number; district: string; rooms: number; price: number; fee: number | null; area: number | null };
 type Item = {
   id: number;
   totalPrice?: { value: number; currency: string } | null;
+  /** Czynsz administracyjny (building fee), listed separately from the headline rent. */
+  rentPrice?: { value: number; currency: string } | null;
   areaInSquareMeters?: number | null;
   roomsNumber?: string | null;
   location?: { reverseGeocoding?: { locations?: { name: string; locationLevel: string }[] } };
@@ -40,7 +42,8 @@ function toListing(i: Item): Listing | null {
   const rooms = i.roomsNumber ? ROOMS[i.roomsNumber] : undefined;
   const district = i.location?.reverseGeocoding?.locations?.find((l) => l.locationLevel === "district")?.name;
   if (!price || !rooms || !district || price < 500 || price > 30000) return null;
-  return { id: i.id, district, rooms, price, area: i.areaInSquareMeters ?? null };
+  const fee = i.rentPrice?.currency === "PLN" && i.rentPrice.value > 0 && i.rentPrice.value <= 5000 ? i.rentPrice.value : null;
+  return { id: i.id, district, rooms, price, fee, area: i.areaInSquareMeters ?? null };
 }
 
 function quantile(sorted: number[], q: number): number {
@@ -50,9 +53,18 @@ function quantile(sorted: number[], q: number): number {
   return Math.round(sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo));
 }
 
-const stats = (prices: number[]) => {
-  const s = [...prices].sort((a, b) => a - b);
-  return { n: s.length, p25: quantile(s, 0.25), median: quantile(s, 0.5), p75: quantile(s, 0.75) };
+const stats = (rows: Listing[]) => {
+  const s = rows.map((l) => l.price).sort((a, b) => a - b);
+  const fees = rows.flatMap((l) => (l.fee == null ? [] : [l.fee])).sort((a, b) => a - b);
+  return {
+    n: s.length,
+    p25: quantile(s, 0.25),
+    median: quantile(s, 0.5),
+    p75: quantile(s, 0.75),
+    // Typical czynsz among ads that state it, and how many do.
+    fee: fees.length >= 3 ? quantile(fees, 0.5) : null,
+    feeKnown: fees.length,
+  };
 };
 
 async function main() {
@@ -75,23 +87,26 @@ async function main() {
 
   const listings = [...byId.values()];
   const bucket = (rooms: number) => String(Math.min(rooms, 3)); // "1", "2", "3" (= 3 or more)
-  const group = (filter: (l: Listing) => boolean) => {
-    const out: Record<string, ReturnType<typeof stats>> = {};
+  type Group = Record<string, ReturnType<typeof stats> & { offers?: [number, number | null][] }>;
+  const group = (filter: (l: Listing) => boolean, withOffers: boolean): Group => {
+    const out: Group = {};
     for (const b of ["1", "2", "3"]) {
-      const prices = listings.filter((l) => filter(l) && bucket(l.rooms) === b).map((l) => l.price);
-      if (prices.length >= MIN_N) out[b] = stats(prices);
+      const rows = listings.filter((l) => filter(l) && bucket(l.rooms) === b);
+      if (rows.length < MIN_N) continue;
+      // Every offer as [base rent, czynsz or null], so the app can count how many fit a budget.
+      out[b] = withOffers ? { ...stats(rows), offers: rows.map((l): [number, number | null] => [l.price, l.fee]).sort((x, y) => x[0] - y[0]) } : stats(rows);
     }
     return out;
   };
-  const districts: Record<string, ReturnType<typeof group>> = {};
-  for (const d of [...new Set(listings.map((l) => l.district))].sort()) districts[d] = group((l) => l.district === d);
+  const districts: Record<string, Group> = {};
+  for (const d of [...new Set(listings.map((l) => l.district))].sort()) districts[d] = group((l) => l.district === d, true);
 
   const data = {
-    source: "Otodom.pl rental asking prices (PLN / month)",
+    source: "Otodom.pl rental asking prices (PLN / month, base rent; fee = czynsz administracyjny listed separately)",
     snapshot: new Date().toISOString().slice(0, 10),
     listings: listings.length,
     minListings: MIN_N,
-    city: group(() => true),
+    city: group(() => true, false),
     districts,
   };
   writeFileSync(OUT_FILE, JSON.stringify(data, null, 1) + "\n");
