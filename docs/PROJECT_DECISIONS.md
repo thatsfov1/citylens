@@ -124,6 +124,11 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   shopping 20, transport 50. Preferences travel in the URL query string.
 - Copy rule (AGENTS.md §3): "match for you", never "best/worst neighbourhood".
 - Colours: diverging percentile scale; the map is veiled outside Kraków's boundary (airports stay visible).
+- **Map view lock** (`src/components/map/hex-map.tsx`): the minimum zoom is the zoom at which the whole
+  city fits beside the 380 px side panel (mobile: full width). At that view panning is disabled; zooming
+  in enables panning, with the centre clamped to the city bbox (`KRAKOW_BOUNDS` in `src/lib/h3/mask.ts`).
+  A "Center map" button appears once zoomed in by > 0.35 levels and flies back to the fit view.
+  Do **not** use MapLibre `maxBounds` for this: it forces the bbox to cover the viewport and over-zooms.
 
 ## 7. Code layout & ownership
 

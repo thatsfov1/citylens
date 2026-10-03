@@ -25,3 +25,14 @@ export const outsideMaskFeature: GeoJSON.Feature<GeoJSON.Polygon> = {
     ],
   },
 };
+
+/** Bounding box of Kraków as [[west, south], [east, north]]. */
+export const KRAKOW_BOUNDS: [[number, number], [number, number]] = (() => {
+  const ring = boundary.coordinates[0] as number[][];
+  const lngs = ring.map((c) => c[0]);
+  const lats = ring.map((c) => c[1]);
+  return [
+    [Math.min(...lngs), Math.min(...lats)],
+    [Math.max(...lngs), Math.max(...lats)],
+  ];
+})();
