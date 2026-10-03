@@ -21,9 +21,9 @@ import {
   type LightingFile,
   type SafetyIndicators,
 } from "../../src/lib/data/safety";
-import { CATEGORY_DISTANCE_SCALE, findDistrict, normalizeRaw, scoreGreenery, scorePoiCategory } from "../../src/lib/data/score-hex";
+import { CATEGORY_DISTANCE_SCALE, findDistrict, normalizeRaw, scoreEducation, scoreGreenery, scorePoiCategory } from "../../src/lib/data/score-hex";
 import type { LngLat } from "../../src/lib/data/geo";
-import type { Category } from "../../src/types";
+import { EDUCATION_STAGES, type Category, type EducationStageScores } from "../../src/types";
 
 const OSM_DIR = process.env.OSM_DIR ?? "data/osm";
 const read = (name: string) => {
@@ -39,8 +39,8 @@ function main() {
   console.log({ pois: pois.length, green: green.length, districts: districts.length });
 
   const cells = getDemoCells();
-  const poiCats: PoiCategory[] = ["sport", "culture", "shopping", "transport"];
-  const byCat = Object.fromEntries(poiCats.map((c) => [c, pois.filter((p) => p.category === c)])) as Record<PoiCategory, typeof pois>;
+  const poiCats: Exclude<PoiCategory, "education">[] = ["sport", "culture", "shopping", "transport"];
+  const byCat = Object.fromEntries((["education", ...poiCats] as PoiCategory[]).map((c) => [c, pois.filter((p) => p.category === c)])) as Record<PoiCategory, typeof pois>;
 
   // Transport: measured GTFS service for bus/tram (built by scripts/gtfs/build.ts); OSM only adds rail stations,
   // which the city feeds don't cover. Without data/gtfs/stops.json we fall back to OSM stops.
@@ -72,7 +72,8 @@ function main() {
     const [lat, lng] = cellToLatLng(h3Index);
     const center: LngLat = [lng, lat];
     const indicators = {
-      ...(Object.fromEntries(poiCats.map((c) => [c, scorePoiCategory(center, byCat[c], CATEGORY_DISTANCE_SCALE[c])])) as Record<PoiCategory, ReturnType<typeof scorePoiCategory>>),
+      ...(Object.fromEntries(poiCats.map((c) => [c, scorePoiCategory(center, byCat[c], CATEGORY_DISTANCE_SCALE[c])])) as Record<(typeof poiCats)[number], ReturnType<typeof scorePoiCategory>>),
+      education: scoreEducation(center, byCat.education),
       greenery: scoreGreenery(center, green),
     };
     const district = findDistrict(center, districts);
@@ -116,8 +117,22 @@ function main() {
     return total;
   });
 
-  const categories: Category[] = ["sport", "culture", "greenery", "shopping", "transport"];
-  const scores = Object.fromEntries(categories.map((c) => [c, normalizeRaw(rows.map((r) => r.indicators[c].raw))])) as Record<Category, number[]>;
+  const categories: Category[] = ["sport", "culture", "greenery", "shopping", "transport", "education"];
+  const scores = Object.fromEntries(categories.map((c) => [c, normalizeRaw(rows.map((r) => r.indicators[c]!.raw))])) as Record<Category, number[]>;
+
+  // Education: each stage is normalised on its own (a kindergarten and a university are not comparable in raw
+  // terms); the stored category score is the mean of the four stages. The client recomputes the mean for the
+  // stages the user selects (src/lib/scoring/education.ts), so the stage scores are persisted (hex_scores.education_stages).
+  const stageScores = Object.fromEntries(
+    EDUCATION_STAGES.map((s) => [s, normalizeRaw(rows.map((r) => r.indicators.education!.stages[s].raw))]),
+  ) as Record<(typeof EDUCATION_STAGES)[number], number[]>;
+  const educationStages: EducationStageScores[] = rows.map((_, i) => ({
+    kindergarten: stageScores.kindergarten[i],
+    primary: stageScores.primary[i],
+    secondary: stageScores.secondary[i],
+    university: stageScores.university[i],
+  }));
+  scores.education = educationStages.map((s) => Math.round(EDUCATION_STAGES.reduce((sum, k) => sum + s[k], 0) / EDUCATION_STAGES.length));
 
   const q = (s: string) => `'${s.replace(/'/g, "''")}'`;
   const values = rows.map((r, i) => {
@@ -125,11 +140,11 @@ function main() {
     const airValue = r.indicators.air ? airScore(r.indicators.air) : null;
     const ind = JSON.stringify({ ...rest, greenery }, (k, v) => (k === "raw" || k === "litShare" ? Math.round(v * 1000) / 1000 : v));
     const wkt = `POLYGON((${cellPolygon(r.h3Index).map(([x, y]) => `${x.toFixed(6)} ${y.toFixed(6)}`).join(",")}))`;
-    return `(${q(r.h3Index)},ST_GeomFromText('${wkt}',4326),${scores.sport[i]},${scores.culture[i]},${scores.greenery[i]},${scores.shopping[i]},${scores.transport[i]},${safetyScores[i] ?? "null"},${airValue ?? "null"},${r.district ? q(r.district) : "null"},${q(ind)}::jsonb)`;
+    return `(${q(r.h3Index)},ST_GeomFromText('${wkt}',4326),${scores.sport[i]},${scores.culture[i]},${scores.greenery[i]},${scores.shopping[i]},${scores.transport[i]},${scores.education[i]},${q(JSON.stringify(educationStages[i]))}::jsonb,${safetyScores[i] ?? "null"},${airValue ?? "null"},${r.district ? q(r.district) : "null"},${q(ind)}::jsonb)`;
   });
   writeFileSync(
     "supabase/seed.sql",
-    `insert into public.hex_scores (h3_index, geometry, sport_score, culture_score, greenery_score, shopping_score, transport_score, safety_score, air_score, district, indicators) values\n${values.join(",\n")}\non conflict (h3_index) do update set geometry=excluded.geometry, sport_score=excluded.sport_score, culture_score=excluded.culture_score, greenery_score=excluded.greenery_score, shopping_score=excluded.shopping_score, transport_score=excluded.transport_score, safety_score=excluded.safety_score, air_score=excluded.air_score, district=excluded.district, indicators=excluded.indicators;\n`,
+    `insert into public.hex_scores (h3_index, geometry, sport_score, culture_score, greenery_score, shopping_score, transport_score, education_score, education_stages, safety_score, air_score, district, indicators) values\n${values.join(",\n")}\non conflict (h3_index) do update set geometry=excluded.geometry, sport_score=excluded.sport_score, culture_score=excluded.culture_score, greenery_score=excluded.greenery_score, shopping_score=excluded.shopping_score, transport_score=excluded.transport_score, education_score=excluded.education_score, education_stages=excluded.education_stages, safety_score=excluded.safety_score, air_score=excluded.air_score, district=excluded.district, indicators=excluded.indicators;\n`,
   );
   console.log("wrote supabase/seed.sql with", rows.length, "rows;", rows.filter((r) => !r.district).length, "without district");
 }

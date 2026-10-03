@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { assembleRings, haversine, pointInPolygon, type Ring } from "../data/geo";
 import { classifyPoi, parseGreen, ringAreaM2, type GreenArea, type Poi } from "../data/osm";
 import { gtfsStopWeight, gtfsToPois } from "../data/gtfs";
-import { distanceWeight, findDistrict, normalizeRaw, scoreGreenery, scorePoiCategory } from "../data/score-hex";
+import { distanceWeight, findDistrict, normalizeRaw, scoreEducation, scoreGreenery, scorePoiCategory } from "../data/score-hex";
 
 const center: [number, number] = [19.9372, 50.0614];
 // ~111 m per 0.001° lat
@@ -146,4 +146,30 @@ test("frequent stops outscore rare ones and report departures", () => {
   // OSM-only POIs carry no frequency fields.
   const osm = scorePoiCategory(center, [{ category: "transport", kind: "bus_stop", weight: 1, name: null, at: north(100) }]);
   assert.equal(osm.departuresPerHourWithin500, undefined);
+});
+
+test("classifyPoi: education stages from isced level, then Polish names", () => {
+  assert.equal(classifyPoi({ amenity: "kindergarten" })?.category, "education");
+  assert.equal(classifyPoi({ amenity: "university" })?.kind, "university");
+  assert.equal(classifyPoi({ amenity: "school", "isced:level": "1" })?.kind, "primary_school");
+  assert.equal(classifyPoi({ amenity: "school", "isced:level": "2;3" })?.kind, "primary_school"); // lowest level wins
+  assert.equal(classifyPoi({ amenity: "school", "isced:level": "3" })?.kind, "secondary_school");
+  assert.equal(classifyPoi({ amenity: "school", name: "Szkoła Podstawowa nr 12" })?.kind, "primary_school");
+  assert.equal(classifyPoi({ amenity: "school", name: "II Liceum Ogólnokształcące" })?.kind, "secondary_school");
+  assert.equal(classifyPoi({ amenity: "school", name: "Technikum Mechaniczne" })?.kind, "secondary_school");
+  assert.equal(classifyPoi({ amenity: "school", name: "Przedszkole Integracyjne" })?.kind, "kindergarten");
+  // Unknown level is not guessed.
+  assert.equal(classifyPoi({ amenity: "school", name: "Szkoła Muzyczna" })?.kind, "school");
+});
+
+test("scoreEducation: each stage uses only its own places and reach", () => {
+  const mk = (kind: string, m: number): Poi => ({ category: "education", kind, weight: 1, name: null, at: north(m) });
+  const pois = [mk("kindergarten", 300), mk("university", 1500), mk("school", 200)];
+  const ind = scoreEducation(center, pois);
+  assert.ok(ind.stages.kindergarten.raw > 0);
+  assert.ok(ind.stages.primary.raw > 0 && ind.stages.secondary.raw > 0); // unknown-level school counts for both
+  assert.ok(ind.stages.university.raw > 0); // 1.5 km is within the 2 km university reach
+  // The same university at 1.5 km is out of a kindergarten's reach.
+  assert.equal(scoreEducation(center, [mk("kindergarten", 1500)]).stages.kindergarten.raw, 0);
+  assert.equal(scoreEducation(center, [mk("university", 300)]).stages.kindergarten.raw, 0);
 });

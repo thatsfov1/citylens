@@ -44,6 +44,7 @@ const CENTRALITY: Record<Category, number> = {
   greenery: -0.6,
   shopping: 0.55,
   transport: 0.7,
+  education: 0.4,
 };
 
 export function getMockScores(h3Index: string): CategoryScores {

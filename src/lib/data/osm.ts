@@ -1,5 +1,5 @@
 import { assembleRings, ringBBox, type BBox, type LngLat, type Polygon, type Ring } from "./geo";
-import type { Category } from "../../types";
+import type { Category, EducationStage } from "../../types";
 
 // Parsing of raw Overpass JSON (data/osm/*.json) into typed features.
 
@@ -40,6 +40,41 @@ type OsmElement = {
 
 const toRing = (g: { lat: number; lon: number }[]): Ring => g.map((p) => [p.lon, p.lat]);
 
+/** Which life stage(s) an education POI `kind` serves. A school of unknown level counts for both school stages. */
+export const EDUCATION_KIND_STAGES: Record<string, readonly EducationStage[]> = {
+  kindergarten: ["kindergarten"],
+  childcare: ["kindergarten"],
+  primary_school: ["primary"],
+  secondary_school: ["secondary"],
+  school: ["primary", "secondary"],
+  university: ["university"],
+  college: ["university"],
+};
+
+const KINDERGARTEN_NAME = /przedszkol|żłob|zlob/i;
+const PRIMARY_NAME = /podstawow/i;
+const SECONDARY_NAME = /liceum|technikum|branżow|branzow|zespół szkół|zespol szkol|ponadpodstawow|ponadgimnaz|szkoła średnia|szkola srednia/i;
+
+/** School level from `isced:level` (lowest listed level wins), else from the Polish name; "school" if unknown. */
+function schoolKind(tags: Tags): string {
+  const levels = (tags["isced:level"] ?? "")
+    .split(";")
+    .map((l) => Number.parseInt(l, 10))
+    .filter((n) => Number.isFinite(n));
+  if (levels.length) {
+    const lowest = Math.min(...levels);
+    if (lowest === 0) return "kindergarten";
+    if (lowest <= 2) return "primary_school";
+    if (lowest <= 4) return "secondary_school";
+    return "university";
+  }
+  const name = tags.name ?? "";
+  if (KINDERGARTEN_NAME.test(name)) return "kindergarten";
+  if (PRIMARY_NAME.test(name)) return "primary_school";
+  if (SECONDARY_NAME.test(name)) return "secondary_school";
+  return "school";
+}
+
 const NOT_A_SHOP = new Set(["vacant", "no", "disused", "closed"]);
 
 /** Maps OSM tags to a scoring category; null if irrelevant. Mirrors the tag lists in AGENTS.md §8. */
@@ -60,6 +95,13 @@ export function classifyPoi(tags: Tags): { category: PoiCategory; kind: string; 
   if (a === "library") return { category: "culture", kind: a, weight: 1 };
   if (a === "community_centre" || a === "nightclub") return { category: "culture", kind: a, weight: 0.7 };
   if (a === "music_venue" || a === "concert_hall") return { category: "culture", kind: a, weight: 1 };
+
+  // Education: one POI per institution site. Counts places, not quality, capacity or catchment.
+  if (a === "kindergarten") return { category: "education", kind: "kindergarten", weight: 1 };
+  if (a === "childcare") return { category: "education", kind: "childcare", weight: 0.7 };
+  if (a === "school") return { category: "education", kind: schoolKind(tags), weight: 1 };
+  if (a === "university") return { category: "education", kind: "university", weight: 1.5 };
+  if (a === "college") return { category: "education", kind: "college", weight: 1 };
 
   const shop = tags.shop;
   // Empty or disused units are not shops anyone can use.
