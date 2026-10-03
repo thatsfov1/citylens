@@ -88,13 +88,18 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   green areas were ignored and no hex had a district. `fetch.ts` also retries when a districts
   response has no geometry.
 - **Distance weighting** (AGENTS.md §9): 0–250 m ×1, 250–500 m ×0.6, 500–1000 m ×0.25, beyond
-  1 km ignored. Features outside the cell still count.
+  1 km ignored (culture: see below). Features outside the cell still count.
 - **POI scoring:** sum of `feature weight × distance weight`. Feature weights by kind
   (`classifyPoi` in `osm.ts`), e.g. rail station 5, tram stop 2, bus stop 1; mall 4,
   supermarket 2, other shop 0.7 (vacant/disused shops excluded); sports centre/stadium 1.5, pitch 0.5;
   museum/theatre/cinema 1.5, library/gallery/historic 1, community centre 0.7.
-- **Culture tags were broadened** (galleries, historic castles/monuments/manors/forts, community
-  centres) because OSM has few culture POIs. Culture is still sparse — expect many hexes near 0.
+- **Culture was expanded twice** because OSM has few classic culture venues. Tags: museum, gallery,
+  theatre, cinema, arts centre, library, community centre, music venue, concert hall, nightclub,
+  `tourism=attraction` (0.7) and `viewpoint` (0.5), plus `historic=castle|monument|manor|fort`.
+  Places of worship and `tourism=artwork` are deliberately excluded (too numerous, would swamp the signal).
+- **Culture reach is 2 km, other categories 1 km** (`CATEGORY_DISTANCE_SCALE` in `score-hex.ts`):
+  the same bands stretched ×2 (0–500 m full, 500–1000 m ×0.6, 1–2 km ×0.25). `indicators.<cat>.radiusM`
+  records the reach used. Result: hexes with culture score 0 dropped from 238/461 to 33/461.
 - **Greenery is not a POI count:** `0.6 × cover share of the 500 m surroundings` (25 sample points
   tested against polygons) `+ 0.4 × proximity to the nearest ≥1 ha green area`.
 - **Normalisation:** per category, `log1p(raw) / log1p(p95)` capped at 100, so a few dense hot
@@ -141,7 +146,8 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   `HexData { h3Index, scores: { … }, district? }`. **The code is authoritative**; keep them aligned
   deliberately and tell the other developer before changing either.
 - `/map` reads Supabase directly on the server instead of via `/api/hexes` (see §3).
-- Culture scores are sparse (many hexes ≈ 0); this reflects OSM coverage, not a bug.
+- Culture is still the weakest category (OSM coverage); it is now much denser after the tag and radius expansion.
+- `supabase/seed.sql` in the repo can be newer than the live Supabase table: after recomputing, the table must be reloaded by someone with write access.
 - Do not run `compute.ts` on the sample, and don't commit the full extracts.
 - Next.js here has breaking changes vs older versions: read `node_modules/next/dist/docs/` before
   writing framework code (see `AGENTS.md`).

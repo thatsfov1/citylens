@@ -14,14 +14,25 @@ export const MAX_RADIUS_M = 1000;
 const GREEN_COVER_RADIUS_M = 500;
 const MAJOR_PARK_M2 = 10_000; // ≥ 1 ha counts as a "park" worth walking to
 
-export function distanceWeight(d: number): number {
-  for (const b of DISTANCE_BANDS) if (d <= b.maxM) return b.weight;
+/** `scale` stretches all bands (2 → 0–500 m full, 500–1000 m medium, 1–2 km lower). */
+export function distanceWeight(d: number, scale = 1): number {
+  for (const b of DISTANCE_BANDS) if (d <= b.maxM * scale) return b.weight;
   return 0;
 }
+
+/** People travel further for culture than for a bus stop, so its reach is doubled. */
+export const CATEGORY_DISTANCE_SCALE: Record<PoiCategory, number> = {
+  sport: 1,
+  culture: 2,
+  shopping: 1,
+  transport: 1,
+};
 
 export type Nearest = { name: string | null; kind: string; distanceM: number };
 
 export type PoiIndicators = {
+  /** Reach (m) used for this category; absent in rows scored before per-category radii. */
+  radiusM?: number;
   raw: number;
   within500: number;
   within1000: number;
@@ -37,21 +48,22 @@ export type GreenIndicators = {
 
 export type CellIndicators = Record<PoiCategory, PoiIndicators> & { greenery: GreenIndicators };
 
-export function scorePoiCategory(center: LngLat, pois: Poi[]): PoiIndicators {
+export function scorePoiCategory(center: LngLat, pois: Poi[], scale = 1): PoiIndicators {
+  const radiusM = MAX_RADIUS_M * scale;
   let raw = 0;
   let within500 = 0;
   let within1000 = 0;
   let nearest: Nearest | null = null;
   for (const p of pois) {
     const d = haversine(center, p.at);
-    if (d > MAX_RADIUS_M) continue;
-    raw += p.weight * distanceWeight(d);
-    within1000++;
+    if (d > radiusM) continue;
+    raw += p.weight * distanceWeight(d, scale);
+    if (d <= 1000) within1000++;
     if (d <= 500) within500++;
     // Prefer named features for the explanation, falling back to the closest of any kind.
     if (!nearest || d < nearest.distanceM) nearest = { name: p.name, kind: p.kind, distanceM: Math.round(d) };
   }
-  return { raw, within500, within1000, nearest };
+  return { radiusM, raw, within500, within1000, nearest };
 }
 
 /** Distance in metres from a point to a ring's edge (local planar approximation). */
