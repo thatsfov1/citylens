@@ -21,23 +21,22 @@ export const CATEGORY_PL: Record<Category, { label: string; hint: string }> = {
   transport: { label: "Transport", hint: "Przystanki i połączenia komunikacji miejskiej" },
 };
 
-export const GREETING =
-  "Cześć! Jestem Twoim przewodnikiem po Krakowie. Opowiedz mi, jak lubisz spędzać czas i czego szukasz w okolicy — pokażę, które części miasta pasują do Ciebie.";
+export const GREETING = "Cześć! Powiedz, czego szukasz w okolicy, a pokażę dopasowane części Krakowa.";
 
 export const SUGGESTIONS = [
-  "Jestem aktywną osobą",
-  "Mam rodzinę z dziećmi",
-  "Kocham parki i bieganie",
-  "Nie mam samochodu",
-  "Lubię teatr i muzea",
-  "Pracuję zdalnie i cenię ciszę",
-  "Często robię zakupy",
-  "Do pracy jeżdżę tramwajem",
-  "Mam psa i dużo spaceruję",
-  "Studiuję i lubię życie nocne",
+  "Aktywny tryb życia",
+  "Rodzina z dziećmi",
+  "Parki i bieganie",
+  "Bez samochodu",
+  "Teatr i muzea",
+  "Cisza i praca zdalna",
+  "Częste zakupy",
+  "Jeżdżę tramwajem",
+  "Mam psa",
+  "Życie nocne",
 ] as const;
 
-export const SUGGESTIONS_VISIBLE = 4;
+export const SUGGESTIONS_VISIBLE = 3;
 
 export type Levels = Partial<Record<Category, Level>>;
 
@@ -67,39 +66,14 @@ export function levelsToImportance(levels: Levels): Importance {
   return out;
 }
 
-/** Static class names per category (Tailwind needs full strings); palette: bark / sage / moss / cream. */
+/** Static class names per category (Tailwind needs full strings); palette: ink glass with one hue per category. */
 export const CATEGORY_STYLE: Record<
   Category,
   { tile: string; fill: string; chip: string; dot: string }
 > = {
-  sport: {
-    tile: "bg-cream border-bark/40 text-bark",
-    fill: "bg-bark",
-    chip: "bg-cream border-bark/40 text-bark",
-    dot: "bg-bark",
-  },
-  culture: {
-    tile: "bg-white border-sage text-bark",
-    fill: "bg-sage",
-    chip: "bg-white border-sage text-bark",
-    dot: "bg-sage",
-  },
-  greenery: {
-    tile: "bg-sage/30 border-moss text-bark",
-    fill: "bg-moss",
-    chip: "bg-sage/30 border-moss text-bark",
-    dot: "bg-moss",
-  },
-  shopping: {
-    tile: "bg-cream border-sage text-bark",
-    fill: "bg-sage",
-    chip: "bg-cream border-sage text-bark",
-    dot: "bg-sage",
-  },
-  transport: {
-    tile: "bg-white border-bark/40 text-bark",
-    fill: "bg-bark",
-    chip: "bg-white border-bark/40 text-bark",
-    dot: "bg-bark",
-  },
+  sport: { tile: "bg-ink/70 border-sun text-mist", fill: "bg-sun", chip: "bg-white/10 border-sun/70 text-mist", dot: "bg-sun" },
+  culture: { tile: "bg-ink/70 border-rose text-mist", fill: "bg-rose", chip: "bg-white/10 border-rose/70 text-mist", dot: "bg-rose" },
+  greenery: { tile: "bg-ink/70 border-mint text-mist", fill: "bg-mint", chip: "bg-white/10 border-mint/70 text-mist", dot: "bg-mint" },
+  shopping: { tile: "bg-ink/70 border-sky text-mist", fill: "bg-sky", chip: "bg-white/10 border-sky/70 text-mist", dot: "bg-sky" },
+  transport: { tile: "bg-ink/70 border-lilac text-mist", fill: "bg-lilac", chip: "bg-white/10 border-lilac/70 text-mist", dot: "bg-lilac" },
 };
