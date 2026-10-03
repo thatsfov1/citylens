@@ -10,10 +10,10 @@ export const TRAVEL_MODES = ["walk", "bike", "transit", "car"] as const;
 export type TravelMode = (typeof TRAVEL_MODES)[number];
 
 export const MODE_LABELS: Record<TravelMode, string> = {
-  walk: "on foot",
-  bike: "by bike",
-  transit: "by public transport",
-  car: "by car",
+  walk: "pieszo",
+  bike: "rowerem",
+  transit: "komunikacją miejską",
+  car: "samochodem",
 };
 
 export const COMMUTE_LIMITS_MIN = [15, 30, 45, 60] as const;

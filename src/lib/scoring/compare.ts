@@ -38,7 +38,7 @@ const leaders = (values: number[]) => {
 /** Side-by-side category scores for the chosen areas, rows ordered by the user's weights. Deterministic, stored scores only. */
 export function compareAreas(hexes: HexData[], ids: string[], weights: CategoryWeights): Comparison {
   const chosen = ids.map((id) => hexes.find((h) => h.h3Index === id)).filter((h): h is HexData => !!h);
-  const base = chosen.map((h, i) => h.district ?? `Area ${i + 1}`);
+  const base = chosen.map((h, i) => h.district ?? `Obszar ${i + 1}`);
   const seen = new Map<string, number>();
   const areas = chosen.map((h, i) => {
     const n = (seen.get(base[i]) ?? 0) + 1;

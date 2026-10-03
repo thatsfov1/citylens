@@ -26,9 +26,9 @@ export function matchLevel(score: number): MatchLevel {
 }
 
 const HEADLINES: Record<MatchLevel, string> = {
-  strong: "Strong match for your preferences",
-  moderate: "Partial match for your preferences",
-  weak: "Weaker match for your preferences",
+  strong: "Mocne dopasowanie do Twoich preferencji",
+  moderate: "Częściowe dopasowanie do Twoich preferencji",
+  weak: "Słabsze dopasowanie do Twoich preferencji",
 };
 
 /** Deterministic explanation derived only from category scores and weights. */
@@ -55,14 +55,14 @@ export function explainMatch(
         facts
           ? `${label}: ${facts[c]}.`
           : c === byWeight[0]
-            ? `Strong ${label.toLowerCase()} score aligns with your top priority.`
-            : `${label} also matches your preferences well.`,
+            ? `Wysoki wynik w kategorii „${label.toLowerCase()}” odpowiada Twojemu głównemu priorytetowi.`
+            : `Kategoria „${label.toLowerCase()}” również dobrze odpowiada Twoim preferencjom.`,
       );
     } else if (scores[c] < LOW) {
       considerations.push(
         facts
-          ? `${label} is below what you asked for here: ${facts[c]}.`
-          : `${label} availability is below what you asked for in this area.`,
+          ? `${label} poniżej Twoich oczekiwań: ${facts[c]}.`
+          : `Dostępność w kategorii „${label.toLowerCase()}” jest w tym obszarze poniżej Twoich oczekiwań.`,
       );
     }
   }
@@ -72,11 +72,11 @@ export function explainMatch(
     (c: Category) => weights[c] < PRIORITY_WEIGHT && scores[c] >= 80,
   );
   for (const c of bonus) {
-    reasons.push(`Bonus: ${CATEGORY_LABELS[c].toLowerCase()} is also strong here.`);
+    reasons.push(`Dodatkowo: kategoria „${CATEGORY_LABELS[c].toLowerCase()}” również wypada tu mocno.`);
   }
 
   if (reasons.length === 0) {
-    reasons.push("No single priority stands out here — it is a balanced, moderate fit.");
+    reasons.push("Żaden priorytet nie wyróżnia się tutaj. To wyważone, umiarkowane dopasowanie.");
   }
 
   return { score, level, headline: HEADLINES[level], reasons, considerations };

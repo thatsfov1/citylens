@@ -11,9 +11,9 @@ export const RENT_MAX = 7000;
 export const RENT_STEP = 100;
 
 export const ROOMS_OPTIONS = [
-  { value: 1, label: "1 room" },
-  { value: 2, label: "2 rooms" },
-  { value: 3, label: "3+ rooms" },
+  { value: 1, label: "1 pokój" },
+  { value: 2, label: "2 pokoje" },
+  { value: 3, label: "3+ pokoje" },
 ] as const;
 export type Rooms = (typeof ROOMS_OPTIONS)[number]["value"];
 export const DEFAULT_ROOMS: Rooms = 2;
@@ -190,12 +190,12 @@ export function otodomUrl(filter: RentFilter, district?: string | null): string 
 /** 2500 -> "2 500 zł", grouped by hand because Polish locale data does not group four-digit numbers. */
 export const formatZl = (n: number) => `${String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ")} zł`;
 
-/** "2 500 – 4 000 zł", "up to 4 000 zł", "from 2 500 zł". */
+/** "2 500 – 4 000 zł", "do 4 000 zł", "od 2 500 zł". */
 export function formatRentRange(f: { min: number; max: number }): string {
   const noMin = f.min <= RENT_MIN;
   const noMax = f.max >= RENT_MAX;
-  if (noMin && noMax) return "any rent";
-  if (noMin) return `up to ${formatZl(f.max)}`;
-  if (noMax) return `from ${formatZl(f.min)}`;
+  if (noMin && noMax) return "bez limitu";
+  if (noMin) return `do ${formatZl(f.max)}`;
+  if (noMax) return `od ${formatZl(f.min)}`;
   return `${formatZl(f.min)} – ${formatZl(f.max)}`;
 }

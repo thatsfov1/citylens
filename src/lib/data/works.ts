@@ -1,3 +1,4 @@
+import { plPlural } from "../format/pl";
 import type { WorkNearby } from "../../types";
 
 // Turns stored works into warning sentences for the hexagon panel. Fully deterministic: every date and
@@ -6,7 +7,7 @@ import type { WorkNearby } from "../../types";
 
 export const WORKS_RADIUS_M = 1000;
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"];
 
 const parse = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
@@ -25,38 +26,44 @@ const monthsBetween = (a: Date, b: Date) =>
 
 export const toUtcDay = (d: Date) => new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
 
-const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+/**
+ * "3 miesiące", "1 rok", "3 lata": whole years only for exactly 12 months or 24+.
+ * `genitive` is for use after "około" ("około 3 miesięcy"); otherwise the accusative after "za około".
+ */
+const spanLabel = (months: number, genitive: boolean) => {
+  if (months === 12 || months >= 24) {
+    const years = Math.round(months / 12);
+    return `${years} ${genitive ? plPlural(years, "roku", "lat", "lat") : plPlural(years, "rok", "lata", "lat")}`;
+  }
+  return `${months} ${genitive ? plPlural(months, "miesiąca", "miesięcy", "miesięcy") : plPlural(months, "miesiąc", "miesiące", "miesięcy")}`;
+};
 
-/** "3 months", "1 year", "3 years": whole years only for exactly 12 months or 24+. */
-const spanLabel = (months: number) =>
-  months === 12 || months >= 24 ? plural(Math.round(months / 12), "year") : plural(months, "month");
-
-/** "in about 3 months", "in about 1 year", "within the next month". */
+/** "za około 3 miesiące", "za około 1 rok", "w ciągu najbliższego miesiąca". */
 export function relativeStart(fromIso: string, today: Date): string {
   const months = monthsBetween(toUtcDay(today), parse(fromIso));
-  if (months < 1) return "within the next month";
-  return `in about ${spanLabel(months)}`;
+  if (months < 1) return "w ciągu najbliższego miesiąca";
+  return `za około ${spanLabel(months, false)}`;
 }
 
-/** "about 10 months" / "about 2 years"; null when either bound is missing or the span is under a month. */
+/** "około 10 miesięcy" / "około 2 lat"; null when either bound is missing or the span is under a month. */
 export function durationLabel(fromIso: string | null, toIso: string | null): string | null {
   if (!fromIso || !toIso) return null;
   const months = monthsBetween(parse(fromIso), parse(toIso));
   if (months < 1) return null;
-  return `about ${spanLabel(months)}`;
+  return `około ${spanLabel(months, true)}`;
 }
 
 export function distanceLabel(m: number): string {
-  if (m < 100) return "within 100 m";
-  return `~${Math.round(m / 50) * 50} m away`;
+  if (m < 100) return "w promieniu 100 m";
+  return `~${Math.round(m / 50) * 50} m stąd`;
 }
 
 export type WorkWarning = {
   id: number;
   title: string;
-  /** "Ongoing" | "Planned" | "Permit issued" */
+  /** "W trakcie" | "Planowane" | "Wydano pozwolenie" */
   label: string;
-  /** Distance + timing sentence, e.g. "~400 m away · planned in about 1 year (around mid-2027)". */
+  /** Distance + timing sentence, e.g. "~400 m stąd · planowane za około 1 rok (połowa 2027)". */
   text: string;
   sourceName: string;
   sourceUrl: string;
@@ -74,25 +81,25 @@ export function describeWork(w: WorkNearby, today: Date): WorkWarning {
   const base = { id: w.id, title: w.title, sourceName: w.sourceName, sourceUrl: w.sourceUrl, publishedAt: w.publishedAt };
 
   if (w.status === "decision") {
-    const when = w.dateFrom ? `issued ${fmtMonth(w.dateFrom)}` : "issued";
-    return { ...base, label: "Permit issued", text: `${dist} · permit ${when}; no construction schedule published` };
+    const when = w.dateFrom ? `wydane ${fmtMonth(w.dateFrom)}` : "wydane";
+    return { ...base, label: "Wydano pozwolenie", text: `${dist} · pozwolenie ${when}; brak opublikowanego harmonogramu budowy` };
   }
 
   if (w.status === "planned") {
     const lead = w.dateFrom ? relativeStart(w.dateFrom, today) : null;
     const dur = durationLabel(w.dateFrom, w.dateTo);
     const parts = [
-      lead ? `planned ${lead}` : "planned",
-      w.whenLabel ? `(${w.whenLabel})` : w.dateFrom ? `(from ${fmtDay(w.dateFrom)})` : "",
-      dur ? `lasting ${dur}` : "",
+      lead ? `planowane ${lead}` : "planowane",
+      w.whenLabel ? `(${w.whenLabel})` : w.dateFrom ? `(od ${fmtDay(w.dateFrom)})` : "",
+      dur ? `potrwa ${dur}` : "",
     ].filter(Boolean);
-    return { ...base, label: "Planned", text: `${dist} · ${parts.join(" ")}` };
+    return { ...base, label: "Planowane", text: `${dist} · ${parts.join(" ")}` };
   }
 
-  const started = w.dateFrom && parse(w.dateFrom) <= toUtcDay(today) ? `since ${fmtDay(w.dateFrom)}` : "";
-  const until = w.whenLabel ?? (w.dateTo ? `until ${fmtDay(w.dateTo)}` : "end date not stated by the source");
-  const parts = ["under way", started, until].filter(Boolean);
-  return { ...base, label: "Ongoing", text: `${dist} · ${parts.join(", ")}` };
+  const started = w.dateFrom && parse(w.dateFrom) <= toUtcDay(today) ? `od ${fmtDay(w.dateFrom)}` : "";
+  const until = w.whenLabel ?? (w.dateTo ? `do ${fmtDay(w.dateTo)}` : "źródło nie podaje daty zakończenia");
+  const parts = ["w trakcie", started, until].filter(Boolean);
+  return { ...base, label: "W trakcie", text: `${dist} · ${parts.join(", ")}` };
 }
 
 export type WorksSummary = {

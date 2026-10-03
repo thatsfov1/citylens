@@ -122,9 +122,9 @@ test("a stated budget becomes a valid filter, snapped to the slider step, with c
 });
 
 test("range text", () => {
-  assert.equal(formatRentRange({ min: RENT_MIN, max: 3000 }), "up to 3 000 zł");
-  assert.equal(formatRentRange({ min: 2500, max: RENT_MAX }), "from 2 500 zł");
-  assert.equal(formatRentRange({ min: RENT_MIN, max: RENT_MAX }), "any rent");
+  assert.equal(formatRentRange({ min: RENT_MIN, max: 3000 }), "do 3 000 zł");
+  assert.equal(formatRentRange({ min: 2500, max: RENT_MAX }), "od 2 500 zł");
+  assert.equal(formatRentRange({ min: RENT_MIN, max: RENT_MAX }), "bez limitu");
 });
 
 test("Otodom district slugs follow its spelling", () => {

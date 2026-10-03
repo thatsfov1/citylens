@@ -11,27 +11,27 @@ const w = (o: Partial<WorkNearby>): WorkNearby => ({
 
 describe("works text", () => {
   it("relative start and duration come only from stored dates", () => {
-    assert.equal(relativeStart("2027-01-01", today), "in about 3 months");
-    assert.equal(relativeStart("2029-10-01", today), "in about 3 years");
-    assert.equal(relativeStart("2026-10-20", today), "within the next month");
-    assert.equal(durationLabel("2029-06-01", "2030-06-01"), "about 1 year");
+    assert.equal(relativeStart("2027-01-01", today), "za około 3 miesiące");
+    assert.equal(relativeStart("2029-10-01", today), "za około 3 lata");
+    assert.equal(relativeStart("2026-10-20", today), "w ciągu najbliższego miesiąca");
+    assert.equal(durationLabel("2029-06-01", "2030-06-01"), "około 1 roku");
     assert.equal(durationLabel("2029-06-01", null), null); // never invent a duration
   });
 
   it("planned works with a vague label keep the reviewed wording", () => {
-    const d = describeWork(w({ dateFrom: "2027-07-01", whenLabel: "around mid-2027" }), today);
-    assert.equal(d.label, "Planned");
-    assert.equal(d.text, "~400 m away · planned in about 9 months (around mid-2027)");
+    const d = describeWork(w({ dateFrom: "2027-07-01", whenLabel: "połowa 2027" }), today);
+    assert.equal(d.label, "Planowane");
+    assert.equal(d.text, "~400 m stąd · planowane za około 9 miesięcy (połowa 2027)");
   });
 
   it("planned works with start and end state the duration", () => {
     const d = describeWork(w({ dateFrom: "2029-10-01", dateTo: "2030-10-01" }), today);
-    assert.equal(d.text, "~400 m away · planned in about 3 years (from 1 Oct 2029) lasting about 1 year");
+    assert.equal(d.text, "~400 m stąd · planowane za około 3 lata (od 1 paź 2029) potrwa około 1 roku");
   });
 
   it("ongoing works show start and stated end", () => {
     const d = describeWork(w({ status: "ongoing", dateFrom: "2026-08-27", dateTo: "2026-11-30", distanceM: 80 }), today);
-    assert.equal(d.text, "within 100 m · under way, since 27 Aug 2026, until 30 Nov 2026");
+    assert.equal(d.text, "w promieniu 100 m · w trakcie, od 27 sie 2026, do 30 lis 2026");
   });
 
   it("drops ended works, collapses permits and orders ongoing before planned", () => {

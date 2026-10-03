@@ -11,11 +11,11 @@ export const NO_DATA_BAND = BAND_COUNT;
 export const NO_DATA_COLOR = "#b8bec6";
 
 export const BAND_LABELS = [
-  "Weaker match",
-  "Below-average match",
-  "Average match",
-  "Good match",
-  "Strong match",
+  "Słabsze dopasowanie",
+  "Poniżej średniej",
+  "Przeciętne dopasowanie",
+  "Dobre dopasowanie",
+  "Mocne dopasowanie",
 ] as const;
 
 export function bandOf(pct: number): number {

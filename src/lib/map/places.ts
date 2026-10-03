@@ -1,3 +1,4 @@
+import { dec } from "../format/pl";
 import type { Category, Place, PlaceCategory } from "@/types";
 
 export const PLACE_COLORS: Record<PlaceCategory, string> = {
@@ -10,37 +11,41 @@ export const PLACE_COLORS: Record<PlaceCategory, string> = {
 export const GREEN_COLOR = "#16a34a";
 
 const KIND_LABELS: Record<string, string> = {
-  sports_centre: "Sports centre",
-  stadium: "Stadium",
-  fitness_centre: "Gym",
-  swimming_pool: "Swimming pool",
-  pitch: "Sports pitch",
-  museum: "Museum",
-  gallery: "Gallery",
-  attraction: "Attraction",
-  viewpoint: "Viewpoint",
-  theatre: "Theatre",
-  cinema: "Cinema",
-  arts_centre: "Arts centre",
-  library: "Library",
-  community_centre: "Community centre",
-  nightclub: "Nightclub",
-  music_venue: "Music venue",
-  concert_hall: "Concert hall",
-  mall: "Shopping mall",
-  department_store: "Department store",
+  sports_centre: "Centrum sportowe",
+  stadium: "Stadion",
+  fitness_centre: "Siłownia",
+  swimming_pool: "Basen",
+  pitch: "Boisko",
+  museum: "Muzeum",
+  gallery: "Galeria",
+  attraction: "Atrakcja turystyczna",
+  viewpoint: "Punkt widokowy",
+  theatre: "Teatr",
+  cinema: "Kino",
+  arts_centre: "Centrum sztuki",
+  library: "Biblioteka",
+  community_centre: "Dom kultury",
+  nightclub: "Klub nocny",
+  music_venue: "Klub muzyczny",
+  concert_hall: "Sala koncertowa",
+  historic_castle: "Zamek",
+  historic_monument: "Pomnik",
+  historic_manor: "Dwór",
+  historic_fort: "Fort",
+  mall: "Centrum handlowe",
+  department_store: "Dom towarowy",
   supermarket: "Supermarket",
-  convenience: "Convenience store",
-  rail_station: "Rail station",
-  tram_stop: "Tram stop",
-  bus_stop: "Bus stop",
-  kindergarten: "Kindergarten",
-  childcare: "Nursery",
-  primary_school: "Primary school",
-  secondary_school: "Secondary school",
-  school: "School",
-  university: "University",
-  college: "College",
+  convenience: "Sklep osiedlowy",
+  rail_station: "Stacja kolejowa",
+  tram_stop: "Przystanek tramwajowy",
+  bus_stop: "Przystanek autobusowy",
+  kindergarten: "Przedszkole",
+  childcare: "Żłobek",
+  primary_school: "Szkoła podstawowa",
+  secondary_school: "Szkoła średnia",
+  school: "Szkoła",
+  university: "Uniwersytet",
+  college: "Uczelnia",
 };
 
 export function kindLabel(kind: string): string {
@@ -51,7 +56,7 @@ export function kindLabel(kind: string): string {
 
 export const placeTitle = (p: Place) => p.name ?? kindLabel(p.kind);
 
-export const formatDistance = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`);
+export const formatDistance = (m: number) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${dec(m / 1000)} km`);
 
 /** Categories whose places are pinned by default: the active mode, or the user's top-weighted for "For You". */
 export function defaultPinCategories(mode: Category | "forYou", weights: Record<Category, number>): Set<Category> {

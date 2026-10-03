@@ -27,7 +27,7 @@ export function RentFilter({ value, onChange, inline = false }: { value: Filter;
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           <Banknote className="size-3.5" />
-          Monthly rent budget
+          Miesięczny budżet na wynajem
         </div>
         {active && (
           <button
@@ -35,7 +35,7 @@ export function RentFilter({ value, onChange, inline = false }: { value: Filter;
             onClick={() => onChange({ ...value, min: RENT_MIN, max: RENT_MAX })}
             className="text-[11px] font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
           >
-            Reset
+            Resetuj
           </button>
         )}
       </div>
@@ -51,13 +51,13 @@ export function RentFilter({ value, onChange, inline = false }: { value: Filter;
           const [min, max] = v as number[];
           onChange({ ...value, min, max });
         }}
-        aria-label="Monthly rent range"
+        aria-label="Zakres miesięcznego wynajmu"
       />
       <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
         <span>{formatZl(RENT_MIN)}</span>
         <span>{formatZl(RENT_MAX)}+</span>
       </div>
-      <div role="radiogroup" aria-label="Flat size" className="mt-3 flex gap-1 rounded-full bg-muted p-1">
+      <div role="radiogroup" aria-label="Wielkość mieszkania" className="mt-3 flex gap-1 rounded-full bg-muted p-1">
         {ROOMS_OPTIONS.map((r) => (
           <button
             key={r.value}
@@ -81,9 +81,9 @@ export function RentFilter({ value, onChange, inline = false }: { value: Filter;
           className="mt-0.5 size-4 shrink-0 accent-emerald-600"
         />
         <span className="text-xs leading-snug">
-          <span className="font-medium text-slate-900">Budget includes czynsz (estimated)</span>
+          <span className="font-medium text-slate-900">Budżet obejmuje czynsz administracyjny (szacunkowo)</span>
           <span className="mt-0.5 block text-[11px] text-muted-foreground">
-            {value.fees ? "Each offer is counted as base rent plus its czynsz." : "Only the base rent shown in the ad is compared with your budget."}
+            {value.fees ? "Każda oferta jest liczona jako cena wynajmu plus jej czynsz administracyjny." : "Z budżetem porównywana jest tylko cena wynajmu z ogłoszenia."}
           </span>
         </span>
       </label>
@@ -91,17 +91,17 @@ export function RentFilter({ value, onChange, inline = false }: { value: Filter;
       <div className="mt-2 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-[11px] leading-snug text-amber-900">
         <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
         <p>
-          Ads usually show the <b>base rent only</b>. The building fee (<b>czynsz administracyjny</b>) is added on top
-          {fee ? `, typically about ${formatZl(fee)} for this flat size` : ""}, and utilities (media, internet) are
-          often extra again. Check what an offer includes before you rely on the price.
+          Ogłoszenia zwykle pokazują <b>samą cenę wynajmu</b>. <b>Czynsz administracyjny</b> dolicza się osobno
+          {fee ? `, zwykle ok. ${formatZl(fee)} dla tej wielkości mieszkania` : ""}, a opłaty (media, internet) często
+          są jeszcze dodatkowe. Sprawdź, co obejmuje oferta, zanim zaufasz cenie.
         </p>
       </div>
 
       <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
         {active
-          ? "The map fades where few of a district's offers fit, and those districts are left out of “Strongest areas”. Districts with too few listings stay lightly shaded."
-          : "Optional: fade out districts where few offers fit your budget."}{" "}
-        Asking prices from {RENT_META.listings.toLocaleString("en")} listings on Otodom.pl (snapshot {RENT_META.snapshot}), per district.
+          ? "Mapa blednie tam, gdzie pasuje niewiele ofert z dzielnicy, a takie dzielnice są pomijane w „Najmocniejszych obszarach”. Dzielnice ze zbyt małą liczbą ogłoszeń pozostają lekko zacieniowane."
+          : "Opcjonalnie: wyszarz dzielnice, w których mało ofert mieści się w Twoim budżecie."}{" "}
+        Ceny ofertowe z {RENT_META.listings.toLocaleString("pl")} ogłoszeń na Otodom.pl (stan na {RENT_META.snapshot}), według dzielnic.
       </p>
       <a
         href={otodomUrl(value)}
@@ -109,7 +109,7 @@ export function RentFilter({ value, onChange, inline = false }: { value: Filter;
         rel="noopener noreferrer"
         className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-800"
       >
-        Browse these offers on Otodom
+        Zobacz te oferty na Otodom
         <ExternalLink className="size-3" aria-hidden />
       </a>
     </div>
@@ -117,22 +117,22 @@ export function RentFilter({ value, onChange, inline = false }: { value: Filter;
 }
 
 const FIT_BADGE = {
-  in: { text: "Most offers fit", style: "bg-emerald-50 text-emerald-700" },
-  some: { text: "Some offers fit", style: "bg-amber-50 text-amber-700" },
-  out: { text: "Few offers fit", style: "bg-slate-100 text-slate-600" },
+  in: { text: "Pasuje większość ofert", style: "bg-emerald-50 text-emerald-700" },
+  some: { text: "Pasuje część ofert", style: "bg-amber-50 text-amber-700" },
+  out: { text: "Pasuje niewiele ofert", style: "bg-slate-100 text-slate-600" },
 } as const;
 
 /** The selected area's typical rent for the chosen flat size: base + czynsz, and how many offers fit the budget. */
 export function RentSection({ stats, fee, share, within, fit, filter, district }: RentSummary & { filter: Filter; district: string | null }) {
   const size = ROOMS_OPTIONS.find((r) => r.value === filter.rooms)?.label ?? "";
   const badge = fit === "unknown" ? null : FIT_BADGE[fit];
-  const place = district ?? "this district";
+  const place = district ?? "ta dzielnica";
   return (
     <div className="mt-5 rounded-2xl border border-border/70 p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-1.5 text-sm font-semibold">
           <Banknote className="size-4" />
-          Typical rent · {size}
+          Typowy wynajem · {size}
         </div>
         {badge && <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${badge.style}`}>{badge.text}</span>}
       </div>
@@ -140,35 +140,35 @@ export function RentSection({ stats, fee, share, within, fit, filter, district }
         <>
           <dl className="mt-2 space-y-0.5 text-sm">
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Base rent (median)</dt>
+              <dt className="text-muted-foreground">Cena wynajmu (mediana)</dt>
               <dd className="font-medium tabular-nums">{formatZl(stats.median)}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-muted-foreground">Czynsz (typical, extra)</dt>
-              <dd className="font-medium tabular-nums">{fee ? `+ ${formatZl(fee)}` : "unknown"}</dd>
+              <dt className="text-muted-foreground">Czynsz administracyjny (typowy, dodatkowo)</dt>
+              <dd className="font-medium tabular-nums">{fee ? `+ ${formatZl(fee)}` : "brak danych"}</dd>
             </div>
             {fee > 0 && (
               <div className="flex justify-between border-t border-border/70 pt-1 text-base font-semibold">
-                <dt>About a month</dt>
+                <dt>Razem miesięcznie</dt>
                 <dd className="tabular-nums">{formatZl(stats.median + fee)}</dd>
               </div>
             )}
           </dl>
           <div className="mt-1 text-xs text-muted-foreground">
-            Middle half of base rents: {formatZl(stats.p25)} – {formatZl(stats.p75)}
+            Środkowa połowa cen wynajmu: {formatZl(stats.p25)} – {formatZl(stats.p75)}
           </div>
           {share !== null && (
             <div className="mt-2 text-sm">
-              <b>{within}</b> of {stats.n} offers fit your budget{filter.fees ? " (czynsz included)" : " (base rent only)"}.
+              <b>{within}</b> z {stats.n} ofert mieści się w Twoim budżecie{filter.fees ? " (z czynszem administracyjnym)" : " (tylko cena wynajmu)"}.
             </div>
           )}
           <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
-            Asking prices in {place} from {stats.n} listings on Otodom.pl ({RENT_META.snapshot}){stats.n < 15 ? ", few offers, treat as rough" : ""}.
-            An estimate for the whole district, not for this hexagon. Utilities (media, internet) are usually extra.
+            Ceny ofertowe (dzielnica: {place}) z {stats.n} ogłoszeń na Otodom.pl ({RENT_META.snapshot}){stats.n < 15 ? ", mało ofert, traktuj orientacyjnie" : ""}.
+            To szacunek dla całej dzielnicy, a nie dla tego sześciokąta. Opłaty (media, internet) zwykle są dodatkowe.
           </p>
         </>
       ) : (
-        <p className="mt-2 text-sm text-muted-foreground">Too few listings for {size.toLowerCase()} flats in {place} to estimate.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Zbyt mało ogłoszeń dla tej wielkości mieszkania ({size.toLowerCase()}), dzielnica: {place}.</p>
       )}
       <a
         href={otodomUrl(filter, district)}
@@ -176,11 +176,11 @@ export function RentSection({ stats, fee, share, within, fit, filter, district }
         rel="noopener noreferrer"
         className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-800"
       >
-        See current offers{district ? ` in ${district}` : ""} on Otodom
+        Zobacz aktualne oferty{district ? ` (${district})` : ""} na Otodom
         <ExternalLink className="size-3" aria-hidden />
       </a>
       {filter.fees && isRentActive(filter) && (
-        <p className="mt-1 text-[11px] leading-snug text-muted-foreground">Otodom filters base rent, so the price limits there are lowered by the typical czynsz.</p>
+        <p className="mt-1 text-[11px] leading-snug text-muted-foreground">Otodom filtruje po cenie wynajmu, więc limity cen są tam obniżone o typowy czynsz administracyjny.</p>
       )}
     </div>
   );

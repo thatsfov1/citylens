@@ -1,5 +1,6 @@
 "use client";
 
+import { dec } from "@/lib/format/pl";
 import { CATEGORY_LABELS, type Category, type PlacesResponse } from "@/types";
 import { GREEN_COLOR, PLACE_COLORS, formatDistance, kindLabel, placeTitle } from "@/lib/map/places";
 import { cn } from "@/lib/utils";
@@ -23,18 +24,18 @@ export function CategoryPlaces({ category: c, places, hovered, onHover, onFocus 
   return (
     <section className="mt-5">
       <h3 className="text-sm font-semibold">
-        Places behind this score <span className="font-normal text-muted-foreground">({count})</span>
+        Miejsca stojące za tym wynikiem <span className="font-normal text-muted-foreground">({count})</span>
       </h3>
       {count === 0 ? (
-        <p className="mt-2 text-xs text-muted-foreground">{CATEGORY_LABELS[c]}: nothing within reach.</p>
+        <p className="mt-2 text-xs text-muted-foreground">{CATEGORY_LABELS[c]}: nic w zasięgu.</p>
       ) : (
         <ul className="mt-1.5">
           {c === "greenery"
             ? parks.map((f, i) => (
                 <li key={i} className="flex justify-between gap-3 py-1 text-sm">
-                  <span className="truncate">{(f.properties?.name as string | null) ?? "Green area"}</span>
+                  <span className="truncate">{(f.properties?.name as string | null) ?? "Teren zielony"}</span>
                   <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
-                    {Number(f.properties?.areaHa).toFixed(1)} ha
+                    {dec(Number(f.properties?.areaHa))} ha
                   </span>
                 </li>
               ))
@@ -64,7 +65,7 @@ export function CategoryPlaces({ category: c, places, hovered, onHover, onFocus 
         </ul>
       )}
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Dashed rings mark 500 m and 1 km from the area’s centre. Source: OpenStreetMap.
+        Przerywane okręgi oznaczają 500 m i 1 km od środka obszaru. Źródło: OpenStreetMap.
       </p>
     </section>
   );
