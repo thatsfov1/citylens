@@ -2,6 +2,7 @@ import { chatRequestSchema } from "@/lib/llm/chat-schema";
 import type { ChatResult } from "@/lib/llm/chat-schema";
 import { chatTurn } from "@/lib/llm/gemini";
 import { budgetToFilter } from "@/lib/scoring/rent";
+import { DEFAULT_COMMUTE_MIN, type Workplace } from "@/lib/scoring/commute";
 import { resolveAnchor } from "@/lib/supabase/anchors";
 
 // Tiny in-memory per-IP limiter — enough to protect the demo key from accidental loops.
@@ -29,10 +30,20 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { nearPlace, budget, ...output } = await chatTurn(body.data.messages);
+    const { nearPlace, budget, workplace, ...output } = await chatTurn(body.data.messages);
     // Coordinates come from our data, never from the model; an unknown name is silently dropped.
     const anchor = nearPlace ? await resolveAnchor(nearPlace.query, nearPlace.radiusM) : null;
-    return Response.json({ ...output, anchor, rent: budgetToFilter(budget) } satisfies ChatResult);
+    const place = workplace ? await resolveAnchor(workplace.query, 1000) : null;
+    const work: Workplace | null = place
+      ? {
+          name: place.name,
+          lat: place.lat,
+          lng: place.lng,
+          mode: workplace?.mode ?? "transit",
+          maxMin: workplace?.maxMin ?? DEFAULT_COMMUTE_MIN,
+        }
+      : null;
+    return Response.json({ ...output, anchor, rent: budgetToFilter(budget), work } satisfies ChatResult);
   } catch (err) {
     console.error("chat failed:", err instanceof Error ? err.message : err);
     return Response.json({ error: "The assistant is unavailable right now." }, { status: 503 });

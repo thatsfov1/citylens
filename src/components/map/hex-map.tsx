@@ -25,6 +25,7 @@ const DISTRICT_LABEL_SOURCE = "district-labels";
 const PLACES_SOURCE = "places";
 const GREEN_SOURCE = "place-green";
 const RING_SOURCE = "place-rings";
+const ROUTE_SOURCE = "commute-route";
 const DRILL_ZOOM = 14.2;
 const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
@@ -110,6 +111,8 @@ function softenBasemap(map: maplibregl.Map) {
 type Tip = { x: number; y: number; district: string; label: string; value: string };
 
 type Props = {
+  /** Path from the selected hexagon to the workplace, plus the workplace position for its pin. */
+  commuteRoute?: { line: [number, number][]; dashed: boolean; work: [number, number] } | null;
   hexes: HexData[];
   weights: CategoryWeights;
   mode: MapMode;
@@ -196,7 +199,7 @@ function cornerAt(selected: string, degrees: number): [number, number] {
   return cellToBoundary(selected).reduce((best, v) => (diff(v) < diff(best) ? v : best)) as [number, number];
 }
 
-export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentShare, rentUnknown, badges, compared, onBadge }: Props) {
+export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentShare, rentUnknown, badges, compared, onBadge }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -521,6 +524,37 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         source: RING_SOURCE,
         paint: { "line-color": "#334155", "line-width": 1.2, "line-opacity": 0.55, "line-dasharray": [2, 3] },
       });
+      map.addSource(ROUTE_SOURCE, { type: "geojson", data: EMPTY });
+      map.addLayer({
+        id: "commute-route-casing",
+        type: "line",
+        source: ROUTE_SOURCE,
+        filter: ["==", ["geometry-type"], "LineString"],
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#ffffff", "line-width": 7, "line-opacity": 0.9 },
+      });
+      map.addLayer({
+        id: "commute-route",
+        type: "line",
+        source: ROUTE_SOURCE,
+        filter: ["all", ["==", ["geometry-type"], "LineString"], ["==", ["get", "dashed"], false]],
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#0369a1", "line-width": 4 },
+      });
+      map.addLayer({
+        id: "commute-route-straight",
+        type: "line",
+        source: ROUTE_SOURCE,
+        filter: ["all", ["==", ["geometry-type"], "LineString"], ["==", ["get", "dashed"], true]],
+        paint: { "line-color": "#0369a1", "line-width": 3, "line-dasharray": [2, 2] },
+      });
+      map.addLayer({
+        id: "commute-work",
+        type: "circle",
+        source: ROUTE_SOURCE,
+        filter: ["==", ["geometry-type"], "Point"],
+        paint: { "circle-radius": 7, "circle-color": "#0369a1", "circle-stroke-color": "#ffffff", "circle-stroke-width": 2.5 },
+      });
       map.addSource(GREEN_SOURCE, { type: "geojson", data: EMPTY });
       map.addLayer({
         id: "place-green-fill",
@@ -760,6 +794,24 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       map.flyTo({ center, zoom, padding: { top: 0, left: 0, right: 0, bottom: 0 }, duration: 700 });
     }
   }, [selected]);
+
+  // Commute: the path to the workplace while a hexagon is selected.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    const src = map.getSource(ROUTE_SOURCE) as maplibregl.GeoJSONSource;
+    if (!commuteRoute) {
+      src.setData(EMPTY);
+      return;
+    }
+    src.setData({
+      type: "FeatureCollection",
+      features: [
+        { type: "Feature", properties: { dashed: commuteRoute.dashed }, geometry: { type: "LineString", coordinates: commuteRoute.line } },
+        { type: "Feature", properties: {}, geometry: { type: "Point", coordinates: commuteRoute.work } },
+      ],
+    });
+  }, [commuteRoute]);
 
   // Distance guide: 500 m and 1 km around the hexagon centre (what the score "saw").
   useEffect(() => {

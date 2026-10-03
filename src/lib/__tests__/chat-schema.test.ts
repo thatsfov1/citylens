@@ -48,3 +48,11 @@ test("budget is optional and validated", () => {
   assert.throws(() => parseChatOutput(JSON.stringify({ ...base, budget: { min: null, max: 3500, rooms: 7 } })));
   assert.throws(() => parseChatOutput(JSON.stringify({ ...base, budget: { min: -5, max: null, rooms: null } })));
 });
+
+test("workplace is optional and validated", () => {
+  const base = { reply: "ok", importance: null, stages: null };
+  assert.equal(parseChatOutput(JSON.stringify(base)).workplace, undefined);
+  const r = parseChatOutput(JSON.stringify({ ...base, workplace: { query: "Rynek Główny", mode: "transit", maxMin: 30 } }));
+  assert.deepEqual(r.workplace, { query: "Rynek Główny", mode: "transit", maxMin: 30 });
+  assert.throws(() => parseChatOutput(JSON.stringify({ ...base, workplace: { query: "Rynek", mode: "plane", maxMin: null } })));
+});

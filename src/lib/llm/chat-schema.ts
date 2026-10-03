@@ -2,6 +2,7 @@ import { z } from "zod";
 import { EDUCATION_STAGES } from "../../types";
 import type { Anchor } from "../scoring/anchor";
 import type { RentFilter } from "../scoring/rent";
+import { TRAVEL_MODES, type Workplace } from "../scoring/commute";
 import { importanceSchema, snapImportance } from "../scoring/preferences";
 
 export const MAX_MESSAGES = 12;
@@ -44,12 +45,24 @@ export const chatOutputSchema = z.object({
       rooms: z.union([z.literal(1), z.literal(2), z.literal(3)]).nullable(),
     })
     .nullish(),
+  /** Where the user works and how they travel, copied as written (null fields = not stated); null when no workplace. */
+  workplace: z
+    .object({
+      query: z.string().trim().min(2).max(80),
+      mode: z.enum(TRAVEL_MODES).nullable(),
+      maxMin: z.number().int().min(5).max(120).nullable(),
+    })
+    .nullish(),
 });
 
 export type ChatOutput = z.infer<typeof chatOutputSchema>;
 
 /** What `/api/chat` returns: the model output with the place resolved to coordinates (or dropped). */
-export type ChatResult = Omit<ChatOutput, "nearPlace" | "budget"> & { anchor: Anchor | null; rent: RentFilter | null };
+export type ChatResult = Omit<ChatOutput, "nearPlace" | "budget" | "workplace"> & {
+  anchor: Anchor | null;
+  rent: RentFilter | null;
+  work: Workplace | null;
+};
 
 /** JSON schema handed to Gemini for structured output. */
 export const chatOutputJsonSchema = z.toJSONSchema(chatOutputSchema);

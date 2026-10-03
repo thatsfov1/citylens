@@ -10,6 +10,7 @@ import { importanceToQuery, type Importance } from "@/lib/scoring/preferences";
 import { stagesToParam } from "@/lib/scoring/education";
 import { anchorToQuery, type Anchor } from "@/lib/scoring/anchor";
 import { rentToQuery, type RentFilter } from "@/lib/scoring/rent";
+import { workplaceToQuery, type Workplace } from "@/lib/scoring/commute";
 import type { EducationStage } from "@/types";
 import { ChatPanel } from "./chat-panel";
 
@@ -19,19 +20,12 @@ export function Landing({ initial }: { initial?: Importance }) {
   const [stages, setStages] = useState<EducationStage[] | null>(null);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [rent, setRent] = useState<RentFilter | null>(null);
+  const [workplace, setWorkplace] = useState<Workplace | null>(null);
 
   return (
     <main className="relative isolate flex min-h-screen flex-col overflow-hidden bg-white text-[#222823]">
-      <header className="relative z-10 flex items-center justify-between border-b border-stone-200 px-5 py-4 sm:px-8 lg:px-12">
-        <div>
-          <Link href="/" className="text-lg font-medium tracking-[-0.04em] text-[#222823]">citylens</Link>
-          <p className="mt-0.5 text-xs font-light tracking-wide text-stone-500">Kraków widziany po Twojemu</p>
-        </div>
-        <span className="text-[10px] font-normal uppercase tracking-[0.22em] text-stone-500">Kraków · Polska</span>
-      </header>
-
       <div className="relative z-10 mx-auto grid w-full max-w-[1600px] flex-1 lg:grid-cols-2">
-        <section aria-label="Mapa Krakowa" className="relative min-h-[38vh] overflow-hidden sm:min-h-[44vh] lg:min-h-[calc(100vh-5rem)]">
+        <section aria-label="Mapa Krakowa" className="relative min-h-[38vh] overflow-hidden sm:min-h-[44vh] lg:min-h-screen">
           <video
             aria-hidden="true"
             tabIndex={-1}
@@ -44,16 +38,24 @@ export function Landing({ initial }: { initial?: Importance }) {
             playsInline
             preload="metadata"
           />
+          <Link
+            href="/"
+            className="absolute left-6 top-6 z-10 text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)] sm:left-10 sm:top-10 lg:left-12 lg:top-12"
+          >
+            <span className="block text-5xl font-light leading-none tracking-[-0.07em] sm:text-6xl lg:text-7xl">citylens</span>
+            <span className="mt-3 block text-sm font-light tracking-wide sm:text-base">Kraków widziany po Twojemu</span>
+          </Link>
         </section>
 
         <section className="relative flex items-center justify-center px-5 py-8 sm:px-8 lg:px-10">
           <div className="w-full max-w-xl">
             <ChatPanel
-              onImportance={(i, nextStages, nextAnchor, nextRent) => {
+              onImportance={(i, nextStages, nextAnchor, nextRent, nextWork) => {
                 setImportance(i);
                 setStages(nextStages?.length ? nextStages : null);
                 setAnchor(nextAnchor);
                 setRent(nextRent);
+                setWorkplace(nextWork);
               }}
             />
             <Button
@@ -62,7 +64,7 @@ export function Landing({ initial }: { initial?: Importance }) {
               onClick={() => {
                 if (!importance) return;
                 const edu = importance.education > 0 && stages ? stagesToParam(stages) : null;
-                router.push(`/map?${importanceToQuery(importance)}${edu ? `&edu=${edu}` : ""}${anchor ? `&${anchorToQuery(anchor)}` : ""}${rent ? `&${rentToQuery(rent)}` : ""}`);
+                router.push(`/map?${importanceToQuery(importance)}${edu ? `&edu=${edu}` : ""}${anchor ? `&${anchorToQuery(anchor)}` : ""}${rent ? `&${rentToQuery(rent)}` : ""}${workplace ? `&${workplaceToQuery(workplace)}` : ""}`);
               }}
               className="mt-5 h-12 w-full justify-between rounded-none bg-[#252d27] px-5 text-sm font-normal text-white hover:bg-[#39443b] disabled:bg-stone-200 disabled:text-stone-500"
             >

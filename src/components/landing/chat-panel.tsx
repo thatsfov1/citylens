@@ -6,12 +6,13 @@ import { cn } from "@/lib/utils";
 import type { ChatMessage, ChatResult } from "@/lib/llm/chat-schema";
 import type { Anchor } from "@/lib/scoring/anchor";
 import type { RentFilter } from "@/lib/scoring/rent";
+import type { Workplace } from "@/lib/scoring/commute";
 import type { Importance } from "@/lib/scoring/preferences";
 import type { EducationStage } from "@/types";
 import { GREETING } from "./landing-copy";
 
 type Props = {
-  onImportance: (importance: Importance, stages: EducationStage[] | null, anchor: Anchor | null, rent: RentFilter | null) => void;
+  onImportance: (importance: Importance, stages: EducationStage[] | null, anchor: Anchor | null, rent: RentFilter | null, work: Workplace | null) => void;
 };
 
 export function ChatPanel({ onImportance }: Props) {
@@ -44,7 +45,7 @@ export function ChatPanel({ onImportance }: Props) {
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as ChatResult;
       setMessages([...next, { role: "assistant", text: data.reply }]);
-      if (data.importance) onImportance(data.importance, data.stages, data.anchor, data.rent);
+      if (data.importance) onImportance(data.importance, data.stages, data.anchor, data.rent, data.work);
     } catch {
       setError("Asystent jest chwilowo niedostępny. Spróbuj ponownie za chwilę.");
     } finally {
