@@ -14,7 +14,7 @@ import { EDUCATION_KIND_STAGES } from "@/lib/data/osm";
 import { explainMatch } from "@/lib/scoring/explain";
 import { describeAll } from "@/lib/scoring/facts";
 import { strongestAreas, topContributor } from "@/lib/scoring/first-match";
-import { summarizeWorks } from "@/lib/data/works";
+import { groupWorks } from "@/lib/data/works";
 import { fetchCached } from "@/lib/map/hex-cache";
 import { defaultPinCategories } from "@/lib/map/places";
 import { NO_DATA_COLOR } from "@/lib/map/zones";
@@ -150,7 +150,10 @@ export function MapExperience({
     if (!next.delete(c)) next.add(c);
     setPinOverride({ key: pinKey, cats: next });
   };
-  const worksCount = useMemo(() => summarizeWorks(works, new Date()).warnings.length, [works]);
+  const worksCount = useMemo(() => {
+    const g = groupWorks(works, new Date());
+    return g.ongoing.length + g.planned.length;
+  }, [works]);
   // Education pins follow the selected life stages; a school of unknown level counts for both school stages.
   const placesView = useMemo(
     () =>

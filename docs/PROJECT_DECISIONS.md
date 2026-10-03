@@ -371,3 +371,8 @@ changes a score.
   importance ±25 (clamped, no-op nudges skipped), recomputes every hexagon's personal score and percentile band (same bands as the map colours) and
   reports whether the selected area changes band. Stable = same band under all nudges; otherwise it lists "if X matters more/less → <band>".
 - Deterministic, client-side, from stored scores only (no LLM, no API). Ignores the safety filter, like the map colouring. Returns null when all importances are 0.
+
+## Works time view ("What's changing nearby")
+- The works detail view groups the existing sourced records with `groupWorks` (`src/lib/data/works.ts`, tested): **Under way now** (nearest first), **Planned**
+  (earliest stated start first, undated last) and **Permit issued, no schedule** (one summary line). No cap, same deterministic wording, sources always shown.
+- Information only: works never change a score and no impact on the match is implied (no defensible impact model). The overview chip counts under-way + planned.
