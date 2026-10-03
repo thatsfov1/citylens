@@ -2,6 +2,13 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Citadel Script is licensed: use the installed font, or drop the file at public/fonts/CitadelScript.woff2. */
+@font-face {
+  font-family: "Citadel Script";
+  src: local("Citadel Script"), local("CitadelScript"), url("/fonts/CitadelScript.woff2") format("woff2");
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -9,6 +16,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-bricolage);
   --font-display: var(--font-fraunces);
+  --font-landing: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-script: "Citadel Script", var(--font-pinyon), cursive;
   --color-bark: #6E3511;
   --color-sage: #91AC67;
   --color-moss: #597928;

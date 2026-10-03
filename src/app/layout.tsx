@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Fraunces, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Fraunces, Geist_Mono, Pinyon_Script } from "next/font/google";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -11,6 +11,13 @@ const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin", "latin-ext"],
   style: ["italic"],
+});
+
+// Stand-in for Citadel Script (a licensed font): used only until public/fonts/CitadelScript.woff2 exists.
+const pinyon = Pinyon_Script({
+  variable: "--font-pinyon",
+  subsets: ["latin", "latin-ext"],
+  weight: "400",
 });
 
 const geistMono = Geist_Mono({
@@ -28,7 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pl"
-      className={`${bricolage.variable} ${fraunces.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${bricolage.variable} ${fraunces.variable} ${pinyon.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

@@ -31,13 +31,13 @@ export function Landing({ initial }: { initial?: Importance }) {
   }
 
   return (
-    <main className="relative isolate flex flex-1 flex-col items-center overflow-x-clip px-4 py-8 sm:px-6 sm:py-12">
+    <main className="font-landing relative isolate flex flex-1 flex-col items-center overflow-x-clip px-4 py-8 sm:px-6 sm:py-12">
       <Background />
 
       <div className="flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-5 text-center">
         <h1 className="text-balance text-3xl font-semibold leading-[1.05] tracking-tight text-mist [text-shadow:0_2px_24px_rgba(0,0,0,0.55)] sm:text-5xl">
-          Znajdź w <em className="font-display font-normal italic text-sun">Krakowie</em> miejsce, które pasuje do{" "}
-          <em className="font-display font-normal italic text-sun">Ciebie</em>
+          Znajdź w <span className="font-script text-[1.35em] font-normal leading-none text-sun">Krakowie</span> miejsce, które pasuje do{" "}
+          <span className="font-script text-[1.35em] font-normal leading-none text-sun">Ciebie</span>
         </h1>
 
         <div className="w-full text-left">
