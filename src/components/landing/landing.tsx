@@ -38,24 +38,22 @@ export function Landing({ initial }: { initial?: Importance }) {
         {/* Placeholder for the future logo. */}
         <div
           aria-hidden
-          className="mb-6 flex size-14 items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 text-[11px] font-medium text-slate-500"
+          className="mb-6 flex size-14 items-center justify-center rounded-2xl border-2 border-dashed border-cream/40 text-[11px] font-medium text-cream/80"
         >
           logo
         </div>
 
-        <h1 className="text-balance text-4xl font-extrabold leading-[1.05] tracking-tight text-slate-900 sm:text-5xl">
-          Znajdź w Krakowie miejsce,{" "}
-          <span className="bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">
-            które pasuje do Ciebie
-          </span>
+        <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-cream [text-shadow:0_2px_24px_rgba(0,0,0,0.55)] sm:text-6xl">
+          Znajdź w <em className="font-display font-normal italic">Krakowie</em> miejsce, które pasuje do{" "}
+          <em className="font-display font-normal italic">Ciebie</em>
         </h1>
-        <p className="mt-3 max-w-xl text-pretty text-base text-slate-700 sm:text-lg">
+        <p className="mt-3 max-w-xl text-pretty text-base text-cream/90 [text-shadow:0_1px_12px_rgba(0,0,0,0.6)] sm:text-lg">
           Powiedz, co jest dla Ciebie ważne — pokażemy, które części miasta najlepiej odpowiadają Twojemu stylowi życia.
         </p>
 
         <div className="mt-8 w-full">
           <CategoryOrbit levels={levels} open={open} onOpenChange={setOpen} onConfirm={setLevel} />
-          <p className="mt-3 text-sm text-slate-600">Najedź lub kliknij ikonę, aby ustawić jej ważność.</p>
+          <p className="mt-3 text-sm text-cream/80 [text-shadow:0_1px_8px_rgba(0,0,0,0.6)]">Najedź lub kliknij ikonę, aby ustawić jej ważność.</p>
         </div>
 
         <div className="mt-6 w-full text-left">
@@ -71,17 +69,17 @@ export function Landing({ initial }: { initial?: Importance }) {
           type="button"
           disabled={!hasChips}
           onClick={() => router.push(`/map?${importanceToQuery(levelsToImportance(levels))}`)}
-          className="mt-6 h-12 gap-2 rounded-full bg-emerald-700 px-8 text-base font-semibold text-white shadow-lg shadow-emerald-900/20 hover:bg-emerald-800 disabled:bg-slate-200 disabled:text-slate-600 disabled:shadow-none"
+          className="mt-6 h-12 gap-2 rounded-full bg-moss px-8 text-base font-semibold text-white shadow-lg shadow-bark/20 hover:bg-bark disabled:bg-white/15 disabled:text-cream/70 disabled:shadow-none"
         >
           Pokaż moją mapę
           <ArrowRight className="size-5" aria-hidden />
         </Button>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-cream/80 [text-shadow:0_1px_8px_rgba(0,0,0,0.6)]">
           {hasChips ? "Preferencje możesz zmienić w dowolnym momencie." : "Dodaj co najmniej jeden parametr, aby zobaczyć mapę."}
         </p>
       </div>
 
-      <OsmAttribution className="mt-8 text-center" />
+      <OsmAttribution className="mt-8 text-center text-cream/70" />
     </main>
   );
 }
