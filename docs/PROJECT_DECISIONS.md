@@ -239,3 +239,7 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
 - Safety: real crime statistics (`data/safety/crime.json`) and KMZB reports; more lighting coverage on the outskirts.
 - Rebuilding scores with better culture coverage or other data sources.
 - Multiple cities, auth, saved preferences (P3).
+
+## District overlay
+
+- District borders and names are drawn by us from `hex_scores.district` (`districtLayers` in `src/lib/map/zones.ts`): a dissolved, hex-aligned outline per district plus a bold, haloed label above the colour zones. Basemap `place` labels are hidden so they no longer clash with the hexagons. Hexes without a district get no border/label.
