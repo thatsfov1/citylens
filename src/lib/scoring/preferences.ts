@@ -11,6 +11,14 @@ export const importanceSchema = z.object({
 
 export type Importance = z.infer<typeof importanceSchema>;
 
+/** Importance is chosen on a 5-step scale. */
+export const IMPORTANCE_STEPS = [0, 25, 50, 75, 100] as const;
+
+/** Snaps any 0–100 value to the nearest step of the scale. */
+export function snapImportance(value: number): number {
+  return IMPORTANCE_STEPS.reduce((best, s) => (Math.abs(s - value) < Math.abs(best - value) ? s : best));
+}
+
 export const DEFAULT_IMPORTANCE: Importance = {
   sport: 50,
   culture: 10,

@@ -1,26 +1,27 @@
 import { importanceFromQuery } from "@/lib/scoring/preferences";
 import { PreferencesForm } from "@/components/preferences/preferences-form";
+import { LandingMapPreview } from "@/components/map/landing-map-preview";
 
 export default async function Home({ searchParams }: PageProps<"/">) {
   const initial = importanceFromQuery(await searchParams);
   return (
-    <main className="relative flex flex-1 items-center overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-sky-50">
+    <main className="relative flex flex-1 items-center overflow-x-clip bg-gradient-to-br from-emerald-50 via-white to-sky-50">
       <HexBackdrop />
-      <div className="relative mx-auto grid w-full max-w-6xl items-center gap-10 px-5 py-12 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:py-16">
-        <section>
-          <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/70 px-3 py-1 text-xs font-medium text-emerald-800">
+      <div className="relative mx-auto grid w-full max-w-7xl items-center gap-7 px-4 py-6 sm:px-6 sm:py-9 lg:grid-cols-[1fr_0.9fr] lg:gap-12 lg:px-8 lg:py-10">
+        <section className="flex flex-col items-start">
+          <p className="mb-4 inline-flex items-center gap-2 border border-emerald-200 bg-white/75 px-3 py-1.5 text-xs font-normal tracking-wide text-emerald-800">
             <span className="size-1.5 rounded-full bg-emerald-500" />
-            Kraków · personalized suitability map
+            YOUR CITY, YOUR PRIORITIES
           </p>
-          <h1 className="text-4xl font-semibold leading-[1.05] tracking-tight text-balance sm:text-6xl">
-            Find where the city{" "}
-            <span className="bg-gradient-to-r from-emerald-600 to-sky-600 bg-clip-text text-transparent">
-              fits you.
-            </span>
+          <h1 className="max-w-2xl text-5xl font-light leading-[0.98] tracking-[-0.055em] text-balance sm:text-6xl lg:text-7xl">
+            Find your kind of <span className="bg-gradient-to-r from-emerald-600 to-teal-500 bg-clip-text text-transparent">Kraków.</span>
           </h1>
-          <p className="mt-5 max-w-lg text-base text-muted-foreground sm:text-lg">
-            There is no “best neighborhood”. Tell us what you care about and
-            we’ll show which parts of Kraków match your lifestyle — and why.
+          <p className="mt-4 max-w-xl text-base font-light leading-7 text-slate-600 sm:text-lg sm:leading-8">
+            Explore the city through what matters to you — from parks and sport to culture, shops, and public transport.
+          </p>
+          <LandingMapPreview />
+          <p className="mt-3 flex items-center gap-2 text-xs font-normal text-slate-500">
+            <span className="size-1.5 rounded-full bg-emerald-500" /> No account needed <span className="text-slate-300">·</span> Change your priorities anytime
           </p>
         </section>
         <PreferencesForm initial={initial} />

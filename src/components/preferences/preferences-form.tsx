@@ -1,27 +1,27 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ArrowRight,
   Bike,
   Landmark,
   ShoppingBag,
-  Sparkles,
   TrainFront,
   Trees,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
+import { PreferencesChat } from "./preferences-chat";
 import {
   DEFAULT_IMPORTANCE,
+  IMPORTANCE_STEPS,
   importanceSchema,
+  snapImportance,
   importanceToQuery,
   type Importance,
 } from "@/lib/scoring/preferences";
-import { normalizeWeights } from "@/lib/scoring/weights";
 import { CATEGORIES, CATEGORY_LABELS, type Category } from "@/types";
 
 const ICONS: Record<Category, LucideIcon> = {
@@ -40,14 +40,16 @@ const HINTS: Record<Category, string> = {
   transport: "Public transport stops and links",
 };
 
+// One colour per step of the importance scale: red (don't care) → green (essential).
+const STEP_COLORS = ["bg-red-500", "bg-orange-400", "bg-yellow-400", "bg-lime-500", "bg-emerald-600"];
+const STEP_NAMES = ["Don’t care", "Low", "Medium", "High", "Essential"];
+
 export function PreferencesForm({ initial }: { initial?: Importance }) {
   const router = useRouter();
-  const { control, handleSubmit } = useForm<Importance>({
+  const { control, handleSubmit, setValue } = useForm<Importance>({
     resolver: zodResolver(importanceSchema),
-    defaultValues: initial ?? DEFAULT_IMPORTANCE,
+    defaultValues: snapAll(initial ?? DEFAULT_IMPORTANCE),
   });
-  const values = useWatch({ control }) as Importance;
-  const weights = normalizeWeights({ ...DEFAULT_IMPORTANCE, ...values });
 
   const onSubmit = (data: Importance) => {
     router.push(`/map?${importanceToQuery(data)}`);
@@ -56,76 +58,107 @@ export function PreferencesForm({ initial }: { initial?: Importance }) {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="rounded-3xl border border-border/70 bg-white/80 p-6 shadow-xl shadow-emerald-900/5 backdrop-blur sm:p-8"
+      className="border border-slate-200 bg-white/90 p-4 shadow-lg shadow-emerald-950/5 backdrop-blur sm:p-5"
     >
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold tracking-tight">
-          What matters to you?
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Set how important each thing is. We turn it into weights for your map.
-        </p>
+      <div className="mb-3">
+        <p className="text-[11px] font-normal uppercase tracking-[0.16em] text-emerald-700">Make it yours</p>
+        <h2 className="mt-1 text-xl font-normal tracking-tight">What matters to you?</h2>
+        <p className="mt-1 text-sm font-light text-slate-500">Tell us in your own words, or set each priority below.</p>
       </div>
 
-      <div
-        aria-disabled
-        className="mb-6 flex items-center gap-2 rounded-xl border border-dashed border-border bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground"
-      >
-        <Sparkles className="size-4 shrink-0 text-emerald-600" />
-        <span className="flex-1 truncate">Or just describe it in your own words…</span>
-        <span className="rounded-full bg-background px-2 py-0.5 text-[11px] font-medium">
-          Coming soon
-        </span>
+      <div className="h-48">
+        <PreferencesChat
+          onImportance={(i) => {
+            for (const c of CATEGORIES) setValue(c, snapImportance(i[c]), { shouldDirty: true });
+          }}
+        />
       </div>
 
-      <ul className="space-y-5">
+      <p className="mt-4 text-xs font-normal text-slate-500">Fine-tune your priorities</p>
+      <ul className="mt-2 space-y-3">
         {CATEGORIES.map((c) => {
           const Icon = ICONS[c];
           return (
-            <li key={c}>
-              <div className="mb-2 flex items-center gap-3">
-                <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
-                  <Icon className="size-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium">{CATEGORY_LABELS[c]}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {HINTS[c]}
-                  </div>
-                </div>
-                <span className="w-10 text-right text-sm font-semibold tabular-nums">
-                  {Math.round(weights[c] * 100)}%
-                </span>
-              </div>
+            <li key={c} className="flex items-center gap-2.5" title={HINTS[c]}>
+              <span className="flex size-7 shrink-0 items-center justify-center bg-emerald-50 text-emerald-700">
+                <Icon className="size-3.5" />
+              </span>
               <Controller
                 control={control}
                 name={c}
                 render={({ field }) => (
-                  <Slider
-                    aria-label={`${CATEGORY_LABELS[c]} importance`}
-                    value={[field.value]}
-                    min={0}
-                    max={100}
-                    step={5}
-                    onValueChange={(v) =>
-                      field.onChange(Array.isArray(v) ? v[0] : v)
-                    }
-                  />
+                  <>
+                    <span className="w-[4.5rem] shrink-0">
+                      <span className="block text-sm font-normal leading-tight">{CATEGORY_LABELS[c]}</span>
+                      <span className="mt-1 block text-[10px] leading-tight text-slate-500">
+                        {STEP_NAMES[IMPORTANCE_STEPS.findIndex((step) => step === snapImportance(field.value))]}
+                      </span>
+                    </span>
+                    <ScaleSelect
+                      label={`${CATEGORY_LABELS[c]} importance`}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  </>
                 )}
               />
             </li>
           );
         })}
       </ul>
+      <p className="mt-2 flex justify-between pl-[calc(1.75rem+0.625rem+4.5rem+0.625rem)] text-[10px] text-muted-foreground">
+        <span>Don’t care</span>
+        <span>Essential</span>
+      </p>
 
       <Button
         type="submit"
         size="lg"
-        className="mt-8 h-11 w-full gap-2 rounded-xl bg-emerald-600 text-base text-white hover:bg-emerald-700"
+        className="mt-4 h-10 w-full gap-2 rounded-none bg-emerald-700 text-sm font-normal text-white hover:bg-emerald-800"
       >
         Explore my Kraków
         <ArrowRight className="size-4" />
       </Button>
+      <p className="mt-2 text-center text-[11px] font-light text-slate-500">Your map updates to match the priorities you choose.</p>
     </form>
+  );
+}
+
+function snapAll(i: Importance): Importance {
+  return Object.fromEntries(CATEGORIES.map((c) => [c, snapImportance(i[c])])) as Importance;
+}
+
+function ScaleSelect({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  const current = snapImportance(value);
+  return (
+    <div role="radiogroup" aria-label={label} className="grid flex-1 grid-cols-5 gap-1">
+      {IMPORTANCE_STEPS.map((step, i) => {
+        const active = current === step;
+        return (
+          <button
+            key={step}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            aria-label={STEP_NAMES[i]}
+            title={STEP_NAMES[i]}
+            onClick={() => onChange(step)}
+            className={
+              "h-6 rounded-none transition " +
+              STEP_COLORS[i] +
+              (active ? " ring-2 ring-slate-900/70 ring-offset-1" : " opacity-30 hover:opacity-60")
+            }
+          />
+        );
+      })}
+    </div>
   );
 }
