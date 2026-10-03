@@ -245,6 +245,11 @@ function SafetySection({
         </p>
       )}
 
+      <details className="group mt-2">
+        <summary className="flex cursor-pointer list-none items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground">
+          <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
+          Details
+        </summary>
       {parts.length > 0 && (
         <>
           <p className="mt-2.5 text-[11px] leading-snug text-muted-foreground">
@@ -300,6 +305,7 @@ function SafetySection({
         </details>
       )}
       <p className="mt-3 text-[11px] leading-snug text-muted-foreground">{SAFETY_NOT_INCLUDED}</p>
+      </details>
     </div>
   );
 }
