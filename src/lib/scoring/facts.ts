@@ -15,6 +15,11 @@ const KIND_LABELS: Record<string, string> = {
   arts_centre: "arts centre",
   library: "library",
   community_centre: "community centre",
+  attraction: "tourist attraction",
+  viewpoint: "viewpoint",
+  music_venue: "music venue",
+  concert_hall: "concert hall",
+  nightclub: "nightclub",
   historic_castle: "castle",
   historic_monument: "monument",
   historic_manor: "manor",
@@ -60,8 +65,13 @@ export function describeCategory(category: Category, ind: HexIndicators): string
   }
   const i = ind[category];
   const [one, many] = NOUNS[category];
-  if (i.within1000 === 0 || !i.nearest) return `no ${many} within 1 km`;
-  const count = i.within500 > 0 ? `${i.within500} ${i.within500 === 1 ? one : many} within 500 m` : `none within 500 m`;
+  if (!i.nearest) return `no ${many} within ${(i.radiusM ?? 1000) / 1000} km`;
+  const count =
+    i.within500 > 0
+      ? `${i.within500} ${i.within500 === 1 ? one : many} within 500 m`
+      : i.within1000 > 0
+        ? `none within 500 m`
+        : `none within 1 km`;
   if (IGNORED_KINDS.has(i.nearest.kind)) return count;
   return `${count}; nearest: ${describeNearest(i.nearest)}`;
 }
