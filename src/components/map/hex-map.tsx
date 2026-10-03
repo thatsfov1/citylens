@@ -5,12 +5,22 @@ import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { KRAKOW_CENTER, KRAKOW_INITIAL_ZOOM } from "@/lib/h3/config";
 import { cellPolygon } from "@/lib/h3/grid";
+import { boundaryFeature, outsideMaskFeature } from "@/lib/h3/mask";
 import { getHexData } from "@/lib/mock-data/hexes";
 import { calculatePersonalScore } from "@/lib/scoring/personal-score";
 import { percentileRanks } from "@/lib/scoring/percentile";
 import { CATEGORIES, type CategoryWeights, type MapMode } from "@/types";
 
 const SOURCE = "hexes";
+
+// Basemap layers that stay crisp outside the city veil (airports + runways).
+const KEEP_VISIBLE_LAYERS = [
+  "aeroway-taxiway",
+  "aeroway-runway-casing",
+  "aeroway-area",
+  "aeroway-runway",
+  "airport",
+];
 
 // Worker files are copied to /public/maplibre by scripts/copy-maplibre-worker.mjs.
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
@@ -113,6 +123,33 @@ export function HexMap({ weights, mode, selected, onSelect }: Props) {
 
     map.on("load", () => {
       const { geojson, mode, selected } = initial.current;
+
+      // Veil everything outside Kraków, then redraw airports above the veil.
+      map.addSource("mask", { type: "geojson", data: outsideMaskFeature });
+      map.addLayer({
+        id: "outside-mask",
+        type: "fill",
+        source: "mask",
+        paint: { "fill-color": "#f1f3f2", "fill-opacity": 0.86 },
+      });
+      for (const layer of map.getStyle().layers) {
+        if (KEEP_VISIBLE_LAYERS.includes(layer.id)) {
+          map.addLayer({ ...layer, id: `${layer.id}-above-mask` });
+        }
+      }
+      map.addSource("boundary", { type: "geojson", data: boundaryFeature });
+      map.addLayer({
+        id: "boundary-line",
+        type: "line",
+        source: "boundary",
+        paint: {
+          "line-color": "#475569",
+          "line-width": 1.2,
+          "line-opacity": 0.6,
+          "line-dasharray": [3, 2],
+        },
+      });
+
       map.addSource(SOURCE, { type: "geojson", data: geojson });
       map.addLayer({
         id: "hex-fill",
