@@ -39,3 +39,12 @@ test("nearPlace is optional and validated", () => {
   assert.equal(r.nearPlace?.query, "AGH");
   assert.throws(() => parseChatOutput(JSON.stringify({ ...base, nearPlace: { query: "AGH", radiusM: 777 } })));
 });
+
+test("budget is optional and validated", () => {
+  const base = { reply: "ok", importance: null, stages: null };
+  assert.equal(parseChatOutput(JSON.stringify(base)).budget, undefined);
+  const r = parseChatOutput(JSON.stringify({ ...base, budget: { min: null, max: 3500, rooms: 2 } }));
+  assert.equal(r.budget?.max, 3500);
+  assert.throws(() => parseChatOutput(JSON.stringify({ ...base, budget: { min: null, max: 3500, rooms: 7 } })));
+  assert.throws(() => parseChatOutput(JSON.stringify({ ...base, budget: { min: -5, max: null, rooms: null } })));
+});

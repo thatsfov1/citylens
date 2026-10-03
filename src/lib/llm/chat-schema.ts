@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { EDUCATION_STAGES } from "../../types";
 import type { Anchor } from "../scoring/anchor";
+import type { RentFilter } from "../scoring/rent";
 import { importanceSchema, snapImportance } from "../scoring/preferences";
 
 export const MAX_MESSAGES = 12;
@@ -35,12 +36,20 @@ export const chatOutputSchema = z.object({
       radiusM: z.union([z.literal(500), z.literal(1000), z.literal(1500), z.literal(2000)]),
     })
     .nullish(),
+  /** A monthly rent budget in PLN the user stated, copied as written (null fields = no limit on that side); null when none. */
+  budget: z
+    .object({
+      min: z.number().int().min(0).max(100000).nullable(),
+      max: z.number().int().min(0).max(100000).nullable(),
+      rooms: z.union([z.literal(1), z.literal(2), z.literal(3)]).nullable(),
+    })
+    .nullish(),
 });
 
 export type ChatOutput = z.infer<typeof chatOutputSchema>;
 
 /** What `/api/chat` returns: the model output with the place resolved to coordinates (or dropped). */
-export type ChatResult = Omit<ChatOutput, "nearPlace"> & { anchor: Anchor | null };
+export type ChatResult = Omit<ChatOutput, "nearPlace" | "budget"> & { anchor: Anchor | null; rent: RentFilter | null };
 
 /** JSON schema handed to Gemini for structured output. */
 export const chatOutputJsonSchema = z.toJSONSchema(chatOutputSchema);
