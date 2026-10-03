@@ -8,12 +8,13 @@ import { cellPolygon } from "@/lib/h3/grid";
 import { KRAKOW_BOUNDS, boundaryFeature, outsideMaskFeature } from "@/lib/h3/mask";
 import { calculatePersonalScore } from "@/lib/scoring/personal-score";
 import { percentileRanks } from "@/lib/scoring/percentile";
-import { BAND_COLORS, BAND_LABELS, NO_DATA_BAND, NO_DATA_COLOR, bandOf, bandZones } from "@/lib/map/zones";
+import { BAND_COLORS, BAND_LABELS, NO_DATA_BAND, NO_DATA_COLOR, bandOf, bandZones, topZone } from "@/lib/map/zones";
 import { CATEGORIES, type Category, type CategoryWeights, type HexData, type MapMode } from "@/types";
 
 const SOURCE = "hexes";
 const ZONES_SOURCE = "zones";
 const DIMMED_OPACITY = 0.6;
+const TOP_SOURCE = "top-zone";
 
 // Once zoomed in by more than this (zoom levels) beyond the "whole city fits" view,
 // the recenter button appears.
@@ -91,8 +92,10 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
   const [zoomedIn, setZoomedIn] = useState(false);
   const [tip, setTip] = useState<Tip | null>(null);
   const modeRef = useRef(mode);
+  const [showTop, setShowTop] = useState(false);
+  const showTopRef = useRef(showTop);
 
-  const { geojson, zones } = useMemo(() => {
+  const { geojson, zones, tops } = useMemo(() => {
     const personal = hexes.map((h) => calculatePersonalScore(h.scores, weights));
     const pct: Record<string, number[]> = { forYou: percentileRanks(personal) };
     for (const c of CATEGORIES) {
@@ -111,6 +114,9 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
         ),
       ]),
     ) as Record<MapMode, GeoJSON.FeatureCollection>;
+    const tops = Object.fromEntries(
+      Object.entries(pct).map(([m, v]) => [m, topZone(cells, v)]),
+    ) as Record<MapMode, GeoJSON.FeatureCollection>;
     const geojson: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
       features: hexes.map(({ h3Index, scores, district }, i) => ({
@@ -127,15 +133,16 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
         geometry: { type: "Polygon", coordinates: [cellPolygon(h3Index)] },
       })),
     };
-    return { geojson, zones };
+    return { geojson, zones, tops };
   }, [hexes, weights]);
 
   // Latest values for the one-time map setup (updated before it runs).
-  const initial = useRef({ geojson, zones, mode, selected });
+  const initial = useRef({ geojson, zones, tops, mode, selected });
   useEffect(() => {
     onSelectRef.current = onSelect;
     modeRef.current = mode;
-    initial.current = { geojson, zones, mode, selected };
+    showTopRef.current = showTop;
+    initial.current = { geojson, zones, tops, mode, selected };
   });
 
   useEffect(() => {
@@ -197,7 +204,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
     });
 
     map.on("load", () => {
-      const { geojson, zones, mode, selected } = initial.current;
+      const { geojson, zones, tops, mode, selected } = initial.current;
 
       softenBasemap(map);
 
@@ -245,6 +252,15 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
         source: ZONES_SOURCE,
         layout: { "line-join": "round" },
         paint: { "line-color": "#ffffff", "line-width": 1, "line-opacity": 0.85 },
+      });
+
+      map.addSource(TOP_SOURCE, { type: "geojson", data: tops[mode] });
+      map.addLayer({
+        id: "top-line",
+        type: "line",
+        source: TOP_SOURCE,
+        layout: { "line-join": "round", visibility: showTopRef.current ? "visible" : "none" },
+        paint: { "line-color": "#0f5132", "line-width": 2.5, "line-opacity": 0.9 },
       });
 
       // Invisible per-hex layer: hit target for hover / click.
@@ -328,14 +344,16 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
     if (!map || !readyRef.current) return;
     (map.getSource(SOURCE) as maplibregl.GeoJSONSource).setData(geojson);
     (map.getSource(ZONES_SOURCE) as maplibregl.GeoJSONSource).setData(zones[mode]);
+    (map.getSource(TOP_SOURCE) as maplibregl.GeoJSONSource).setData(tops[mode]);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mode handled by the effect below
-  }, [geojson, zones]);
+  }, [geojson, zones, tops]);
 
   // Mode switch → swap the dissolved zones.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
     (map.getSource(ZONES_SOURCE) as maplibregl.GeoJSONSource).setData(zones[mode]);
+    (map.getSource(TOP_SOURCE) as maplibregl.GeoJSONSource).setData(tops[mode]);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- zones handled by the effect above
   }, [mode]);
 
@@ -349,6 +367,29 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
     map.setPaintProperty("zone-fill", "fill-opacity", selected ? DIMMED_OPACITY : 1);
   }, [selected]);
 
+  // "Strongest areas" toggle: outline the top 10% and frame them.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    map.setLayoutProperty("top-line", "visibility", showTop ? "visible" : "none");
+    if (!showTop) return;
+    const coords = tops[mode].features.flatMap((f) =>
+      (f.geometry as GeoJSON.MultiPolygon).coordinates.flat(2),
+    ) as [number, number][];
+    if (coords.length === 0) return;
+    const bounds = coords.reduce(
+      (b, c) => b.extend(c),
+      new maplibregl.LngLatBounds(coords[0], coords[0]),
+    );
+    const right = window.innerWidth >= 640 ? SIDEBAR_WIDTH + FIT_PADDING : FIT_PADDING;
+    map.fitBounds(bounds, {
+      padding: { top: 64, bottom: FIT_PADDING, left: FIT_PADDING, right },
+      maxZoom: 13.5,
+      duration: 700,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-frame when toggled or mode changes
+  }, [showTop, mode]);
+
   // MapLibre forces position:relative on its container, so size it via a wrapper.
   const recenter = () => {
     const fit = fitRef.current;
@@ -358,6 +399,18 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
   return (
     <div className="absolute inset-0">
       <div ref={container} className="size-full" />
+      <button
+        type="button"
+        onClick={() => setShowTop((v) => !v)}
+        aria-pressed={showTop}
+        className={`absolute right-3 top-28 z-10 rounded-full border px-4 py-2 text-sm font-medium shadow-lg backdrop-blur sm:bottom-6 sm:left-1/2 sm:right-auto sm:top-auto sm:-translate-x-1/2 ${
+          showTop
+            ? "border-emerald-800 bg-emerald-800 text-white"
+            : "border-border/70 bg-white/95 hover:bg-white"
+        }`}
+      >
+        Strongest areas
+      </button>
       {tip && (
         <div
           className="pointer-events-none absolute z-10 rounded-lg border border-border/70 bg-white/95 px-2.5 py-1.5 text-xs shadow-lg backdrop-blur"

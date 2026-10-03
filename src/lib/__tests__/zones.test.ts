@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { gridDisk } from "h3-js";
-import { bandOf, bandZones } from "../map/zones";
+import { bandOf, bandZones, topZone } from "../map/zones";
 
 test("bandOf buckets percentiles into quintiles", () => {
   assert.equal(bandOf(0), 0);
@@ -25,4 +25,11 @@ test("bandZones separates different bands", () => {
   const [a, b] = gridDisk("891e2e5b6b7ffff", 1).slice(0, 2);
   const fc = bandZones([a, b], [0, 4]);
   assert.equal(fc.features.length, 2);
+});
+
+test("topZone keeps only cells at or above the threshold", () => {
+  const [a, b] = gridDisk("891e2e5b6b7ffff", 1).slice(0, 2);
+  assert.equal(topZone([a, b], [0.1, 0.2]).features.length, 0);
+  const fc = topZone([a, b], [0.95, 0.2]);
+  assert.equal((fc.features[0].geometry as GeoJSON.MultiPolygon).coordinates.length, 1);
 });

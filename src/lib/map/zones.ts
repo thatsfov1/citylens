@@ -47,3 +47,21 @@ export function bandZones(cells: string[], bands: number[]): GeoJSON.FeatureColl
     ),
   };
 }
+
+/** Dissolved outline of the cells whose percentile rank is at least `threshold`. */
+export function topZone(cells: string[], pcts: number[], threshold = 0.9): GeoJSON.FeatureCollection {
+  const top = cells.filter((_, i) => pcts[i] >= threshold);
+  return {
+    type: "FeatureCollection",
+    features:
+      top.length === 0
+        ? []
+        : [
+            {
+              type: "Feature",
+              properties: {},
+              geometry: { type: "MultiPolygon", coordinates: cellsToMultiPolygon(top, true) },
+            },
+          ],
+  };
+}
