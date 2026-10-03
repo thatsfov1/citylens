@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, GraduationCap, Hexagon, ShieldCheck } from "lucide-react";
-import { AreaPanel, type PanelView } from "./area-panel";
+import { ArrowLeft, GraduationCap, Hexagon, ShieldCheck, X } from "lucide-react";
+import { AirSection, AreaPanel, SafetySection, type PanelView } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { CompareTray } from "./compare-tray";
 import { FirstMatchCard } from "./first-match-card";
@@ -202,6 +202,10 @@ export function MapExperience({
     return { ex, contributor: placesView ? topContributor(placesView, weights) : null };
   }, [first, hex, view, selected, details, weights, stages, placesView]);
 
+  // Info window opened from a safety / air badge on the hexagon; tied to the hexagon like the panel detail.
+  const [badgeInfo, setBadgeInfo] = useState<{ hex: string | null; kind: "safety" | "air" | null }>({ hex: null, kind: null });
+  const openBadge = badgeInfo.hex === selected ? badgeInfo.kind : null;
+
   const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
   const [focusPlace, setFocusPlace] = useState<{ id: number; n: number } | null>(null);
 
@@ -219,7 +223,26 @@ export function MapExperience({
         onHoverPlace={setHoveredPlace}
         focusPlace={focusPlace}
         minSafety={minSafety}
+        badges={hex ? { safety: hex.safety ?? null, air: hex.air ?? null } : undefined}
+        onBadge={(kind) => setBadgeInfo({ hex: selected, kind })}
       />
+
+      {openBadge && hex && (
+        <section className="absolute inset-x-3 top-28 z-10 max-h-[40%] overflow-y-auto rounded-2xl border border-border/70 bg-white/95 px-4 pb-4 pt-3 shadow-2xl backdrop-blur sm:inset-x-auto sm:bottom-6 sm:right-[24rem] sm:top-auto sm:max-h-[60%] sm:w-[24rem]">
+          <button
+            onClick={() => setBadgeInfo({ hex: null, kind: null })}
+            aria-label="Close"
+            className="absolute right-2 top-2 z-10 rounded-full p-1.5 text-muted-foreground hover:bg-muted"
+          >
+            <X className="size-4" />
+          </button>
+          {openBadge === "safety" ? (
+            <SafetySection safety={hex.safety ?? null} minSafety={minSafety} indicators={details?.indicators ?? null} />
+          ) : (
+            hex.air != null && <AirSection air={hex.air} indicators={details?.indicators ?? null} />
+          )}
+        </section>
+      )}
 
       <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center gap-3 p-3 sm:flex-row sm:items-start sm:justify-between sm:p-4">
         <Link

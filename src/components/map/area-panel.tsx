@@ -324,7 +324,7 @@ function CategoryDetail({
   );
 }
 
-function AirSection({ air, indicators }: { air: number; indicators: HexIndicators | null }) {
+export function AirSection({ air, indicators }: { air: number; indicators: HexIndicators | null }) {
   const facts = indicators ? describeAir(indicators) : [];
   const level = indicators ? describeAirLevel(indicators) : null;
   return (
@@ -358,7 +358,7 @@ function AirSection({ air, indicators }: { air: number; indicators: HexIndicator
   );
 }
 
-function SafetySection({
+export function SafetySection({
   safety,
   minSafety,
   indicators,

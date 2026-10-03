@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { cellToLatLng } from "h3-js";
+import { cellToBoundary, cellToLatLng } from "h3-js";
 import { KRAKOW_CENTER, KRAKOW_INITIAL_ZOOM } from "@/lib/h3/config";
 import { cellPolygon } from "@/lib/h3/grid";
 import { GREEN_COLOR, PLACE_COLORS, circleRing, placeTitle } from "@/lib/map/places";
@@ -123,9 +123,35 @@ type Props = {
   focusPlace: { id: number; n: number } | null;
   /** Minimum safety level (0 = off): hexes below it are dimmed outside the Safety view. */
   minSafety: number;
+  /** Safety / air values of the selected hexagon (null = no data); shown as badges on its border. */
+  badges?: { safety: number | null; air: number | null };
+  onBadge?: (kind: "safety" | "air") => void;
 };
 
-export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety }: Props) {
+const BADGE_MIN_ZOOM = 12.5;
+
+const BADGE_ICONS = {
+  safety:
+    '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  air: '<path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/>',
+} as const;
+
+function badgeElement(kind: "safety" | "air", value: number, onClick: () => void): HTMLElement {
+  const el = document.createElement("button");
+  el.type = "button";
+  el.title = kind === "safety" ? "Safety indicators: click for details" : "Air quality: click for details";
+  el.className =
+    "flex items-center gap-1 rounded-full border border-border/70 bg-white px-2 py-1 text-xs font-semibold tabular-nums text-slate-900 shadow-lg hover:bg-slate-50";
+  el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${BADGE_ICONS[kind]}</svg>`;
+  el.append(String(value));
+  el.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onClick();
+  });
+  return el;
+}
+
+export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, badges, onBadge }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -561,6 +587,38 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     // Dim the heat field while an area is selected.
     map.setPaintProperty("heat-raster", "raster-opacity", selected ? DIMMED_OPACITY : 1);
   }, [selected]);
+
+  // Safety / air badges sit on the selected hexagon's two northern corners; clicking one opens its info window.
+  const onBadgeRef = useRef(onBadge);
+  useEffect(() => {
+    onBadgeRef.current = onBadge;
+  }, [onBadge]);
+  const safetyBadge = badges?.safety ?? null;
+  const airBadge = badges?.air ?? null;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !selected || (safetyBadge === null && airBadge === null)) return;
+    const [west, east] = cellToBoundary(selected)
+      .sort((a, b) => b[0] - a[0])
+      .slice(0, 2)
+      .sort((a, b) => a[1] - b[1]);
+    const markers: maplibregl.Marker[] = [];
+    const add = (kind: "safety" | "air", value: number | null, corner: number[]) => {
+      if (value === null) return;
+      const el = badgeElement(kind, value, () => onBadgeRef.current?.(kind));
+      markers.push(new maplibregl.Marker({ element: el }).setLngLat([corner[1], corner[0]]).addTo(map));
+    };
+    add("safety", safetyBadge, west);
+    add("air", airBadge, east);
+    // At city zoom a hexagon is tiny and the two badges would overlap, so show them once zoomed in.
+    const sync = () => markers.forEach((m) => (m.getElement().style.display = map.getZoom() >= BADGE_MIN_ZOOM ? "" : "none"));
+    sync();
+    map.on("zoom", sync);
+    return () => {
+      map.off("zoom", sync);
+      markers.forEach((m) => m.remove());
+    };
+  }, [selected, safetyBadge, airBadge]);
 
   // Selecting a hexagon flies in; deselecting flies back to where the user was.
   useEffect(() => {
