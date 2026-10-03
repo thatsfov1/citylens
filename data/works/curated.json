@@ -1,0 +1,122 @@
+[
+  {
+    "id": "starowislna-stage1",
+    "title": "Starowiślna street renovation: first stage (utilities and pavements, Dietla–Miodowa)",
+    "kind": "road", "status": "ongoing",
+    "dateFrom": "2026-08-27", "dateTo": "2026-11-30", "whenLabel": null,
+    "source": "zdmk", "snapshot": "zdmk-starowislna", "publishedAt": "2026-08-21",
+    "evidence": ["Od 27 sierpnia 2026 r. rozpoczną się prace na ul. Starowiślnej", "Zakończenie pierwszego etapu prac planowane jest na 30 listopada 2026 r."],
+    "locations": ["geocode:Starowiślna 1", "geocode:Starowiślna 60"],
+    "reviewed": true
+  },
+  {
+    "id": "starowislna-track",
+    "title": "Starowiślna street renovation: tram track and roadway (Dietla–Powstańców Śląskich bridge)",
+    "kind": "tram", "status": "planned",
+    "dateFrom": "2027-01-01", "dateTo": null, "whenLabel": "track works planned for early 2027",
+    "source": "zdmk", "snapshot": "zdmk-starowislna", "publishedAt": "2026-08-21",
+    "evidence": ["Prace torowe rozpoczną się na początku 2027 roku."],
+    "locations": ["geocode:Starowiślna 1", "geocode:Starowiślna 60"],
+    "reviewed": true
+  },
+  {
+    "id": "azory-tram",
+    "title": "New tram line Krowodrza Górka – Azory (approximate corridor)",
+    "kind": "tram", "status": "planned",
+    "dateFrom": "2027-07-01", "dateTo": null, "whenLabel": "construction start planned around mid-2027",
+    "source": "krakow_pl", "snapshot": "krakow-azory", "publishedAt": "2026-09-16",
+    "evidence": ["około połowy 2027 roku, po przeprowadzeniu postępowania, planowane jest zawarcie umowy z wykonawcą oraz rozpoczęcie robót budowlanych"],
+    "locations": ["stop:Krowodrza Górka P+R", "stop:Azory"],
+    "reviewed": true
+  },
+  {
+    "id": "domagaly-extension",
+    "title": "Extension of ul. Domagały (first stage of the Złocień tram line, approximate location)",
+    "kind": "road", "status": "planned",
+    "dateFrom": "2027-01-01", "dateTo": null, "whenLabel": "first works possible in 2027 if all goes to plan (city statement from Feb 2024)",
+    "source": "krakow_pl", "snapshot": "krakow-tram-plans", "publishedAt": "2024-02-13",
+    "evidence": ["Jeżeli wszystko pójdzie zgodnie z planem, pierwsze prace przy rozbudowie ul. Domagały będzie można rozpocząć w 2027 r."],
+    "locations": ["geocode:Nad Drwiną"],
+    "reviewed": true
+  },
+  {
+    "id": "medyczna-obronna",
+    "title": "Extension of ul. Medyczna and ul. Obronna (temporary traffic organisation)",
+    "kind": "road", "status": "ongoing",
+    "dateFrom": "2026-01-16", "dateTo": "2027-12-31", "whenLabel": null,
+    "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
+    "evidence": ["W terminie od 16 stycznia 2026 r. do 31 grudnia 2027 r., w związku z rozbudową odcinka ul. Medycznej i ul. Obronnej"],
+    "locations": ["geocode:Medyczna", "geocode:Obronna"],
+    "reviewed": true
+  },
+  {
+    "id": "bronowice-hub",
+    "title": "Bronowice transfer hub with P&R car park and bus terminal",
+    "kind": "building", "status": "ongoing",
+    "dateFrom": null, "dateTo": "2028-03-13", "whenLabel": null,
+    "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
+    "evidence": ["Trwa budowa zintegrowanego węzła przesiadkowego wraz z parkingiem P&R Bronowice oraz terminalem autobusowym (okolice przystanku Bronowice SKA). Zakończenie prac: 13 marca 2028 r."],
+    "locations": ["stop:Bronowice SKA"],
+    "reviewed": true
+  },
+  {
+    "id": "gertrudy-track",
+    "title": "Tram track renovation on św. Gertrudy and Stradomska",
+    "kind": "tram", "status": "planned",
+    "dateFrom": "2026-10-05", "dateTo": null, "whenLabel": null,
+    "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
+    "evidence": ["Remont torowiska na ul. św. Gertrudy i Stradomskiej", "prace rozpoczną się w poniedziałek, 5 października br."],
+    "locations": ["geocode:św. Gertrudy", "geocode:Stradomska"],
+    "reviewed": true
+  },
+  {
+    "id": "bonarka-forest-path",
+    "title": "Recreational walking and cycling path in Bonarka forest",
+    "kind": "green", "status": "ongoing",
+    "dateFrom": null, "dateTo": "2026-12-16", "whenLabel": null,
+    "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
+    "evidence": ["Do 16 grudnia 2026 r. w lesie Bonarka, w rejonie galerii Bonarka, na obszarze Podgórza Duchackiego, realizowana jest inwestycja obejmująca budowę rekreacyjnego ciągu pieszo-rowerowego"],
+    "locations": ["geocode:Kamieńskiego 11"],
+    "reviewed": true
+  },
+  {
+    "id": "podluzna-sewer",
+    "title": "Sanitary sewer construction on ul. Podłużna (road closed)",
+    "kind": "utility", "status": "ongoing",
+    "dateFrom": "2026-07-06", "dateTo": null, "whenLabel": "expected to last about 6–8 months",
+    "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
+    "evidence": ["W terminie od 6 lipca 2026 r. Wodociągi Miasta Krakowa S.A. rozpoczną budowę sieci kanalizacji sanitarnej w ul. Podłużnej.", "Prace potrwają około 6–8 miesięcy"],
+    "locations": ["geocode:Podłużna"],
+    "reviewed": true
+  },
+  {
+    "id": "grunwaldzki-bridge",
+    "title": "Grunwaldzki Bridge renovation",
+    "kind": "road", "status": "ongoing",
+    "dateFrom": null, "dateTo": null, "whenLabel": null,
+    "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
+    "evidence": ["Trwa remont Mostu Grunwaldzkiego"],
+    "locations": ["geocode:Most Grunwaldzki"],
+    "reviewed": true
+  },
+  {
+    "id": "bagatela-junction",
+    "title": "Bagatela tram junction rebuild (Karmelicka)",
+    "kind": "tram", "status": "ongoing",
+    "dateFrom": null, "dateTo": null, "whenLabel": null,
+    "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
+    "evidence": ["Przebudowa węzła Bagatela"],
+    "locations": ["geocode:Karmelicka 6"],
+    "reviewed": true
+  },
+  {
+    "id": "grzegorzecka-repair",
+    "title": "Renovation of ul. Grzegórzecka (tram and bus diversions)",
+    "kind": "road", "status": "ongoing",
+    "dateFrom": null, "dateTo": null, "whenLabel": null,
+    "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
+    "evidence": ["Remont na ul. Grzegórzeckiej."],
+    "locations": ["geocode:Grzegórzecka"],
+    "reviewed": true
+  }
+]
