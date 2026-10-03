@@ -34,29 +34,13 @@ export function Landing({ initial }: { initial?: Importance }) {
     <main className="relative isolate flex flex-1 flex-col items-center overflow-x-clip px-4 py-8 sm:px-6 sm:py-12">
       <Background />
 
-      <div className="flex w-full max-w-2xl flex-1 flex-col items-center text-center">
-        {/* Placeholder for the future logo. */}
-        <div
-          aria-hidden
-          className="mb-6 flex size-14 items-center justify-center rounded-2xl border-2 border-dashed border-cream/40 text-[11px] font-medium text-cream/80"
-        >
-          logo
-        </div>
-
-        <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-cream [text-shadow:0_2px_24px_rgba(0,0,0,0.55)] sm:text-6xl">
-          Znajdź w <em className="font-display font-normal italic">Krakowie</em> miejsce, które pasuje do{" "}
-          <em className="font-display font-normal italic">Ciebie</em>
+      <div className="flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-5 text-center">
+        <h1 className="text-balance text-3xl font-semibold leading-[1.05] tracking-tight text-mist [text-shadow:0_2px_24px_rgba(0,0,0,0.55)] sm:text-5xl">
+          Znajdź w <em className="font-display font-normal italic text-sun">Krakowie</em> miejsce, które pasuje do{" "}
+          <em className="font-display font-normal italic text-sun">Ciebie</em>
         </h1>
-        <p className="mt-3 max-w-xl text-pretty text-base text-cream/90 [text-shadow:0_1px_12px_rgba(0,0,0,0.6)] sm:text-lg">
-          Powiedz, co jest dla Ciebie ważne — pokażemy, które części miasta najlepiej odpowiadają Twojemu stylowi życia.
-        </p>
 
-        <div className="mt-8 w-full">
-          <CategoryOrbit levels={levels} open={open} onOpenChange={setOpen} onConfirm={setLevel} />
-          <p className="mt-3 text-sm text-cream/80 [text-shadow:0_1px_8px_rgba(0,0,0,0.6)]">Najedź lub kliknij ikonę, aby ustawić jej ważność.</p>
-        </div>
-
-        <div className="mt-6 w-full text-left">
+        <div className="w-full text-left">
           <ChatPanel
             levels={levels}
             onImportance={(i) => setLevels(levelsFromImportance(i))}
@@ -65,21 +49,28 @@ export function Landing({ initial }: { initial?: Importance }) {
           />
         </div>
 
-        <Button
-          type="button"
-          disabled={!hasChips}
-          onClick={() => router.push(`/map?${importanceToQuery(levelsToImportance(levels))}`)}
-          className="mt-6 h-12 gap-2 rounded-full bg-moss px-8 text-base font-semibold text-white shadow-lg shadow-bark/20 hover:bg-bark disabled:bg-white/15 disabled:text-cream/70 disabled:shadow-none"
-        >
-          Pokaż moją mapę
-          <ArrowRight className="size-5" aria-hidden />
-        </Button>
-        <p className="mt-2 text-sm text-cream/80 [text-shadow:0_1px_8px_rgba(0,0,0,0.6)]">
-          {hasChips ? "Preferencje możesz zmienić w dowolnym momencie." : "Dodaj co najmniej jeden parametr, aby zobaczyć mapę."}
-        </p>
+        <div className="w-full">
+          <p className="mb-2 text-xs text-mist/80 [text-shadow:0_1px_8px_rgba(0,0,0,0.6)]">Albo ustaw ważność ręcznie</p>
+          <CategoryOrbit levels={levels} open={open} onOpenChange={setOpen} onConfirm={setLevel} />
+        </div>
+
+        <div className="flex flex-col items-center gap-2">
+          <Button
+            type="button"
+            disabled={!hasChips}
+            onClick={() => router.push(`/map?${importanceToQuery(levelsToImportance(levels))}`)}
+            className="h-12 gap-2 rounded-full bg-sun px-8 text-base font-semibold text-ink shadow-lg shadow-black/30 hover:bg-sun/85 disabled:bg-white/15 disabled:text-mist/60 disabled:shadow-none"
+          >
+            Pokaż moją mapę
+            <ArrowRight className="size-5" aria-hidden />
+          </Button>
+          <p className="text-sm text-mist/80 [text-shadow:0_1px_8px_rgba(0,0,0,0.6)]">
+            {hasChips ? "Preferencje możesz zmienić w dowolnym momencie." : "Dodaj co najmniej jeden parametr, aby zobaczyć mapę."}
+          </p>
+        </div>
       </div>
 
-      <OsmAttribution className="mt-8 text-center text-cream/70" />
+      <OsmAttribution className="mt-8 text-center text-mist/70" />
     </main>
   );
 }
