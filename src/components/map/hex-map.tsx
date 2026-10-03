@@ -59,6 +59,19 @@ const zoneColorExpression = [
   BAND_FILLS[BAND_FILLS.length - 1],
 ] as unknown as maplibregl.ExpressionSpecification;
 
+// Calmer basemap under the overlay: lighter roads and minor labels; place names stay crisp.
+function softenBasemap(map: maplibregl.Map) {
+  for (const layer of map.getStyle().layers) {
+    const src = (layer as { "source-layer"?: string })["source-layer"];
+    if (layer.type === "line" && src === "transportation") {
+      map.setPaintProperty(layer.id, "line-opacity", 0.55);
+    } else if (layer.type === "symbol" && src && src !== "place") {
+      map.setPaintProperty(layer.id, "text-opacity", 0.6);
+      map.setPaintProperty(layer.id, "icon-opacity", 0.5);
+    }
+  }
+}
+
 type Tip = { x: number; y: number; district: string; label: string; value: string };
 
 type Props = {
@@ -185,6 +198,8 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
 
     map.on("load", () => {
       const { geojson, zones, mode, selected } = initial.current;
+
+      softenBasemap(map);
 
       // Veil everything outside Kraków, then redraw airports above the veil.
       map.addSource("mask", { type: "geojson", data: outsideMaskFeature });
