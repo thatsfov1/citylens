@@ -13,7 +13,7 @@ const fraunces = Fraunces({
   style: ["italic"],
 });
 
-// Stand-in for Citadel Script (a licensed font): used only until public/fonts/CitadelScript.woff2 exists.
+// Stand-in for Tempting (a licensed font): used only until public/fonts/Tempting.woff2 exists.
 const pinyon = Pinyon_Script({
   variable: "--font-pinyon",
   subsets: ["latin", "latin-ext"],

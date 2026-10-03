@@ -36,8 +36,8 @@ export function Landing({ initial }: { initial?: Importance }) {
 
       <div className="flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-5 text-center">
         <h1 className="text-balance text-3xl font-semibold leading-[1.05] tracking-tight text-mist [text-shadow:0_2px_24px_rgba(0,0,0,0.55)] sm:text-5xl">
-          Znajdź w <span className="font-script text-[1.35em] font-normal leading-none text-sun">Krakowie</span> miejsce, które pasuje do{" "}
-          <span className="font-script text-[1.35em] font-normal leading-none text-sun">Ciebie</span>
+          Znajdź w <AccentWord>Krakowie</AccentWord> miejsce, które pasuje do{" "}
+          <AccentWord>Ciebie</AccentWord>
         </h1>
 
         <div className="w-full text-left">
@@ -72,5 +72,17 @@ export function Landing({ initial }: { initial?: Importance }) {
 
       <OsmAttribution className="mt-8 text-center text-mist/70" />
     </main>
+  );
+}
+
+/** Script word drawn twice, the back copy offset and softened, so the two layers overlap into a shadow. */
+function AccentWord({ children }: { children: string }) {
+  return (
+    <span className="relative inline-block font-script text-[1.5em] font-normal leading-none">
+      <span aria-hidden className="absolute left-[0.04em] top-[0.07em] select-none text-rose/70 blur-[1.5px]">
+        {children}
+      </span>
+      <span className="relative text-sun">{children}</span>
+    </span>
   );
 }
