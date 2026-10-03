@@ -349,3 +349,10 @@ changes a score.
   weights by default; each overview bar has a dot that toggles that category's pins (multi-select; kept across hexagons, resets when the map mode changes).
   Opening a category detail adds its pins to the selection.
 - The education stage filter and the safety filter sit at the top of the overview only (the stage filter is also inside the education detail).
+
+## Caching of per-hexagon responses
+- Client: `src/lib/map/hex-cache.ts` (`fetchCached`) keeps successful `/api/hexes/[h3]`, `/places` and `/works` responses in memory for the
+  session, so clicking back to a hexagon makes no requests. Not persisted to web storage (reload clears it; failures are never cached).
+- Server: those routes send `Cache-Control: public, max-age=3600, stale-while-revalidate=86400` (works: 900 / 3600, since the snapshot is
+  refreshed daily; a failed works load answers `no-store`). **After reseeding `hex_scores`, `pois` or `works`, browsers may serve the old
+  copy for up to an hour** (a hard reload bypasses it).

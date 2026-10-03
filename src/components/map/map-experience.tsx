@@ -11,6 +11,7 @@ import { CategoryPlaces } from "./places-list";
 import { WorksWarnings } from "./works-warnings";
 import { EDUCATION_KIND_STAGES } from "@/lib/data/osm";
 import { summarizeWorks } from "@/lib/data/works";
+import { fetchCached } from "@/lib/map/hex-cache";
 import { defaultPinCategories } from "@/lib/map/places";
 import { NO_DATA_COLOR } from "@/lib/map/zones";
 import { MIN_SAFETY_LEVELS, importanceToQuery, type Importance } from "@/lib/scoring/preferences";
@@ -82,8 +83,7 @@ export function MapExperience({
   useEffect(() => {
     if (!selected || source !== "supabase") return;
     const ctrl = new AbortController();
-    fetch(`/api/hexes/${selected}`, { signal: ctrl.signal })
-      .then((r) => (r.ok ? (r.json() as Promise<HexDetails>) : null))
+    fetchCached<HexDetails>(`/api/hexes/${selected}`, ctrl.signal)
       .then((d) => setDetails(d))
       .catch(() => {});
     return () => {
@@ -97,8 +97,7 @@ export function MapExperience({
   useEffect(() => {
     if (!selected || source !== "supabase") return;
     const ctrl = new AbortController();
-    fetch(`/api/hexes/${selected}/places`, { signal: ctrl.signal })
-      .then((r) => (r.ok ? (r.json() as Promise<PlacesResponse>) : null))
+    fetchCached<PlacesResponse>(`/api/hexes/${selected}/places`, ctrl.signal)
       .then((d) => setPlaces(d))
       .catch(() => {});
     return () => {
@@ -112,8 +111,7 @@ export function MapExperience({
   useEffect(() => {
     if (!selected || source !== "supabase") return;
     const ctrl = new AbortController();
-    fetch(`/api/hexes/${selected}/works`, { signal: ctrl.signal })
-      .then((r) => (r.ok ? (r.json() as Promise<{ works: WorkNearby[] }>) : null))
+    fetchCached<{ works: WorkNearby[] }>(`/api/hexes/${selected}/works`, ctrl.signal)
       .then((d) => setWorks(d?.works ?? []))
       .catch(() => {});
     return () => {
