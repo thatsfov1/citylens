@@ -356,3 +356,12 @@ changes a score.
 - Server: those routes send `Cache-Control: public, max-age=3600, stale-while-revalidate=86400` (works: 900 / 3600, since the snapshot is
   refreshed daily; a failed works load answers `no-store`). **After reseeding `hex_scores`, `pois` or `works`, browsers may serve the old
   copy for up to an hour** (a hard reload bypasses it).
+
+## "Your first match" (map load)
+- With real data (`source === "supabase"`, never the simulated demo scores) the map opens by selecting the top-scoring area, via the same fly-in
+  as a click. `strongestAreas` (`src/lib/scoring/first-match.ts`) ranks the top 10% by personal score (the same share the map highlights),
+  skips cells below the minimum safety level, and breaks ties by h3 index (deterministic). The ranking is fixed at that moment.
+- `FirstMatchCard` (top of the side panel, overview only) shows score, district, the first `explainMatch` reason, one trade-off only if the data
+  yields one, and one real contributing place (`topContributor`: nearest place of the highest-weighted category, or the largest park). It appears
+  only once the area's indicators have loaded, so it never shows generic text. Copy: "one of the stronger matches", never "best".
+- "Compare another area" walks the ranked list (wraps); dismissing the card (×) ends it. No side-by-side comparison yet.
