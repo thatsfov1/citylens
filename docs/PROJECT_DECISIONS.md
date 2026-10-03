@@ -365,3 +365,8 @@ changes a score.
   yields one, and one real contributing place (`topContributor`: nearest place of the highest-weighted category, or the largest park). It appears
   only once the area's indicators have loaded, so it never shows generic text. Copy: "one of the stronger matches", never "best".
 - "Compare another area" walks the ranked list (wraps); dismissing the card (×) ends it. No side-by-side comparison yet.
+
+## Compare areas
+- "Add to comparison" in the area panel keeps up to 3 areas (`MAX_COMPARED`); `CompareTray` shows match % and the six category scores side by side, higher value per row in green
+  (no leader on ties). Tap a column to open that area, × removes it. `compareAreas` (`src/lib/scoring/compare.ts`, tested) uses stored scores and the current weights only: deterministic, client-side,
+  state lives in `MapExperience` and resets on reload (not in the URL yet). Copy: "a different fit, not a worse place".

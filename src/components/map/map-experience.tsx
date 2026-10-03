@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, GraduationCap, Hexagon, ShieldCheck } from "lucide-react";
 import { AreaPanel, type PanelView } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
+import { CompareTray } from "./compare-tray";
 import { FirstMatchCard } from "./first-match-card";
 import { OsmAttribution } from "@/components/osm-attribution";
 import { ModeSelector } from "./mode-selector";
@@ -13,6 +14,7 @@ import { WorksWarnings } from "./works-warnings";
 import { EDUCATION_KIND_STAGES } from "@/lib/data/osm";
 import { explainMatch } from "@/lib/scoring/explain";
 import { describeAll } from "@/lib/scoring/facts";
+import { MAX_COMPARED, compareAreas } from "@/lib/scoring/compare";
 import { strongestAreas, topContributor } from "@/lib/scoring/first-match";
 import { summarizeWorks } from "@/lib/data/works";
 import { fetchCached } from "@/lib/map/hex-cache";
@@ -77,6 +79,13 @@ export function MapExperience({
   const showStageFilter = hasStages && (mode === "education" || (mode === "forYou" && importance.education > 0));
   const [selected, setSelected] = useState<string | null>(null);
   const weights = useMemo(() => normalizeWeights(importance), [importance]);
+  // Areas the user is considering (up to three), compared side by side.
+  const [compared, setCompared] = useState<string[]>([]);
+  const toggleCompared = () => {
+    if (!selected) return;
+    setCompared((c) => (c.includes(selected) ? c.filter((x) => x !== selected) : c.length < MAX_COMPARED ? [...c, selected] : c));
+  };
+  const comparison = useMemo(() => compareAreas(viewHexes, compared, weights), [viewHexes, compared, weights]);
   const hex = useMemo(
     () => (selected ? (viewHexes.find((h) => h.h3Index === selected) ?? null) : null),
     [viewHexes, selected],
@@ -233,6 +242,15 @@ export function MapExperience({
             onDismiss={() => setFirst(null)}
           />
         )}
+        {!view && (
+          <CompareTray
+            comparison={comparison}
+            selected={selected}
+            onSelect={setSelected}
+            onRemove={(id) => setCompared((c) => c.filter((x) => x !== id))}
+            onClear={() => setCompared([])}
+          />
+        )}
         {!view && showStageFilter && <StageFilter value={stages} onToggle={toggleStage} />}
         {!view && hasSafety && <SafetyFilter value={minSafety} onChange={changeMinSafety} />}
         <AreaPanel
@@ -246,6 +264,7 @@ export function MapExperience({
           weights={weights}
           stages={stages}
           onClose={() => setSelected(null)}
+          compare={selected ? { added: compared.includes(selected), full: compared.length >= MAX_COMPARED, onToggle: toggleCompared } : undefined}
           view={view}
           onView={setView}
           pins={pinCategories}
