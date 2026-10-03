@@ -1,9 +1,10 @@
 import { z } from "zod";
 import rentData from "../data/rent-data.json";
 
-// Rent budget: a filter, not a preference weight. Hexes inherit the typical asking rent of their district
-// (a snapshot of rental listings, see scripts/rent/build.ts) for the chosen flat size. Hexes whose typical
-// rent lies outside the range are greyed out; districts without enough listings stay "unknown".
+// Rent budget: a filter, not a preference weight. Hexes inherit the offers of their district (a snapshot of
+// rental listings, see scripts/rent/build.ts) for the chosen flat size. The map fades toward grey where few of
+// those offers fit the range; districts without enough listings stay "unknown". Ads show the base rent, so the
+// budget can include the czynsz (building fee) that is listed separately.
 
 export const RENT_MIN = 1500;
 export const RENT_MAX = 7000;
@@ -23,12 +24,16 @@ export const rentFilterSchema = z
     min: z.number().int().min(RENT_MIN).max(RENT_MAX),
     max: z.number().int().min(RENT_MIN).max(RENT_MAX),
     rooms: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    /** Compare the budget with base rent plus czynsz (the typical one when an ad does not state it). */
+    fees: z.boolean(),
   })
   .refine((f) => f.min <= f.max, "min must not exceed max");
 export type RentFilter = z.infer<typeof rentFilterSchema>;
 
 export type RentStats = { n: number; p25: number; median: number; p75: number };
-type RentTable = Record<string, Record<string, RentStats>>;
+/** Stats of one district and flat size; `offers` are [base rent, czynsz or null] for every listing. */
+export type RentGroup = RentStats & { fee: number | null; feeKnown: number; offers?: readonly (readonly [number, number | null])[] };
+type RentTable = Record<string, Record<string, RentGroup>>;
 
 export const RENT_META = {
   source: rentData.source,
@@ -36,40 +41,95 @@ export const RENT_META = {
   listings: rentData.listings,
 };
 
+const DISTRICTS = rentData.districts as unknown as RentTable;
+const CITY = rentData.city as unknown as Record<string, RentGroup>;
+
 /** Typical rent for a district and flat size; null when there were too few listings. */
-export function rentFor(district: string | null | undefined, rooms: Rooms, table: RentTable = rentData.districts as RentTable): RentStats | null {
+export function rentFor(district: string | null | undefined, rooms: Rooms, table: RentTable = DISTRICTS): RentGroup | null {
   if (!district) return null;
   return table[district]?.[String(rooms)] ?? null;
 }
 
-export function cityRent(rooms: Rooms): RentStats | null {
-  return (rentData.city as Record<string, RentStats>)[String(rooms)] ?? null;
+export function cityRent(rooms: Rooms): RentGroup | null {
+  return CITY[String(rooms)] ?? null;
 }
 
-export type RentFit = "in" | "out" | "unknown";
-
-/** Whether a district's typical (median) rent lies within the budget. */
-export function rentFit(stats: RentStats | null, filter: RentFilter): RentFit {
-  if (!stats) return "unknown";
-  const aboveMin = filter.min <= RENT_MIN || stats.median >= filter.min;
-  const belowMax = filter.max >= RENT_MAX || stats.median <= filter.max;
-  return aboveMin && belowMax ? "in" : "out";
+/** Typical czynsz (building fee, on top of the base rent) for a district, falling back to the city figure. */
+export function feeFor(district: string | null | undefined, rooms: Rooms, table: RentTable = DISTRICTS): number {
+  return rentFor(district, rooms, table)?.fee ?? cityRent(rooms)?.fee ?? 0;
 }
 
-/** Splits hexes into out-of-budget and unknown sets (the rest are in budget). */
+/** Offers at or above this share inside the budget are shown normally; below it the map fades toward grey. */
+export const FULL_SHARE = 0.5;
+/** Districts where fewer than this share of offers fit the budget count as outside it. */
+export const OUT_SHARE = 0.2;
+
+export type RentFit = "in" | "some" | "out" | "unknown";
+
+/** Monthly cost of every offer; with `fees` the czynsz is added (the typical one when the ad does not state it). */
+export function costsFor(district: string | null | undefined, rooms: Rooms, fees: boolean, table: RentTable = DISTRICTS): number[] | null {
+  const group = rentFor(district, rooms, table);
+  if (!group?.offers?.length) return null;
+  const typical = group.fee ?? cityRent(rooms)?.fee ?? 0;
+  return group.offers.map(([price, fee]) => (fees ? price + (fee ?? typical) : price));
+}
+
+/** Share of offers inside the budget; a handle at the end of the slider means no limit on that side. */
+export function shareWithin(costs: readonly number[], filter: { min: number; max: number }): number {
+  if (costs.length === 0) return 0;
+  const inside = costs.filter((c) => (filter.min <= RENT_MIN || c >= filter.min) && (filter.max >= RENT_MAX || c <= filter.max));
+  return inside.length / costs.length;
+}
+
+export function rentFit(share: number | null): RentFit {
+  if (share === null) return "unknown";
+  return share >= FULL_SHARE ? "in" : share >= OUT_SHARE ? "some" : "out";
+}
+
+export type RentSummary = {
+  stats: RentGroup | null;
+  /** Typical czynsz for this district and flat size (0 if unknown). */
+  fee: number;
+  share: number | null;
+  /** Offers inside the budget, and how many there are. */
+  within: number;
+  fit: RentFit;
+};
+
+export function summarizeRent(district: string | null | undefined, filter: RentFilter, table?: RentTable): RentSummary {
+  const stats = rentFor(district, filter.rooms, table);
+  const costs = costsFor(district, filter.rooms, filter.fees, table);
+  const share = costs ? shareWithin(costs, filter) : null;
+  return {
+    stats,
+    fee: feeFor(district, filter.rooms, table),
+    share,
+    within: costs && share !== null ? Math.round(share * costs.length) : 0,
+    fit: rentFit(share),
+  };
+}
+
+/** Splits hexes by how many of their district's offers fit: outside the budget, unknown, and a share for grading the map. */
 export function classifyHexes(
   hexes: readonly { h3Index: string; district?: string | null }[],
   filter: RentFilter,
   table?: RentTable,
-): { over: Set<string>; unknown: Set<string> } {
+): { over: Set<string>; unknown: Set<string>; share: Map<string, number> } {
   const over = new Set<string>();
   const unknown = new Set<string>();
+  const share = new Map<string, number>();
+  const byDistrict = new Map<string, number | null>();
   for (const h of hexes) {
-    const fit = rentFit(rentFor(h.district, filter.rooms, table), filter);
-    if (fit === "out") over.add(h.h3Index);
-    else if (fit === "unknown") unknown.add(h.h3Index);
+    const key = h.district ?? "";
+    if (!byDistrict.has(key)) byDistrict.set(key, summarizeRent(h.district, filter, table).share);
+    const s = byDistrict.get(key) ?? null;
+    if (s === null) unknown.add(h.h3Index);
+    else {
+      share.set(h.h3Index, s);
+      if (rentFit(s) === "out") over.add(h.h3Index);
+    }
   }
-  return { over, unknown };
+  return { over, unknown, share };
 }
 
 /** Turns a budget the model copied from the user ("do 3500 zł", "2-3 tys.") into a valid filter, or null. */
@@ -79,13 +139,13 @@ export function budgetToFilter(b: { min?: number | null; max?: number | null; ro
   const min = b.min == null ? RENT_MIN : snap(b.min);
   const max = b.max == null ? RENT_MAX : snap(b.max);
   if (min > max) return null;
-  const filter = { min, max, rooms: b.rooms ?? DEFAULT_ROOMS };
+  const filter = { min, max, rooms: b.rooms ?? DEFAULT_ROOMS, fees: true };
   return min <= RENT_MIN && max >= RENT_MAX ? null : filter;
 }
 
-/** `rent=2500-4000&rooms=2`; the extremes mean "no limit". */
+/** `rent=2500-4000&rooms=2`, plus `czynsz=0` when the budget is for the base rent only. */
 export function rentToQuery(f: RentFilter): string {
-  return `rent=${f.min}-${f.max}&rooms=${f.rooms}`;
+  return `rent=${f.min}-${f.max}&rooms=${f.rooms}${f.fees ? "" : "&czynsz=0"}`;
 }
 
 export function rentFromQuery(params: Record<string, string | string[] | undefined>): RentFilter | null {
@@ -93,7 +153,7 @@ export function rentFromQuery(params: Record<string, string | string[] | undefin
   if (typeof raw !== "string") return null;
   const [min, max] = raw.split("-").map(Number);
   const rooms = params.rooms === undefined ? DEFAULT_ROOMS : Number(params.rooms);
-  const parsed = rentFilterSchema.safeParse({ min, max, rooms });
+  const parsed = rentFilterSchema.safeParse({ min, max, rooms, fees: params.czynsz !== "0" });
   if (!parsed.success) return null;
   // A range spanning everything filters nothing.
   return parsed.data.min <= RENT_MIN && parsed.data.max >= RENT_MAX ? null : parsed.data;
@@ -119,8 +179,11 @@ export function otodomUrl(filter: RentFilter, district?: string | null): string 
   const path = district ? `${OTODOM_BASE}/${otodomDistrictSlug(district)}` : OTODOM_BASE;
   const params = new URLSearchParams();
   params.set("roomsNumber", OTODOM_ROOMS[filter.rooms]);
-  if (filter.min > RENT_MIN) params.set("priceMin", String(filter.min));
-  if (filter.max < RENT_MAX) params.set("priceMax", String(filter.max));
+  // Otodom filters on the base rent, so a budget that includes czynsz is lowered by the typical fee.
+  const fee = filter.fees ? feeFor(district, filter.rooms) : 0;
+  const base = (n: number) => Math.max(0, Math.round((n - fee) / 50) * 50);
+  if (filter.min > RENT_MIN) params.set("priceMin", String(base(filter.min)));
+  if (filter.max < RENT_MAX) params.set("priceMax", String(base(filter.max)));
   return `${path}?${params}`;
 }
 

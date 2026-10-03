@@ -1,7 +1,7 @@
 "use client";
 
 import { RentSection } from "./rent-filter";
-import type { RentFilter, RentFit, RentStats, Rooms } from "@/lib/scoring/rent";
+import type { RentFilter, RentSummary } from "@/lib/scoring/rent";
 import type { ReactNode } from "react";
 import { ArrowLeft, Check, ChevronRight, Info, MapPin, ShieldCheck, Wind, X } from "lucide-react";
 import { GREEN_COLOR, PLACE_COLORS } from "@/lib/map/places";
@@ -62,7 +62,7 @@ type Props = {
   /** Does the match survive nudging one priority? Null = not computed. */
   sensitivity?: Sensitivity | null;
   /** Typical rent of this area for the chosen flat size; set only while a rent budget is active. */
-  rent?: { stats: RentStats | null; rooms: Rooms; fit: RentFit; filter: RentFilter } | null;
+  rent?: (RentSummary & { filter: RentFilter }) | null;
 };
 
 export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksSlot, sensitivity, rent = null }: Props) {
