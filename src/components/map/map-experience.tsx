@@ -7,6 +7,7 @@ import { AreaPanel } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { OsmAttribution } from "@/components/osm-attribution";
 import { ModeSelector } from "./mode-selector";
+import { NO_DATA_COLOR } from "@/lib/map/zones";
 import { importanceToQuery, type Importance } from "@/lib/scoring/preferences";
 import { normalizeWeights } from "@/lib/scoring/weights";
 import type { HexSource, HexDetails } from "@/lib/supabase/hex-scores";
@@ -87,10 +88,16 @@ function Legend({ mode }: { mode: MapMode }) {
       <div className="h-2 w-40 rounded-full" style={{ background: LEGEND_GRADIENT }} />
       <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
         <span>{mode === "forYou" ? "Weaker match" : "Low"}</span>
-        <span>{mode === "forYou" ? "Strong match" : "High"}</span>
+        <span>{mode === "forYou" ? "Stronger match" : "High"}</span>
       </div>
+      {mode !== "forYou" && (
+        <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <span className="size-2.5 rounded-sm" style={{ background: NO_DATA_COLOR }} />
+          Nothing nearby (no data)
+        </div>
+      )}
       <div className="mt-1 text-[10px] text-muted-foreground">
-        Relative to the rest of Kraków · untinted = average
+        Five bands, relative to the rest of Kraków
       </div>
       <OsmAttribution className="pointer-events-auto mt-1" />
     </div>
