@@ -208,8 +208,8 @@ function Legend({ mode, minSafety }: { mode: MapMode; minSafety: number }) {
         </div>
       )}
       {mode === "safety" && (
-        <div className="mt-1 max-w-40 text-[10px] leading-snug text-muted-foreground">
-          Street lighting from OpenStreetMap. Indicators, not a verdict on an area.
+        <div className="mt-1 max-w-52 text-[10px] leading-snug text-muted-foreground">
+          Street lighting, cameras and police, fire and hospital access nearby (OpenStreetMap). Indicators, not a verdict on an area.
         </div>
       )}
       <div className="mt-1 text-[10px] text-muted-foreground">

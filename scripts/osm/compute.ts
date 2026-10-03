@@ -5,7 +5,21 @@ import { cellToLatLng } from "h3-js";
 import { cellPolygon, getDemoCells } from "../../src/lib/h3/grid";
 import { parseDistricts, parseGreen, parsePois, type PoiCategory } from "../../src/lib/data/osm";
 import { combineTransport, type GtfsFile } from "../../src/lib/data/gtfs";
-import { cityLitShare, combineSafety, crimeIndicator, rankScores, scoreLighting, type CrimeFile, type LightingFile, type SafetyIndicators } from "../../src/lib/data/safety";
+import {
+  cctvRaw,
+  cityLitShare,
+  combineSafety,
+  crimeIndicator,
+  emergencyRaw,
+  hasStreets,
+  rankScores,
+  scoreFeatures,
+  scoreLighting,
+  type CrimeFile,
+  type FeaturesFile,
+  type LightingFile,
+  type SafetyIndicators,
+} from "../../src/lib/data/safety";
 import { CATEGORY_DISTANCE_SCALE, findDistrict, normalizeRaw, scoreGreenery, scorePoiCategory } from "../../src/lib/data/score-hex";
 import type { LngLat } from "../../src/lib/data/geo";
 import type { Category } from "../../src/types";
@@ -35,14 +49,17 @@ function main() {
     console.log("transport: GTFS stops + OSM rail stations,", byCat.transport.length, "places");
   } else console.log("transport: OSM stops only (no", gtfsPath + ")");
 
-  // Safety: street lighting from OSM (data/safety/lighting.json) and, if a real dataset is present,
-  // official crime statistics (data/safety/crime.json). Cells without any data get a null safety score.
+  // Safety: street lighting and street-environment features from OSM (data/safety/*.json) and, if a real
+  // dataset is present, official crime statistics (data/safety/crime.json). Cells without street-level data
+  // (open land) get a null safety score.
   const lightingPath = process.env.LIGHTING_FILE ?? "data/safety/lighting.json";
+  const featuresPath = process.env.FEATURES_FILE ?? "data/safety/features.json";
   const crimePath = process.env.CRIME_FILE ?? "data/safety/crime.json";
+  const features = existsSync(featuresPath) ? (JSON.parse(readFileSync(featuresPath, "utf8")) as FeaturesFile) : null;
   const lighting = existsSync(lightingPath) ? (JSON.parse(readFileSync(lightingPath, "utf8")) as LightingFile) : null;
   const crime = existsSync(crimePath) ? (JSON.parse(readFileSync(crimePath, "utf8")) as CrimeFile) : null;
   const litShare = lighting ? cityLitShare(lighting) : 0;
-  console.log("safety:", lighting ? `lighting ${lighting.points.length} segments` : "no lighting data", "|", crime ? `crime ${crime.year}` : "no crime data");
+  console.log("safety:", lighting ? `lighting ${lighting.points.length} segments` : "no lighting data", "|", features ? `features ${features.points.length} points` : "no street features", "|", crime ? `crime ${crime.year}` : "no crime data");
 
   const rows = cells.map((h3Index) => {
     const [lat, lng] = cellToLatLng(h3Index);
@@ -55,9 +72,13 @@ function main() {
     const safety: SafetyIndicators = {};
     const l = lighting ? scoreLighting(center, lighting, litShare) : null;
     if (l) safety.lighting = l;
+    if (features) Object.assign(safety, scoreFeatures(center, features));
+    // Open land (no lighting data, no camera) has no street environment to describe.
+    const built = hasStreets(safety);
+    if (!built) for (const k of ["cctv", "emergency", "nightlife"] as const) delete safety[k];
     const c = crime ? crimeIndicator(district, crime) : null;
     if (c) safety.crime = c;
-    return { h3Index, district, indicators: { ...indicators, ...(l || c ? { safety } : {}) } };
+    return { h3Index, district, indicators: { ...indicators, ...(built || c ? { safety } : {}) } };
   });
 
   // Per-indicator scores are percentile ranks over the cells that have data (higher = better), then combined.
@@ -69,8 +90,23 @@ function main() {
     return out;
   };
   const lightRank = rank((r) => r.indicators.safety?.lighting?.litShare);
+  const cctvRank = rank((r) => (r.indicators.safety?.cctv ? cctvRaw(r.indicators.safety.cctv) : undefined));
+  const emRank = rank((r) => (r.indicators.safety?.emergency ? emergencyRaw(r.indicators.safety.emergency) : undefined));
   const crimeRank = rank((r) => (r.indicators.safety?.crime ? -r.indicators.safety.crime.per1000 : undefined)); // fewer crimes → higher
-  const safetyScores = rows.map((_, i) => combineSafety({ lighting: lightRank.get(i), crime: crimeRank.get(i) }));
+  // Keep each indicator's own score next to the combined one so the panel can explain the result.
+  const safetyScores = rows.map((r, i) => {
+    const parts = {
+      lighting: lightRank.get(i),
+      cctv: cctvRank.get(i),
+      emergency: emRank.get(i),
+      crime: crimeRank.get(i),
+    };
+    const total = combineSafety(parts);
+    if (total !== null && r.indicators.safety) {
+      r.indicators.safety.parts = Object.fromEntries(Object.entries(parts).filter(([, v]) => v !== undefined)) as SafetyIndicators["parts"];
+    }
+    return total;
+  });
 
   const categories: Category[] = ["sport", "culture", "greenery", "shopping", "transport"];
   const scores = Object.fromEntries(categories.map((c) => [c, normalizeRaw(rows.map((r) => r.indicators[c].raw))])) as Record<Category, number[]>;

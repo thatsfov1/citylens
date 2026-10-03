@@ -82,6 +82,12 @@ const indicatorsSchema = z.object({
   safety: z
     .object({
       lighting: z.object({ segments: z.number(), lit: z.number(), litShare: z.number() }).optional(),
+      cctv: z.object({ cameras: z.number() }).optional(),
+      emergency: z
+        .object({ police: z.number().nullable(), fire: z.number().nullable(), hospital: z.number().nullable() })
+        .optional(),
+      nightlife: z.object({ venues: z.number() }).optional(),
+      parts: z.record(z.string(), z.number()).optional(),
       crime: z
         .object({ area: z.string(), year: z.number(), per1000: z.number(), cityPer1000: z.number() })
         .optional(),

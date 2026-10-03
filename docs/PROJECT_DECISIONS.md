@@ -122,11 +122,23 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   Hexes below the minimum are greyed out and skipped by "Strongest areas"; hexes with no data are never filtered out
   (unknown ≠ unsafe). The UI hides the mode and the control when no cell has safety data (e.g. mock fallback).
   Copy rule: "safety indicators", "below your minimum safety level" — never "dangerous".
-- **Safety data actually used:** `scripts/safety/build-lighting.ts` → `data/safety/lighting.json` (committed, ~1 MB): midpoints of
-  OSM street segments with an explicit `lit` tag (service roads/tracks/steps excluded). Per cell: segments within 700 m,
-  share lit (smoothed toward the city share, `scoreLighting` in `src/lib/data/safety.ts`), ≥ 8 segments or "no data"
-  (168/461 cells: outskirts, forests). Score = percentile rank among cells with data. **Known bias:** 92% of tagged
-  segments are lit — mappers tag "unlit" rarely — so this leans optimistic and only separates cells *relatively*.
+- **Safety data actually used (public, OSM only; no crime data, no road/accident data).** Three scored indicators, each
+  ranked as a percentile among built-up cells, weighted and renormalised (`SAFETY_WEIGHTS` in
+  `src/lib/data/safety.ts`): **street lighting** 0.50 (share of tagged street segments that are lit within 700 m,
+  `scripts/safety/build-lighting.ts` → `data/safety/lighting.json`), **CCTV** 0.25 (cameras mapped in OSM within 500 m)
+  and **help nearby** 0.25 (distance to the nearest police 40% / fire station 30% / hospital or clinic 30% within 3 km).
+  Camera, emergency and nightlife points come from `scripts/safety/build-features.ts` → `data/safety/features.json`
+  (commit it once generated; without it `compute.ts` scores lighting only). Overpass mirrors rate-limit (429/504); the
+  script backs off and retries across mirrors. **Nightlife** (bars, pubs, clubs within 300 m) is shown in the panel as
+  "After dark" context and is deliberately NOT scored: it cuts both ways (livelier streets vs. noise). Road safety
+  (crossings, traffic calming, major roads, accidents) was dropped on purpose. Each indicator's own score and share
+  are stored in `indicators.safety.parts`, so the side panel explains the result ("How is this measured?").
+  Open land (no lighting data and no camera) has **no safety data** and is never filtered out.
+- **Known limits (say them out loud):** these are *environment* proxies, not crime. They correlate with how built-up an
+  area is, so ranking them per indicator matters. Lighting is optimistic (92% of tagged segments are lit: mappers rarely
+  tag "unlit"); CCTV only counts cameras mapped in OSM (569, about the city's official 569).
+  No official source for crime (partial press figures only) or road accidents (SEWiK is police-held; GPS missing in ~96%
+  of cases in an NIK audit) or KMZB reports (no export) could be used.
 - **Crime stats are wired in but NOT shipped.** `compute.ts` reads `data/safety/crime.json` (`CrimeFile`: police areas →
   district names, crimes, residents, source URL, year; normalised per 1,000 residents; weight 0.6 vs lighting 0.4)
   when the file exists. No machine-readable Kraków police dataset was found (only partial 2022 press figures for some
