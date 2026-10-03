@@ -16,6 +16,7 @@ import { ModeSelector } from "./mode-selector";
 import { CategoryPlaces } from "./places-list";
 import { WorksWarnings } from "./works-warnings";
 import { EDUCATION_KIND_STAGES } from "@/lib/data/osm";
+import type { RouteLine } from "@/lib/data/routing";
 import { explainMatch } from "@/lib/scoring/explain";
 import { describeAll } from "@/lib/scoring/facts";
 import { MAX_COMPARED, compareAreas } from "@/lib/scoring/compare";
@@ -509,11 +510,12 @@ export function MapExperience({
           commute={
             workplace && commute && selected && commute.minutes[selected] != null
               ? {
-                  minutes: route?.source === "routing" ? route.minutes : commute.minutes[selected],
+                  minutes: route?.source === "routing" || route?.source === "gtfs" ? route.minutes : commute.minutes[selected],
                   maxMin: workplace.maxMin,
                   mode: workplace.mode,
                   workName: workplace.name.split(",")[0],
-                  approx: route?.source === "routing" ? false : commute.source !== "routing",
+                  approx: route?.source === "routing" || route?.source === "gtfs" ? false : commute.source !== "routing",
+                  transit: route?.transit ?? null,
                   distanceKm: route ? route.distanceM / 1000 : null,
                 }
               : null
@@ -606,7 +608,7 @@ function useCommuteRoute(selected: string | null, workplace: Workplace | null): 
   return loaded && loaded.key === key ? loaded.data : null;
 }
 
-type RouteData = { coordinates: [number, number][]; minutes: number; distanceM: number; source: "routing" | "straight" };
+type RouteData = RouteLine;
 
 function StageFilter({ value, onToggle, inline = false }: { value: EducationStage[]; onToggle: (s: EducationStage) => void; inline?: boolean }) {
   return (

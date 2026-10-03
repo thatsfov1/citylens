@@ -2,6 +2,7 @@ import { z } from "zod";
 import { cellToLatLng } from "h3-js";
 import { estimateCommutes, estimateMinutes, type TravelMode } from "../scoring/commute";
 import { haversine } from "./geo";
+import type { TransitPlan } from "./transit";
 
 // Travel times to the workplace from the OSRM "table" service run by FOSSGIS on openstreetmap.de (OSM data,
 // foot / bike / car). No public transit routing is available for free, so transit — and any failed chunk — falls
@@ -82,7 +83,14 @@ const routeSchema = z.object({
   routes: z.array(z.object({ duration: z.number(), distance: z.number(), geometry: z.object({ coordinates: z.array(z.tuple([z.number(), z.number()])) }) })).min(1),
 });
 
-export type RouteLine = { coordinates: [number, number][]; minutes: number; distanceM: number; source: "routing" | "straight" };
+export type RouteLine = {
+  coordinates: [number, number][];
+  minutes: number;
+  distanceM: number;
+  source: "routing" | "straight" | "gtfs";
+  /** Bus/tram itinerary from the official timetable; set only when source is "gtfs". */
+  transit?: TransitPlan;
+};
 
 /** First route of an OSRM /route response, or null. Pure, so it is testable. */
 export function parseRoute(raw: unknown): Omit<RouteLine, "source"> | null {
