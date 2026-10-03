@@ -8,13 +8,13 @@ import {
   Bike,
   Landmark,
   ShoppingBag,
-  Sparkles,
   TrainFront,
   Trees,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { PreferencesChat } from "./preferences-chat";
 import {
   DEFAULT_IMPORTANCE,
   importanceSchema,
@@ -42,7 +42,7 @@ const HINTS: Record<Category, string> = {
 
 export function PreferencesForm({ initial }: { initial?: Importance }) {
   const router = useRouter();
-  const { control, handleSubmit } = useForm<Importance>({
+  const { control, handleSubmit, setValue } = useForm<Importance>({
     resolver: zodResolver(importanceSchema),
     defaultValues: initial ?? DEFAULT_IMPORTANCE,
   });
@@ -67,16 +67,11 @@ export function PreferencesForm({ initial }: { initial?: Importance }) {
         </p>
       </div>
 
-      <div
-        aria-disabled
-        className="mb-6 flex items-center gap-2 rounded-xl border border-dashed border-border bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground"
-      >
-        <Sparkles className="size-4 shrink-0 text-emerald-600" />
-        <span className="flex-1 truncate">Or just describe it in your own words…</span>
-        <span className="rounded-full bg-background px-2 py-0.5 text-[11px] font-medium">
-          Coming soon
-        </span>
-      </div>
+      <PreferencesChat
+        onImportance={(i) => {
+          for (const c of CATEGORIES) setValue(c, i[c], { shouldDirty: true });
+        }}
+      />
 
       <ul className="space-y-5">
         {CATEGORIES.map((c) => {
