@@ -172,7 +172,7 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   in `src/lib/data/places.ts`: within each category's reach (culture 2 km, others 1 km), nearest 10 per
   category; transport = up to 8 rail/tram + 6 bus stops. Failure ⇒ the panel just stays text-only.
 - Pins: default categories = active map mode, or the two top-weighted in "For You"; chips in the panel toggle
-  the rest. Greenery is shown as park outlines, not points. Pins are MapLibre circle/symbol layers (no sprites).
+  the rest. Greenery is shown as park outlines, not points. Pins are MapLibre symbol layers; per-kind badge icons are generated at runtime (src/lib/map/place-icons.ts), no static sprites.
 - **Camera gotcha:** the view-lock in `sync()` (see "Map view lock") calls `jumpTo()` while the map is at the
   minimum zoom, which cancels any running `flyTo`. `hex-map.tsx` therefore sets `flyingRef` before our own
   `flyTo` and `sync()` skips the lock/clamp until `moveend`. Any new programmatic camera move from the
