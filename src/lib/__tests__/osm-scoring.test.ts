@@ -28,6 +28,10 @@ test("classifyPoi maps OSM tags to categories", () => {
   assert.equal(classifyPoi({ tourism: "gallery" })?.category, "culture");
   assert.equal(classifyPoi({ historic: "castle" })?.category, "culture");
   assert.equal(classifyPoi({ amenity: "community_centre" })?.category, "culture");
+  assert.equal(classifyPoi({ tourism: "attraction" })?.category, "culture");
+  assert.equal(classifyPoi({ tourism: "viewpoint" })?.category, "culture");
+  assert.equal(classifyPoi({ amenity: "music_venue" })?.category, "culture");
+  assert.equal(classifyPoi({ amenity: "nightclub" })?.category, "culture");
   assert.equal(classifyPoi({ amenity: "bench" }), null);
   assert.equal(classifyPoi({ shop: "vacant" }), null);
   assert.equal(classifyPoi({ shop: "disused" }), null);
@@ -42,6 +46,17 @@ test("poi scoring decays with distance and ignores far features", () => {
   assert.equal(far.raw, 0);
   assert.equal(far.nearest, null);
   assert.equal(near.nearest?.name, "s100");
+});
+
+test("a wider scale reaches features that the default radius ignores", () => {
+  const poi: Poi = { category: "culture", kind: "museum", weight: 1.5, name: "M", at: north(1500) };
+  assert.equal(scorePoiCategory(center, [poi]).raw, 0);
+  const wide = scorePoiCategory(center, [poi], 2);
+  assert.ok(wide.raw > 0);
+  assert.equal(wide.radiusM, 2000);
+  assert.equal(wide.within1000, 0);
+  assert.equal(wide.nearest?.name, "M");
+  assert.equal(scorePoiCategory(center, [{ ...poi, at: north(2500) }], 2).raw, 0);
 });
 
 test("scoring is deterministic", () => {

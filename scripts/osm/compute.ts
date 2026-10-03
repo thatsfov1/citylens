@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { cellToLatLng } from "h3-js";
 import { cellPolygon, getDemoCells } from "../../src/lib/h3/grid";
 import { parseDistricts, parseGreen, parsePois, type PoiCategory } from "../../src/lib/data/osm";
-import { findDistrict, normalizeRaw, scoreGreenery, scorePoiCategory } from "../../src/lib/data/score-hex";
+import { CATEGORY_DISTANCE_SCALE, findDistrict, normalizeRaw, scoreGreenery, scorePoiCategory } from "../../src/lib/data/score-hex";
 import type { LngLat } from "../../src/lib/data/geo";
 import type { Category } from "../../src/types";
 
@@ -29,7 +29,7 @@ function main() {
     const [lat, lng] = cellToLatLng(h3Index);
     const center: LngLat = [lng, lat];
     const indicators = {
-      ...(Object.fromEntries(poiCats.map((c) => [c, scorePoiCategory(center, byCat[c])])) as Record<PoiCategory, ReturnType<typeof scorePoiCategory>>),
+      ...(Object.fromEntries(poiCats.map((c) => [c, scorePoiCategory(center, byCat[c], CATEGORY_DISTANCE_SCALE[c])])) as Record<PoiCategory, ReturnType<typeof scorePoiCategory>>),
       greenery: scoreGreenery(center, green),
     };
     return { h3Index, district: findDistrict(center, districts), indicators };

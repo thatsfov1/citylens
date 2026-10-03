@@ -49,12 +49,15 @@ export function classifyPoi(tags: Tags): { category: PoiCategory; kind: string; 
 
   if (tags.tourism === "museum") return { category: "culture", kind: "museum", weight: 1.5 };
   if (tags.tourism === "gallery") return { category: "culture", kind: "gallery", weight: 1 };
+  if (tags.tourism === "attraction") return { category: "culture", kind: "attraction", weight: 0.7 };
+  if (tags.tourism === "viewpoint") return { category: "culture", kind: "viewpoint", weight: 0.5 };
   const h = tags.historic;
   if (h === "castle" || h === "monument" || h === "manor" || h === "fort") return { category: "culture", kind: `historic_${h}`, weight: 1 };
   const a = tags.amenity;
   if (a === "theatre" || a === "cinema" || a === "arts_centre") return { category: "culture", kind: a, weight: 1.5 };
   if (a === "library") return { category: "culture", kind: a, weight: 1 };
-  if (a === "community_centre") return { category: "culture", kind: a, weight: 0.7 };
+  if (a === "community_centre" || a === "nightclub") return { category: "culture", kind: a, weight: 0.7 };
+  if (a === "music_venue" || a === "concert_hall") return { category: "culture", kind: a, weight: 1 };
 
   const shop = tags.shop;
   // Empty or disused units are not shops anyone can use.
