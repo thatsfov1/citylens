@@ -11,17 +11,21 @@ const MODES: { id: MapMode; label: string }[] = [
 export function ModeSelector({
   mode,
   onChange,
+  hasSafety = false,
 }: {
   mode: MapMode;
   onChange: (m: MapMode) => void;
+  /** Show the Safety view only when the data has safety indicators. */
+  hasSafety?: boolean;
 }) {
+  const modes = hasSafety ? [...MODES, { id: "safety" as MapMode, label: "Safety" }] : MODES;
   return (
     <div
       role="tablist"
       aria-label="Map mode"
       className="flex max-w-full gap-1 overflow-x-auto rounded-full border border-border/70 bg-white/90 p-1 shadow-lg shadow-black/5 backdrop-blur"
     >
-      {MODES.map((m) => (
+      {modes.map((m) => (
         <button
           key={m.id}
           role="tab"

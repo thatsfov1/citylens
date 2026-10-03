@@ -1,9 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Check, Info, MapPin, X } from "lucide-react";
+import { Check, Info, MapPin, ShieldCheck, X } from "lucide-react";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
-import { describeAll } from "@/lib/scoring/facts";
+import { describeAll, describeSafety } from "@/lib/scoring/facts";
 import type { HexSource } from "@/lib/supabase/hex-scores";
 import {
   CATEGORIES,
@@ -22,6 +22,10 @@ const LEVEL_STYLE: Record<MatchLevel, string> = {
 
 type Props = {
   scores: CategoryScores | null;
+  /** Safety indicators level 0–100; null = no data for this area. */
+  safety?: number | null;
+  /** Minimum safety level chosen by the user (0 = off). */
+  minSafety?: number;
   district: string | null;
   indicators: HexIndicators | null;
   source: HexSource;
@@ -31,7 +35,7 @@ type Props = {
   placesSlot?: ReactNode;
 };
 
-export function AreaPanel({ scores, district, indicators, source, weights, onClose, placesSlot }: Props) {
+export function AreaPanel({ scores, safety = null, minSafety = 0, district, indicators, source, weights, onClose, placesSlot }: Props) {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
 
   if (!scores) {
@@ -117,6 +121,10 @@ export function AreaPanel({ scores, district, indicators, source, weights, onClo
         ))}
       </ul>
 
+      {(safety !== null || minSafety > 0) && (
+        <SafetySection safety={safety} minSafety={minSafety} indicators={indicators} />
+      )}
+
       {placesSlot}
 
       <h3 className="mt-6 text-sm font-semibold">Why it matches you</h3>
@@ -146,6 +154,54 @@ export function AreaPanel({ scores, district, indicators, source, weights, onClo
         {source === "supabase"
           ? "Scores are calculated from OpenStreetMap data within about 1 km of the area’s centre."
           : "Demo uses simulated scores, not real city data."}
+      </p>
+    </div>
+  );
+}
+
+function SafetySection({
+  safety,
+  minSafety,
+  indicators,
+}: {
+  safety: number | null;
+  minSafety: number;
+  indicators: HexIndicators | null;
+}) {
+  const facts = indicators ? describeSafety(indicators) : [];
+  const below = safety !== null && minSafety > 0 && safety < minSafety;
+  return (
+    <div className="mt-6 rounded-2xl border border-border/70 p-3.5">
+      <div className="flex items-center justify-between text-sm">
+        <span className="flex items-center gap-1.5 font-semibold">
+          <ShieldCheck className="size-4 text-slate-700" />
+          Safety indicators
+        </span>
+        <span className="font-semibold tabular-nums">{safety === null ? "no data" : safety}</span>
+      </div>
+      {safety !== null && (
+        <div className="mt-1.5 h-1.5 rounded-full bg-muted">
+          <div className="h-full rounded-full bg-slate-800 transition-all" style={{ width: `${safety}%` }} />
+        </div>
+      )}
+      {below && (
+        <p className="mt-2 flex gap-2 text-xs text-amber-700">
+          <Info className="mt-0.5 size-3.5 shrink-0" />
+          Below your minimum safety level, so it is greyed out on the map.
+        </p>
+      )}
+      {safety === null && (
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          Too few mapped streets nearby to say anything. This area is not filtered out.
+        </p>
+      )}
+      {facts.map((f) => (
+        <p key={f} className="mt-1.5 text-xs leading-snug text-muted-foreground">
+          {f}
+        </p>
+      ))}
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        Relative to the rest of Kraków. An indicator of the surroundings, not a verdict on the area.
       </p>
     </div>
   );

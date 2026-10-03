@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { describeAll, describeCategory } from "../scoring/facts";
+import { describeAll, describeCategory, describeSafety } from "../scoring/facts";
 import { explainMatch } from "../scoring/explain";
 import type { HexIndicators } from "../../types";
 
@@ -52,4 +52,19 @@ test("transport facts include measured service frequency when GTFS data is prese
   );
   // Seeds computed from OSM only keep the old wording.
   assert.match(describeCategory("transport", ind), /^1 stop or station within 500 m; nearest: Prusy Rondo \(bus stop\), 470 m away$/);
+});
+
+test("safety facts list each indicator with its numbers, and nothing when there is no data", () => {
+  assert.deepEqual(describeSafety(ind), []);
+  const withSafety: HexIndicators = {
+    ...ind,
+    safety: {
+      lighting: { segments: 40, lit: 38, litShare: 0.93 },
+      crime: { area: "Komisariat V", year: 2025, per1000: 41.2, cityPer1000: 52 },
+    },
+  };
+  const facts = describeSafety(withSafety);
+  assert.equal(facts.length, 2);
+  assert.match(facts[0], /41.2 reported crimes per 1,000 residents in police area Komisariat V \(2025\); city: 52/);
+  assert.match(facts[1], /38 of 40 mapped street segments within 700 m are tagged as lit/);
 });
