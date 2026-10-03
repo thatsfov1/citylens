@@ -13,12 +13,12 @@ type Props = {
 
 const areaName = (a: { district: string | null }, i: number) => a.district ?? `Area ${i + 1}`;
 
-/** Side-by-side category scores for up to three areas the user is considering. Tap a column to open that area. */
+/** Floating window beside the side panel: category scores for up to three areas the user is considering. Tap a column to open that area. */
 export function CompareTray({ comparison, selected, onSelect, onRemove, onClear }: Props) {
   const { areas, rows, matchLeads, summary } = comparison;
   if (areas.length === 0) return null;
   return (
-    <section className="border-b border-border/70 px-5 py-3">
+    <section className="pointer-events-auto absolute inset-x-3 top-44 max-h-[30%] overflow-y-auto rounded-2xl border border-border/70 bg-white/95 px-4 py-3 shadow-2xl backdrop-blur sm:inset-x-auto sm:right-[24rem] sm:top-16 sm:max-h-[calc(100%-5.5rem)] sm:w-[26rem]">
       <div className="flex items-center justify-between">
         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Comparing {areas.length}</div>
         <button onClick={onClear} className="text-[11px] text-muted-foreground underline-offset-2 hover:underline">
