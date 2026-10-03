@@ -11,13 +11,15 @@ import { placeIconId, registerPlaceIcons } from "@/lib/map/place-icons";
 import { KRAKOW_BOUNDS, boundaryFeature, outsideMaskFeature } from "@/lib/h3/mask";
 import { calculatePersonalScore } from "@/lib/scoring/personal-score";
 import { percentileRanks } from "@/lib/scoring/percentile";
-import { BAND_COLORS, BAND_LABELS, NO_DATA_BAND, NO_DATA_COLOR, bandOf, bandZones, topZone } from "@/lib/map/zones";
+import { BAND_COLORS, BAND_LABELS, NO_DATA_BAND, NO_DATA_COLOR, bandOf, bandZones, districtLayers, topZone } from "@/lib/map/zones";
 import { CATEGORIES, type Category, type CategoryWeights, type HexData, type MapMode, type PlacesResponse } from "@/types";
 
 const SOURCE = "hexes";
 const ZONES_SOURCE = "zones";
 const DIMMED_OPACITY = 0.6;
 const TOP_SOURCE = "top-zone";
+const DISTRICT_LINE_SOURCE = "district-outlines";
+const DISTRICT_LABEL_SOURCE = "district-labels";
 const PLACES_SOURCE = "places";
 const GREEN_SOURCE = "place-green";
 const RING_SOURCE = "place-rings";
@@ -68,15 +70,50 @@ const zoneColorExpression = [
   BAND_FILLS[BAND_FILLS.length - 1],
 ] as unknown as maplibregl.ExpressionSpecification;
 
-// Calmer basemap under the overlay: lighter roads and minor labels; place names stay crisp.
+// Minimal, monochrome basemap (Uber-like): flat grey land, pale water, white roads, no clutter.
+const HIDDEN_LAYERS = new Set([
+  "building",
+  "landcover_wood",
+  "landcover_ice_shelf",
+  "landcover_glacier",
+  "highway_path",
+  "highway_major_casing",
+  "highway_motorway_casing",
+  "highway_motorway_bridge_casing",
+  "tunnel_motorway_casing",
+  "waterway",
+  "waterway_line_label",
+  "water_name_point_label",
+  "water_name_line_label",
+  "road_area_pier",
+  "road_pier",
+  "boundary_3",
+  "boundary_2",
+  "boundary_disputed",
+]);
+
 function softenBasemap(map: maplibregl.Map) {
   for (const layer of map.getStyle().layers) {
     const src = (layer as { "source-layer"?: string })["source-layer"];
-    if (layer.type === "line" && src === "transportation") {
-      map.setPaintProperty(layer.id, "line-opacity", 0.55);
-    } else if (layer.type === "symbol" && src && src !== "place") {
-      map.setPaintProperty(layer.id, "text-opacity", 0.6);
-      map.setPaintProperty(layer.id, "icon-opacity", 0.5);
+    const id = layer.id;
+    if (HIDDEN_LAYERS.has(id) || id.startsWith("railway") || id.startsWith("highway-shield") || id === "road_shield_us") {
+      map.setLayoutProperty(id, "visibility", "none");
+    } else if (layer.type === "background") {
+      map.setPaintProperty(id, "background-color", "#f4f4f4");
+    } else if (id === "water") {
+      map.setPaintProperty(id, "fill-color", "#dde3e8");
+    } else if (id === "park" || id === "landuse_residential") {
+      map.setPaintProperty(id, "fill-color", id === "park" ? "#ebedeb" : "#f4f4f4");
+    } else if (layer.type === "line" && src === "transportation") {
+      map.setPaintProperty(id, "line-color", "#ffffff");
+      map.setPaintProperty(id, "line-opacity", id === "highway_minor" ? 0.9 : 1);
+    } else if (layer.type === "symbol" && src === "place") {
+      // District names are redrawn above the hexes (district-label layer).
+      map.setLayoutProperty(id, "visibility", "none");
+    } else if (layer.type === "symbol" && src) {
+      map.setPaintProperty(id, "text-color", "#8a8f94");
+      map.setPaintProperty(id, "text-opacity", 0.7);
+      map.setPaintProperty(id, "icon-opacity", 0.5);
     }
   }
 }
@@ -109,6 +146,8 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
   const modeRef = useRef(mode);
   const [showTop, setShowTop] = useState(false);
   const showTopRef = useRef(showTop);
+  const [showDistricts, setShowDistricts] = useState(true);
+  const showDistrictsRef = useRef(showDistricts);
   const onHoverPlaceRef = useRef(onHoverPlace);
   // True while our own flyTo runs: the view-lock in sync() must not jumpTo() (it would cancel the flight).
   const flyingRef = useRef(false);
@@ -171,14 +210,17 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     return { geojson, zones, tops };
   }, [hexes, weights]);
 
+  const districts = useMemo(() => districtLayers(hexes), [hexes]);
+
   // Latest values for the one-time map setup (updated before it runs).
-  const initial = useRef({ geojson, zones, tops, mode, selected });
+  const initial = useRef({ geojson, zones, tops, mode, selected, districts });
   useEffect(() => {
     onSelectRef.current = onSelect;
     onHoverPlaceRef.current = onHoverPlace;
     modeRef.current = mode;
     showTopRef.current = showTop;
-    initial.current = { geojson, zones, tops, mode, selected };
+    showDistrictsRef.current = showDistricts;
+    initial.current = { geojson, zones, tops, mode, selected, districts };
   });
 
   useEffect(() => {
@@ -207,6 +249,18 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       const { lng, lat } = maplibregl.LngLat.convert(cam.center);
       fitRef.current = { zoom: cam.zoom, center: [lng, lat] };
       map.setMinZoom(cam.zoom);
+      fadeDistrictLabels();
+    };
+    // District names fade in as you zoom in from the whole-city view.
+    const fadeDistrictLabels = () => {
+      const fit = fitRef.current;
+      if (!fit || !map.getLayer("district-label")) return;
+      map.setPaintProperty("district-label", "text-opacity", [
+        "interpolate", ["linear"], ["zoom"], fit.zoom + 0.15, 0, fit.zoom + 0.9, 0.8,
+      ]);
+      map.setPaintProperty("district-label", "text-halo-width", [
+        "interpolate", ["linear"], ["zoom"], fit.zoom + 0.15, 0, fit.zoom + 0.9, 1.5,
+      ]);
     };
     const sync = () => {
       const fit = fitRef.current;
@@ -245,7 +299,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     });
 
     map.on("load", () => {
-      const { geojson, zones, tops, mode, selected } = initial.current;
+      const { geojson, zones, tops, mode, selected, districts } = initial.current;
 
       softenBasemap(map);
 
@@ -255,7 +309,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         id: "outside-mask",
         type: "fill",
         source: "mask",
-        paint: { "fill-color": "#f1f3f2", "fill-opacity": 0.86 },
+        paint: { "fill-color": "#f4f4f4", "fill-opacity": 0.86 },
       });
       for (const layer of map.getStyle().layers) {
         if (KEEP_VISIBLE_LAYERS.includes(layer.id)) {
@@ -287,13 +341,35 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
           "fill-opacity-transition": { duration: 250 },
         },
       });
+
+      // District borders + names above the colours.
+      map.addSource(DISTRICT_LINE_SOURCE, { type: "geojson", data: districts.outlines });
       map.addLayer({
-        id: "zone-line",
+        id: "district-line",
         type: "line",
-        source: ZONES_SOURCE,
-        layout: { "line-join": "round" },
-        paint: { "line-color": "#ffffff", "line-width": 1, "line-opacity": 0.85 },
+        source: DISTRICT_LINE_SOURCE,
+        layout: { "line-join": "round", visibility: showDistrictsRef.current ? "visible" : "none" },
+        paint: { "line-color": "#334155", "line-width": 1.2, "line-opacity": 0.4 },
       });
+      map.addSource(DISTRICT_LABEL_SOURCE, { type: "geojson", data: districts.labels });
+      map.addLayer({
+        id: "district-label",
+        type: "symbol",
+        source: DISTRICT_LABEL_SOURCE,
+        maxzoom: 14,
+        layout: {
+          visibility: showDistrictsRef.current ? "visible" : "none",
+          "text-field": ["get", "name"],
+          "text-font": ["Noto Sans Regular"],
+          "text-transform": "uppercase",
+          "text-size": ["interpolate", ["linear"], ["zoom"], 10, 9, 14, 13],
+          "text-letter-spacing": 0.06,
+          "text-max-width": 8,
+        },
+        paint: { "text-color": "#334155", "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
+      });
+
+      fadeDistrictLabels();
 
       map.addSource(TOP_SOURCE, { type: "geojson", data: tops[mode] });
       map.addLayer({
@@ -461,6 +537,13 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mode handled by the effect below
   }, [geojson, zones, tops]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    (map.getSource(DISTRICT_LINE_SOURCE) as maplibregl.GeoJSONSource).setData(districts.outlines);
+    (map.getSource(DISTRICT_LABEL_SOURCE) as maplibregl.GeoJSONSource).setData(districts.labels);
+  }, [districts]);
+
   // Mode switch → swap the dissolved zones.
   useEffect(() => {
     const map = mapRef.current;
@@ -549,6 +632,15 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     // eslint-disable-next-line react-hooks/exhaustive-deps -- react to explicit focus requests only
   }, [focusPlace]);
 
+  // District borders + names toggle.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    const v = showDistricts ? "visible" : "none";
+    map.setLayoutProperty("district-line", "visibility", v);
+    map.setLayoutProperty("district-label", "visibility", v);
+  }, [showDistricts]);
+
   // "Strongest areas" toggle: outline the top 10% and frame them.
   useEffect(() => {
     const map = mapRef.current;
@@ -581,11 +673,12 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
   return (
     <div className="absolute inset-0">
       <div ref={container} className="size-full" />
+      <div className="absolute right-3 top-28 z-10 flex flex-col items-end gap-2 sm:bottom-6 sm:left-1/2 sm:right-auto sm:top-auto sm:-translate-x-1/2 sm:flex-row">
       <button
         type="button"
         onClick={() => setShowTop((v) => !v)}
         aria-pressed={showTop}
-        className={`absolute right-3 top-28 z-10 rounded-full border px-4 py-2 text-sm font-medium shadow-lg backdrop-blur sm:bottom-6 sm:left-1/2 sm:right-auto sm:top-auto sm:-translate-x-1/2 ${
+        className={`rounded-full border px-4 py-2 text-sm font-medium shadow-lg backdrop-blur ${
           showTop
             ? "border-emerald-800 bg-emerald-800 text-white"
             : "border-border/70 bg-white/95 hover:bg-white"
@@ -593,6 +686,19 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       >
         Strongest areas
       </button>
+      <button
+        type="button"
+        onClick={() => setShowDistricts((v) => !v)}
+        aria-pressed={showDistricts}
+        className={`rounded-full border px-4 py-2 text-sm font-medium shadow-lg backdrop-blur ${
+          showDistricts
+            ? "border-slate-800 bg-slate-800 text-white"
+            : "border-border/70 bg-white/95 hover:bg-white"
+        }`}
+      >
+        Districts
+      </button>
+      </div>
       {tip && (
         <div
           className="pointer-events-none absolute z-10 rounded-lg border border-border/70 bg-white/95 px-2.5 py-1.5 text-xs shadow-lg backdrop-blur"
