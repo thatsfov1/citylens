@@ -3,14 +3,17 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { cellToLatLng } from "h3-js";
-import { ArrowLeft, Briefcase, GraduationCap, Hexagon, MapPin, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
+import { ArrowLeft, Briefcase, ChevronDown, Hexagon, Info, MapPin, SlidersHorizontal, X } from "lucide-react";
 import { AirSection, AreaPanel, SafetySection, type PanelView } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { CompareTray } from "./compare-tray";
 import { ShareMenu } from "./share-menu";
 import { ParkingCard, useParkingData } from "./parking-card";
 import { SharedBanner } from "./shared-banner";
-import { RentFilter, isRentActive } from "./rent-filter";
+import { isRentActive } from "./rent-filter";
+import { FiltersWindow, StageFilter } from "./filters-window";
+import { MapKey } from "./map-key";
+import type { KeyContext } from "@/lib/map/key";
 import { FirstMatchCard } from "./first-match-card";
 import { OsmAttribution } from "@/components/osm-attribution";
 import { ModeSelector } from "./mode-selector";
@@ -41,7 +44,6 @@ import {
   CATEGORIES,
   CATEGORY_LABELS,
   EDUCATION_STAGES,
-  EDUCATION_STAGE_LABELS,
   type Category,
   type EducationStage,
   type HexData,
@@ -130,6 +132,12 @@ export function MapExperience({
     const param = stagesToParam(next);
     if (param) url.searchParams.set("edu", param);
     else url.searchParams.delete("edu");
+    window.history.replaceState(null, "", url);
+  };
+  const resetStages = () => {
+    setStages([...EDUCATION_STAGES]);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("edu");
     window.history.replaceState(null, "", url);
   };
   const viewHexes = useMemo(() => withEducationStages(hexes, stages), [hexes, stages]);
@@ -350,6 +358,11 @@ export function MapExperience({
 
   // Filters (safety level, education stages) live in their own window so the side panel stays a summary.
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const resetFilters = () => {
+    changeRent({ ...rent, min: RENT_MIN, max: RENT_MAX });
+    changeMinSafety(0);
+    resetStages();
+  };
   const hasFilters = true; // the car switch is always available
   const shareSummary = useMemo(() => {
     const lines: string[] = [];
@@ -423,32 +436,21 @@ export function MapExperience({
       )}
 
       {filtersOpen && hasFilters && (
-        <section className="absolute inset-x-3 top-28 z-10 space-y-4 rounded-2xl border border-border/70 bg-white/95 p-4 shadow-2xl backdrop-blur sm:inset-x-auto sm:left-4 sm:top-16 sm:w-[22rem]">
-          <button
-            onClick={() => setFiltersOpen(false)}
-            aria-label="Close filters"
-            className="absolute right-2 top-2 rounded-full p-1.5 text-muted-foreground hover:bg-muted"
-          >
-            <X className="size-4" />
-          </button>
-          {hasRent && <RentFilter value={rent} onChange={changeRent} inline car={car} />}
-          <label className="flex cursor-pointer items-start gap-2.5 rounded-xl bg-muted/60 p-2.5">
-            <input
-              type="checkbox"
-              checked={car}
-              onChange={(e) => changeCar(e.target.checked)}
-              className="mt-0.5 size-4 shrink-0 accent-emerald-600"
-            />
-            <span className="text-xs leading-snug">
-              <span className="font-medium text-slate-900">I have a car (show parking info)</span>
-              <span className="mt-0.5 block text-[11px] text-muted-foreground">
-                Adds car parks, parking meters and park and ride around the open area. Information only, it does not change the scores or the map colours.
-              </span>
-            </span>
-          </label>
-          {hasSafety && <SafetyFilter value={minSafety} onChange={changeMinSafety} inline />}
-          {showStageFilter && <StageFilter value={stages} onToggle={toggleStage} inline />}
-        </section>
+        <FiltersWindow
+          onClose={() => setFiltersOpen(false)}
+          onResetAll={resetFilters}
+          hasRent={hasRent}
+          rent={rent}
+          onRent={changeRent}
+          car={car}
+          onCar={changeCar}
+          hasSafety={hasSafety}
+          minSafety={minSafety}
+          onMinSafety={changeMinSafety}
+          showStages={showStageFilter}
+          stages={stages}
+          onToggleStage={toggleStage}
+        />
       )}
 
       {openBadge && hex && (
@@ -569,7 +571,7 @@ export function MapExperience({
           onTogglePin={togglePin}
           worksSlot={<WorksWarnings works={works} />}
           parkingSlot={car ? <ParkingCard facts={parkingFacts} data={parkingData} district={hex?.district ?? null} /> : null}
-          controlsFor={(c) => (c === "education" && hasStages ? <StageFilter value={stages} onToggle={toggleStage} inline /> : null)}
+          controlsFor={(c) => (c === "education" && hasStages ? <StageFilter value={stages} onToggle={toggleStage} /> : null)}
           placesFor={(c) =>
             placesView && (
               <CategoryPlaces
@@ -592,7 +594,7 @@ export function MapExperience({
         onClear={() => setCompared([])}
       />
 
-      <Legend mode={mode} minSafety={minSafety} rentActive={rentActive} car={car} />
+      <Legend mode={mode} minSafety={minSafety} rentActive={rentActive} keyContext={{ areaOpen: selected !== null, car, workplace: workplace !== null, comparing: compared.length > 0 }} />
     </div>
   );
 }
@@ -652,67 +654,8 @@ function useCommuteRoute(selected: string | null, workplace: Workplace | null): 
 
 type RouteData = RouteLine;
 
-function StageFilter({ value, onToggle, inline = false }: { value: EducationStage[]; onToggle: (s: EducationStage) => void; inline?: boolean }) {
-  return (
-    <div className={inline ? "mt-4" : "border-b border-border/70 px-5 py-3"}>
-      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        <GraduationCap className="size-3.5" />
-        Education: which stages matter?
-      </div>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {EDUCATION_STAGES.map((s) => (
-          <button
-            key={s}
-            type="button"
-            aria-pressed={value.includes(s)}
-            onClick={() => onToggle(s)}
-            className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-              value.includes(s) ? "border-slate-800 bg-slate-800 text-white" : "border-border bg-white hover:bg-muted"
-            }`}
-          >
-            {EDUCATION_STAGE_LABELS[s]}
-          </button>
-        ))}
-      </div>
-      <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
-        The education score counts only the stages you select. It reflects access to nearby places, not school quality.
-      </p>
-    </div>
-  );
-}
-
-function SafetyFilter({ value, onChange, inline = false }: { value: number; onChange: (v: number) => void; inline?: boolean }) {
-  return (
-    <div className={inline ? "" : "border-b border-border/70 px-5 py-3"}>
-      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        <ShieldCheck className="size-3.5" />
-        Minimum safety level
-      </div>
-      <div role="radiogroup" aria-label="Minimum safety level" className="mt-2 flex gap-1 rounded-full bg-muted p-1">
-        {MIN_SAFETY_LEVELS.map((l) => (
-          <button
-            key={l.value}
-            role="radio"
-            aria-checked={value === l.value}
-            onClick={() => onChange(l.value)}
-            className={`flex-1 rounded-full px-2 py-1 text-xs font-medium transition-colors ${
-              value === l.value ? "bg-white text-slate-900 shadow" : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            {l.label}
-          </button>
-        ))}
-      </div>
-      <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
-        {value > 0
-          ? "Areas below this level are greyed out and left out of “Strongest areas”. Areas without data stay visible."
-          : "Optional: grey out areas with fewer safety indicators in their favour."}
-      </p>
-    </div>
-  );
-}
-
-function Legend({ mode, minSafety, rentActive, car }: { mode: MapMode; minSafety: number; rentActive: boolean; car: boolean }) {
+function Legend({ mode, minSafety, rentActive, keyContext }: { mode: MapMode; minSafety: number; rentActive: boolean; keyContext: KeyContext }) {
+  const [keyOpen, setKeyOpen] = useState(false);
   return (
     <div className="pointer-events-none absolute left-3 top-28 rounded-xl border border-border/70 bg-white/90 px-3 py-2 shadow-lg shadow-black/5 backdrop-blur sm:bottom-6 sm:left-4 sm:top-auto">
       <div className="mb-1.5 text-[11px] font-medium text-slate-600">
@@ -747,19 +690,6 @@ function Legend({ mode, minSafety, rentActive, car }: { mode: MapMode; minSafety
           </div>
         </>
       )}
-      {car && (
-        <div className="mt-1 max-w-52 text-[10px] leading-snug text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="grid size-3.5 place-items-center rounded-full bg-blue-700 text-[8px] font-bold text-white">P</span>
-            Car park
-            <span className="ml-1 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-violet-600 px-0.5 text-[7px] font-bold text-white">P+R</span>
-            Park and ride
-            <span className="ml-1 size-2 rounded-full bg-slate-500" />
-            Meter
-          </span>
-          <div>Parking pins are a rough guide, not a guarantee of a free space.</div>
-        </div>
-      )}
       {mode === "safety" && (
         <div className="mt-1 max-w-52 text-[10px] leading-snug text-muted-foreground">
           Street lighting, cameras and police, fire and hospital access nearby (OpenStreetMap). Indicators, not a verdict on an area.
@@ -768,6 +698,21 @@ function Legend({ mode, minSafety, rentActive, car }: { mode: MapMode; minSafety
       <div className="mt-1 text-[10px] text-muted-foreground">
         Five bands, relative to the rest of Kraków
       </div>
+      <button
+        type="button"
+        onClick={() => setKeyOpen((v) => !v)}
+        aria-expanded={keyOpen}
+        className="pointer-events-auto mt-1.5 flex items-center gap-1 rounded-full border border-border/70 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-muted"
+      >
+        <Info className="size-3" aria-hidden />
+        Map key
+        <ChevronDown className={`size-3 transition-transform ${keyOpen ? "rotate-180" : ""}`} aria-hidden />
+      </button>
+      {keyOpen && (
+        <div className="pointer-events-auto mt-2 max-h-[50dvh] w-64 overflow-y-auto border-t border-border/70 pt-2">
+          <MapKey ctx={keyContext} />
+        </div>
+      )}
       <OsmAttribution className="pointer-events-auto mt-1" />
     </div>
   );
