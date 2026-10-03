@@ -10,8 +10,10 @@ import { importanceToQuery, type Importance } from "@/lib/scoring/preferences";
 import { stagesToParam } from "@/lib/scoring/education";
 import { anchorToQuery, type Anchor } from "@/lib/scoring/anchor";
 import { rentToQuery, type RentFilter } from "@/lib/scoring/rent";
+import { workplaceToQuery, type Workplace } from "@/lib/scoring/commute";
 import type { EducationStage } from "@/types";
 import { ChatPanel } from "./chat-panel";
+import { WorkplaceForm } from "./workplace-form";
 
 export function Landing({ initial }: { initial?: Importance }) {
   const router = useRouter();
@@ -19,6 +21,7 @@ export function Landing({ initial }: { initial?: Importance }) {
   const [stages, setStages] = useState<EducationStage[] | null>(null);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [rent, setRent] = useState<RentFilter | null>(null);
+  const [workplace, setWorkplace] = useState<Workplace | null>(null);
 
   return (
     <main className="relative isolate flex min-h-screen flex-col overflow-hidden bg-white text-[#222823]">
@@ -56,13 +59,14 @@ export function Landing({ initial }: { initial?: Importance }) {
                 setRent(nextRent);
               }}
             />
+            <WorkplaceForm value={workplace} onChange={setWorkplace} />
             <Button
               type="button"
               disabled={!importance}
               onClick={() => {
                 if (!importance) return;
                 const edu = importance.education > 0 && stages ? stagesToParam(stages) : null;
-                router.push(`/map?${importanceToQuery(importance)}${edu ? `&edu=${edu}` : ""}${anchor ? `&${anchorToQuery(anchor)}` : ""}${rent ? `&${rentToQuery(rent)}` : ""}`);
+                router.push(`/map?${importanceToQuery(importance)}${edu ? `&edu=${edu}` : ""}${anchor ? `&${anchorToQuery(anchor)}` : ""}${rent ? `&${rentToQuery(rent)}` : ""}${workplace ? `&${workplaceToQuery(workplace)}` : ""}`);
               }}
               className="mt-5 h-12 w-full justify-between rounded-none bg-[#252d27] px-5 text-sm font-normal text-white hover:bg-[#39443b] disabled:bg-stone-200 disabled:text-stone-500"
             >

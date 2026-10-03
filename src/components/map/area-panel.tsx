@@ -1,9 +1,10 @@
 "use client";
 
 import { RentSection } from "./rent-filter";
+import { MODE_LABELS, formatMinutes, type TravelMode } from "@/lib/scoring/commute";
 import type { RentFilter, RentFit, RentStats, Rooms } from "@/lib/scoring/rent";
 import type { ReactNode } from "react";
-import { ArrowLeft, Check, ChevronRight, Info, MapPin, ShieldCheck, Wind, X } from "lucide-react";
+import { ArrowLeft, Briefcase, Check, ChevronRight, Info, MapPin, ShieldCheck, Wind, X } from "lucide-react";
 import { GREEN_COLOR, PLACE_COLORS } from "@/lib/map/places";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
 import { AIR_CAVEAT, EDUCATION_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describeAirLevel, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
@@ -63,9 +64,11 @@ type Props = {
   sensitivity?: Sensitivity | null;
   /** Typical rent of this area for the chosen flat size; set only while a rent budget is active. */
   rent?: { stats: RentStats | null; rooms: Rooms; fit: RentFit; filter: RentFilter } | null;
+  /** Commute from this area to the workplace; set only while a workplace is chosen. */
+  commute?: { minutes: number; maxMin: number; mode: TravelMode; workName: string; approx: boolean; distanceKm?: number | null } | null;
 };
 
-export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksSlot, sensitivity, rent = null }: Props) {
+export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksSlot, sensitivity, rent = null, commute = null }: Props) {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
   // Bars are relative to the largest weight, so the top priority fills the bar.
   const maxWeight = Math.max(...CATEGORIES.map((c) => weights[c]), 0.0001);
@@ -214,6 +217,29 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
       </ul>
 
       {rent && <RentSection {...rent} district={district} />}
+
+      {commute && (
+        <div className="mt-4 rounded-xl border border-border/70 bg-muted/40 px-3 py-2.5 text-sm">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <Briefcase className="size-3.5" />
+            Commute
+          </div>
+          <p className="mt-1">
+            <span className="font-semibold tabular-nums">
+              {commute.approx ? "≈ " : "~"}
+              {formatMinutes(commute.minutes)}
+            </span>{" "}
+            {MODE_LABELS[commute.mode]} to {commute.workName}
+            {commute.distanceKm ? ` · ${commute.distanceKm.toFixed(1)} km` : ""}
+          </p>
+          <p className={commute.minutes > commute.maxMin ? "mt-0.5 text-xs text-orange-600" : "mt-0.5 text-xs text-emerald-700"}>
+            {commute.minutes > commute.maxMin
+              ? `${commute.minutes - commute.maxMin} min over your ${commute.maxMin} min limit`
+              : `Within your ${commute.maxMin} min limit`}
+            {commute.approx ? " · approximate estimate" : ""}
+          </p>
+        </div>
+      )}
 
       <h3 className="mt-6 text-sm font-semibold">Why it matches you</h3>
       <ul className="mt-2 space-y-1.5">

@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, GraduationCap, Hexagon, MapPin, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
+import { cellToLatLng } from "h3-js";
+import { ArrowLeft, Briefcase, GraduationCap, Hexagon, MapPin, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 import { AirSection, AreaPanel, SafetySection, type PanelView } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { CompareTray } from "./compare-tray";
@@ -25,6 +26,7 @@ import { computeSensitivity } from "@/lib/scoring/sensitivity";
 import { MIN_SAFETY_LEVELS, importanceToQuery, type Importance } from "@/lib/scoring/preferences";
 import { stagesToParam, withEducationStages } from "@/lib/scoring/education";
 import { formatRadius, hexesOutsideAnchor, type Anchor } from "@/lib/scoring/anchor";
+import { MODE_LABELS, classifyCommute, estimateCommutes, type Workplace } from "@/lib/scoring/commute";
 import { normalizeWeights } from "@/lib/scoring/weights";
 import { DEFAULT_ROOMS, RENT_MAX, RENT_MIN, classifyHexes, rentFor, rentFit, rentToQuery, type RentFilter as RentBudget } from "@/lib/scoring/rent";
 import type { HexSource, HexDetails } from "@/lib/supabase/hex-scores";
@@ -47,6 +49,7 @@ export function MapExperience({
   initialStages = [...EDUCATION_STAGES],
   anchor = null,
   initialRent = null,
+  workplace = null,
 }: {
   hexes: HexData[];
   source: HexSource;
@@ -59,6 +62,8 @@ export function MapExperience({
   anchor?: Anchor | null;
   /** Monthly rent budget from the URL (`?rent=&rooms=`); null = no budget. */
   initialRent?: RentBudget | null;
+  /** Workplace + travel mode + limit (`?work=`): areas whose commute exceeds the limit are dimmed. */
+  workplace?: Workplace | null;
 }) {
   const [mode, setMode] = useState<MapMode>("forYou");
   // Safety is optional data: the view and the filter only appear when cells carry safety indicators.
@@ -103,13 +108,26 @@ export function MapExperience({
   };
   const viewHexes = useMemo(() => withEducationStages(hexes, stages), [hexes, stages]);
   // Hexes beyond the anchor's radius; ignored when the place lies outside the city (nothing would be left).
-  const outside = useMemo(() => {
+  const anchorOutside = useMemo(() => {
     if (!anchor) return undefined;
     const out = hexesOutsideAnchor(hexes.map((h) => h.h3Index), anchor);
     return out.size < hexes.length ? out : undefined;
   }, [hexes, anchor]);
+  // Commute to the workplace: minutes per hex from the routing API, or the local estimate while it loads / if it fails.
+  const commute = useCommute(hexes, workplace);
+  const commuteFit = useMemo(
+    () => (workplace && commute ? classifyCommute(commute.minutes, workplace.maxMin) : null),
+    [workplace, commute],
+  );
+  const outside = useMemo(() => {
+    const dimmed = commuteFit?.outside.size ? commuteFit.outside : undefined;
+    if (!anchorOutside) return dimmed;
+    if (!dimmed) return anchorOutside;
+    return new Set([...anchorOutside, ...dimmed]);
+  }, [anchorOutside, commuteFit]);
   const showStageFilter = hasStages && (mode === "education" || (mode === "forYou" && importance.education > 0));
   const [selected, setSelected] = useState<string | null>(null);
+  const route = useCommuteRoute(selected, workplace);
   const weights = useMemo(() => normalizeWeights(importance), [importance]);
   const sensitivity = useMemo(
     () => (selected ? computeSensitivity(viewHexes, selected, importance) : null),
@@ -283,6 +301,11 @@ export function MapExperience({
   return (
     <div className="relative flex-1 overflow-hidden">
       <HexMap
+        commuteRoute={
+          workplace && route
+            ? { line: route.coordinates, dashed: route.source === "straight", work: [workplace.lng, workplace.lat] }
+            : null
+        }
         hexes={viewHexes}
         weights={weights}
         mode={mode}
@@ -368,10 +391,18 @@ export function MapExperience({
             Filters{activeFilters > 0 ? ` · ${activeFilters}` : ""}
           </button>
         )}
-        {anchor && outside && (
+        {anchor && anchorOutside && (
           <span className="flex items-center gap-1.5 rounded-full border border-border/70 bg-white/90 py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur">
             <MapPin className="size-4 text-rose-600" />
             Near {anchor.name.split(",")[0]} · {formatRadius(anchor.radiusM)}
+          </span>
+        )}
+        {workplace && commuteFit && (
+          <span className="flex items-center gap-1.5 rounded-full border border-border/70 bg-white/90 py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur">
+            <Briefcase className="size-4 text-sky-600" />
+            {commuteFit.within > 0
+              ? `Work: ${workplace.name.split(",")[0]} · ≤ ${workplace.maxMin} min ${MODE_LABELS[workplace.mode]}`
+              : `No area within ${workplace.maxMin} min ${MODE_LABELS[workplace.mode]} · nearest ≈ ${commuteFit.nearestMin} min`}
           </span>
         )}
         </div>
@@ -413,6 +444,18 @@ export function MapExperience({
                 })()
               : null
           }
+          commute={
+            workplace && commute && selected && commute.minutes[selected] != null
+              ? {
+                  minutes: route?.source === "routing" ? route.minutes : commute.minutes[selected],
+                  maxMin: workplace.maxMin,
+                  mode: workplace.mode,
+                  workName: workplace.name.split(",")[0],
+                  approx: route?.source === "routing" ? false : commute.source !== "routing",
+                  distanceKm: route ? route.distanceM / 1000 : null,
+                }
+              : null
+          }
           stages={stages}
           onClose={() => setSelected(null)}
           view={view}
@@ -447,6 +490,61 @@ export function MapExperience({
     </div>
   );
 }
+
+type CommuteData = { minutes: Record<string, number>; source: "routing" | "estimate" | "mixed" };
+
+/** Minutes to the workplace for every hex. Starts from the local estimate so the filter works instantly and offline. */
+function useCommute(hexes: HexData[], workplace: Workplace | null): CommuteData | null {
+  const key = workplace ? `${workplace.lat},${workplace.lng},${workplace.mode}` : null;
+  const ids = useMemo(() => hexes.map((h) => h.h3Index), [hexes]);
+  const [routed, setRouted] = useState<{ key: string; data: CommuteData } | null>(null);
+  const estimate = useMemo<CommuteData | null>(
+    () => (workplace ? { minutes: estimateCommutes(ids, workplace), source: "estimate" } : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the workplace position and mode only
+    [ids, key],
+  );
+  useEffect(() => {
+    if (!workplace || !key) return;
+    const ctrl = new AbortController();
+    fetch("/api/commute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat: workplace.lat, lng: workplace.lng, mode: workplace.mode, cells: ids }),
+      signal: ctrl.signal,
+    })
+      .then((r) => (r.ok ? (r.json() as Promise<CommuteData>) : null))
+      .then((data) => data && setRouted({ key, data }))
+      .catch(() => {});
+    return () => ctrl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the workplace position and mode only
+  }, [ids, key]);
+  return routed && routed.key === key ? routed.data : estimate;
+}
+
+/** Path from the selected hexagon to the workplace (OSM routing; a dashed straight line for public transport). */
+function useCommuteRoute(selected: string | null, workplace: Workplace | null): RouteData | null {
+  const key = selected && workplace ? `${selected}|${workplace.lat},${workplace.lng},${workplace.mode}` : null;
+  const [loaded, setLoaded] = useState<{ key: string; data: RouteData } | null>(null);
+  useEffect(() => {
+    if (!selected || !workplace || !key) return;
+    const [lat, lng] = cellToLatLng(selected);
+    const ctrl = new AbortController();
+    fetch("/api/commute/route-line", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ from: { lat, lng }, to: { lat: workplace.lat, lng: workplace.lng }, mode: workplace.mode }),
+      signal: ctrl.signal,
+    })
+      .then((r) => (r.ok ? (r.json() as Promise<RouteData>) : null))
+      .then((data) => data && setLoaded({ key, data }))
+      .catch(() => {});
+    return () => ctrl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the hexagon and workplace
+  }, [key]);
+  return loaded && loaded.key === key ? loaded.data : null;
+}
+
+type RouteData = { coordinates: [number, number][]; minutes: number; distanceM: number; source: "routing" | "straight" };
 
 function StageFilter({ value, onToggle, inline = false }: { value: EducationStage[]; onToggle: (s: EducationStage) => void; inline?: boolean }) {
   return (
