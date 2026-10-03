@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /public/maplibre/
+
+# full OSM extracts (regenerate with scripts/osm/fetch.ts)
+/data/osm/full/
