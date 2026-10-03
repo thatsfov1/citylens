@@ -12,6 +12,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Always use new branch for each feature
 
+# Read first: decisions & current state
+
+Before changing data, database, API, scoring or pipeline code, read `docs/PROJECT_DECISIONS.md`.
+It records what was actually built and why (database schema, OSM pipeline, API shape, LLM
+role, known divergences from this file). When you make a structural decision, update it in the same PR.
+
 # Smart City Hackathon — Project Context
 
 ## 1. Project Overview
