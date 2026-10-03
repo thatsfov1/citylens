@@ -49,8 +49,8 @@ export function AreaPanel({ scores, weights, onClose }: Props) {
           ))}
         </ul>
         <p className="mt-6 text-xs leading-relaxed text-muted-foreground">
-          Colors show how well each area matches your preferences — a weaker
-          match is not a worse place, just a different fit.
+          Only clearly stronger or weaker matches are tinted; hover any area to
+          explore it. A weaker match is not a worse place, just a different fit.
         </p>
       </div>
     );

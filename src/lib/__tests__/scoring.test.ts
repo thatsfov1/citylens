@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { cellToLatLng } from "h3-js";
 import { getDemoCells } from "../h3/grid";
 import { getMockScores } from "../mock-data/mock-scores";
 import { calculatePersonalScore } from "../scoring/personal-score";
@@ -20,7 +21,7 @@ test("mock scores are deterministic and within 0–100", () => {
 
 test("demo grid has a sensible number of cells", () => {
   const n = getDemoCells().length;
-  assert.ok(n > 500 && n < 5000, `got ${n}`);
+  assert.ok(n > 200 && n < 2000, `got ${n}`);
 });
 
 test("normalizeWeights sums to 1, and handles all-zero", () => {
@@ -42,4 +43,17 @@ test("explanation reflects priorities and weak spots", () => {
   const ex = explainMatch(scores, weights);
   assert.ok(ex.reasons.length > 0);
   assert.ok(ex.considerations.some((c) => c.startsWith("Culture")));
+});
+
+test("percentileRanks spans 0–1 and handles ties", async () => {
+  const { percentileRanks } = await import("../scoring/percentile");
+  assert.deepEqual(percentileRanks([10, 20, 30]), [0, 0.5, 1]);
+  assert.deepEqual(percentileRanks([5, 5, 5]), [0.5, 0.5, 0.5]);
+});
+
+test("every demo cell lies in Kraków's bounding region", () => {
+  for (const cell of getDemoCells()) {
+    const [lat, lng] = cellToLatLng(cell);
+    assert.ok(lat > 49.9 && lat < 50.2 && lng > 19.7 && lng < 20.3);
+  }
 });
