@@ -136,7 +136,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
   const modeRef = useRef(mode);
   const [showTop, setShowTop] = useState(false);
   const showTopRef = useRef(showTop);
-  const [showDistricts, setShowDistricts] = useState(true);
+  const [showDistricts, setShowDistricts] = useState(false);
   const showDistrictsRef = useRef(showDistricts);
   const onHoverPlaceRef = useRef(onHoverPlace);
   // True while our own flyTo runs: the view-lock in sync() must not jumpTo() (it would cancel the flight).
@@ -251,18 +251,6 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       const { lng, lat } = maplibregl.LngLat.convert(cam.center);
       fitRef.current = { zoom: cam.zoom, center: [lng, lat] };
       map.setMinZoom(cam.zoom);
-      fadeDistrictLabels();
-    };
-    // District names fade in as you zoom in from the whole-city view.
-    const fadeDistrictLabels = () => {
-      const fit = fitRef.current;
-      if (!fit || !map.getLayer("district-label")) return;
-      map.setPaintProperty("district-label", "text-opacity", [
-        "interpolate", ["linear"], ["zoom"], fit.zoom + 0.15, 0, fit.zoom + 0.9, 0.8,
-      ]);
-      map.setPaintProperty("district-label", "text-halo-width", [
-        "interpolate", ["linear"], ["zoom"], fit.zoom + 0.15, 0, fit.zoom + 0.9, 1.5,
-      ]);
     };
     const sync = () => {
       const fit = fitRef.current;
@@ -358,9 +346,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         id: "district-label",
         type: "symbol",
         source: DISTRICT_LABEL_SOURCE,
-        maxzoom: 14,
         layout: {
-          visibility: showDistrictsRef.current ? "visible" : "none",
           "text-field": ["get", "name"],
           "text-font": ["Noto Sans Regular"],
           "text-transform": "uppercase",
@@ -370,8 +356,6 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         },
         paint: { "text-color": "#334155", "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
       });
-
-      fadeDistrictLabels();
 
       map.addSource(TOP_SOURCE, { type: "geojson", data: tops[mode] });
       // Hexes below the user's minimum safety level are greyed out (not in the Safety view itself).
@@ -647,13 +631,11 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     // eslint-disable-next-line react-hooks/exhaustive-deps -- react to explicit focus requests only
   }, [focusPlace]);
 
-  // District borders + names toggle.
+  // District borders toggle (names are always shown).
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
-    const v = showDistricts ? "visible" : "none";
-    map.setLayoutProperty("district-line", "visibility", v);
-    map.setLayoutProperty("district-label", "visibility", v);
+    map.setLayoutProperty("district-line", "visibility", showDistricts ? "visible" : "none");
   }, [showDistricts]);
 
   // "Strongest areas" toggle: outline the top 10% and frame them.
@@ -711,7 +693,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
             : "border-border/70 bg-white/95 hover:bg-white"
         }`}
       >
-        Districts
+        District borders
       </button>
       </div>
       {tip && (

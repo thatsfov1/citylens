@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
 import { CATEGORY_LABELS, type Category, type PlacesResponse } from "@/types";
 import { GREEN_COLOR, PLACE_COLORS, formatDistance, kindLabel, placeTitle } from "@/lib/map/places";
 import { cn } from "@/lib/utils";
@@ -50,10 +51,14 @@ export function PlacesList({ places, active, onToggle, hovered, onHover, onFocus
           );
         }
         return (
-          <div key={c} className="mt-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <details key={c} className="group mt-3">
+            <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground [&::-webkit-details-marker]:hidden">
+              <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
               {CATEGORY_LABELS[c]}
-            </div>
+              <span className="font-normal normal-case tracking-normal">
+                ({c === "greenery" ? parks.length : items.length})
+              </span>
+            </summary>
             <ul className="mt-1">
               {c === "greenery"
                 ? parks.map((f, i) => (
@@ -88,7 +93,7 @@ export function PlacesList({ places, active, onToggle, hovered, onHover, onFocus
                     </li>
                   ))}
             </ul>
-          </div>
+          </details>
         );
       })}
       <p className="mt-2 text-[11px] text-muted-foreground">

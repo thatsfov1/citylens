@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Check, Info, MapPin, ShieldCheck, X } from "lucide-react";
+import { Check, ChevronRight, Info, MapPin, ShieldCheck, X } from "lucide-react";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
 import { describeAll, describeSafety } from "@/lib/scoring/facts";
 import type { HexSource } from "@/lib/supabase/hex-scores";
@@ -37,6 +37,8 @@ type Props = {
 
 export function AreaPanel({ scores, safety = null, minSafety = 0, district, indicators, source, weights, onClose, placesSlot }: Props) {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
+  // Bars are relative to the largest weight, so the top priority fills the bar.
+  const maxWeight = Math.max(...CATEGORIES.map((c) => weights[c]), 0.0001);
 
   if (!scores) {
     return (
@@ -48,6 +50,7 @@ export function AreaPanel({ scores, safety = null, minSafety = 0, district, indi
         <h3 className="mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           We understood
         </h3>
+        <p className="mt-1 text-[11px] text-muted-foreground">Share of your priorities; bars are relative to the largest.</p>
         <ul className="mt-3 space-y-2.5">
           {byWeight.map((c) => (
             <li key={c} className="text-sm">
@@ -60,7 +63,7 @@ export function AreaPanel({ scores, safety = null, minSafety = 0, district, indi
               <div className="mt-1 h-1.5 rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-emerald-500 transition-all"
-                  style={{ width: `${weights[c] * 100}%` }}
+                  style={{ width: `${(weights[c] / maxWeight) * 100}%` }}
                 />
               </div>
             </li>
@@ -101,16 +104,19 @@ export function AreaPanel({ scores, safety = null, minSafety = 0, district, indi
       <ul className="mt-5 space-y-3">
         {byWeight.map((c) => (
           <li key={c} className="text-sm">
-            <div className="flex justify-between">
-              <span>
-                {CATEGORY_LABELS[c]}
-                <span className="ml-1.5 text-xs text-muted-foreground">
-                  weight {Math.round(weights[c] * 100)}%
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-1">
+                  <ChevronRight className="size-3.5 text-muted-foreground transition-transform group-open:rotate-90" />
+                  {CATEGORY_LABELS[c]}
+                  <span className="ml-1.5 text-xs text-muted-foreground">
+                    weight {Math.round(weights[c] * 100)}%
+                  </span>
                 </span>
-              </span>
-              <span className="font-semibold tabular-nums">{scores[c]}</span>
-            </div>
-            {facts && <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{facts[c]}</p>}
+                <span className="font-semibold tabular-nums">{scores[c]}</span>
+              </summary>
+              {facts && <p className="mt-0.5 pl-5 text-xs leading-snug text-muted-foreground">{facts[c]}</p>}
+            </details>
             <div className="mt-1 h-1.5 rounded-full bg-muted">
               <div
                 className="h-full rounded-full bg-slate-800 transition-all"
