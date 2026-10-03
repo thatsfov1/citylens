@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Fraunces, Geist_Mono, Great_Vibes } from "next/font/google";
+import { Bricolage_Grotesque, Fraunces, Geist_Mono, Great_Vibes, Inter } from "next/font/google";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -20,6 +20,11 @@ const greatVibes = Great_Vibes({
   weight: "400",
 });
 
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin", "latin-ext"],
+});
+
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin", "latin-ext"],
@@ -35,7 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pl"
-      className={`${bricolage.variable} ${fraunces.variable} ${greatVibes.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${bricolage.variable} ${fraunces.variable} ${greatVibes.variable} ${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

@@ -10,6 +10,7 @@
   --font-sans: var(--font-bricolage);
   --font-display: var(--font-fraunces);
   --font-landing: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-title: var(--font-inter), "Helvetica Neue", Helvetica, sans-serif;
   --font-script: var(--font-script-face), cursive;
   --color-bark: #6E3511;
   --color-sage: #91AC67;
@@ -146,10 +147,6 @@
 }
 
 /* Landing page animations */
-@keyframes hex-glow {
-  0%, 100% { opacity: 0.08; }
-  35%, 55% { opacity: 1; }
-}
 @keyframes float {
   0%, 100% { transform: translateY(0) rotate(-1.5deg); }
   50% { transform: translateY(-8px) rotate(1.5deg); }
@@ -175,7 +172,6 @@
   30% { transform: translateY(-4px); opacity: 1; }
 }
 
-@utility animate-hex-glow { animation: hex-glow 7s ease-in-out infinite; }
 @utility animate-float { animation: float 6s ease-in-out infinite; }
 @utility animate-float-slow { animation: float-slow 14s ease-in-out infinite; }
 @utility animate-expand { animation: expand 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
@@ -186,9 +182,5 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-float, .animate-float-slow, .animate-expand, .animate-pop, .animate-typing-dot {
     animation: none;
-  }
-  .animate-hex-glow {
-    animation: none;
-    opacity: 0.75;
   }
 }
