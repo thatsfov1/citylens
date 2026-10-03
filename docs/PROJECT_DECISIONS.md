@@ -340,3 +340,12 @@ changes a score.
   and redefines `nearest_pois`. **Apply it before deploying this code** (`loadHexes` selects the new columns; otherwise the app silently
   falls back to mock data). The real numbers need the full OSM extracts (`OSM_DIR=data/osm/full npx tsx scripts/osm/fetch.ts pois`, then
   `compute.ts` and `export-places.ts`); the committed sample `data/osm/pois.json` predates the education tags and has no schools.
+
+## Area panel: overview + per-category detail
+- The side panel (`area-panel.tsx`) has two views. **Overview:** match %, six clickable category bars, small chips for works / safety / air,
+  "Why it matches you", "Things to consider". **Detail** (`PanelView` = a category, `safety`, `air` or `works`): one category's score, its
+  data-backed fact, its places (`CategoryPlaces`, `places-list.tsx`) and, for education, the stage filter and caveat. "← Overview" goes back.
+- Open detail state lives in `MapExperience` and is tied to the selected hexagon (resets on a new click). Pins follow the map mode / top
+  weights by default; each overview bar has a dot that toggles that category's pins (multi-select; kept across hexagons, resets when the map mode changes).
+  Opening a category detail adds its pins to the selection.
+- The education stage filter and the safety filter sit at the top of the overview only (the stage filter is also inside the education detail).

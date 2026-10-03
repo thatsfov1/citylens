@@ -1,13 +1,15 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Check, ChevronRight, Info, MapPin, ShieldCheck, Wind, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Info, MapPin, ShieldCheck, TriangleAlert, Wind, X } from "lucide-react";
+import { GREEN_COLOR, PLACE_COLORS } from "@/lib/map/places";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
 import { AIR_CAVEAT, EDUCATION_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describeAirLevel, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
 import type { HexSource } from "@/lib/supabase/hex-scores";
 import {
   CATEGORIES,
   CATEGORY_LABELS,
+  type Category,
   type CategoryScores,
   type CategoryWeights,
   type EducationStage,
@@ -15,11 +17,16 @@ import {
 } from "@/types";
 import { cn } from "@/lib/utils";
 
+const PIN_COLORS: Record<Category, string> = { ...PLACE_COLORS, greenery: GREEN_COLOR };
+
 const LEVEL_STYLE: Record<MatchLevel, string> = {
   strong: "text-emerald-700",
   moderate: "text-amber-600",
   weak: "text-orange-600",
 };
+
+/** What the panel shows: the overview (null) or the detail of one category / safety / air / works. */
+export type PanelView = Category | "safety" | "air" | "works";
 
 type Props = {
   scores: CategoryScores | null;
@@ -36,13 +43,23 @@ type Props = {
   /** Education life stages the user selected; the education fact lists only these. */
   stages?: readonly EducationStage[];
   onClose: () => void;
-  /** Pins legend + list of the real places behind the scores. */
-  placesSlot?: ReactNode;
-  /** Construction / renovation warnings near the area, each with its source. */
+  /** Current detail view; null = overview. */
+  view: PanelView | null;
+  onView: (v: PanelView | null) => void;
+  /** Categories whose pins are shown on the map, and the toggle for one of them. */
+  pins?: ReadonlySet<Category>;
+  onTogglePin?: (c: Category) => void;
+  /** Real places behind one category's score (pins on the map follow the open category). */
+  placesFor?: (c: Category) => ReactNode;
+  /** Extra controls shown in a category's detail (e.g. the education stage filter). */
+  controlsFor?: (c: Category) => ReactNode;
+  /** Number of construction / renovation warnings near the area. */
+  worksCount?: number;
+  /** Full construction / renovation warnings, each with its source. */
   worksSlot?: ReactNode;
 };
 
-export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, placesSlot, worksSlot }: Props) {
+export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksCount = 0, worksSlot }: Props) {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
   // Bars are relative to the largest weight, so the top priority fills the bar.
   const maxWeight = Math.max(...CATEGORIES.map((c) => weights[c]), 0.0001);
@@ -86,6 +103,45 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
 
   const facts = indicators ? describeAll(indicators, stages) : undefined;
   const ex = explainMatch(scores, weights, facts);
+  const hasSafety = safety !== null || minSafety > 0;
+
+  if (view) {
+    const back = (
+      <button
+        onClick={() => onView(null)}
+        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="size-3.5" />
+        Overview
+      </button>
+    );
+    return (
+      <div className="p-5">
+        <div className="flex items-center justify-between gap-4">
+          {back}
+          <button onClick={onClose} aria-label="Close" className="rounded-full p-1.5 text-muted-foreground hover:bg-muted">
+            <X className="size-4" />
+          </button>
+        </div>
+        {view === "safety" ? (
+          <SafetySection safety={safety} minSafety={minSafety} indicators={indicators} />
+        ) : view === "air" ? (
+          air !== null && <AirSection air={air} indicators={indicators} />
+        ) : view === "works" ? (
+          worksSlot
+        ) : (
+          <CategoryDetail
+            category={view}
+            score={scores[view]}
+            weight={weights[view]}
+            fact={facts?.[view]}
+            controls={controlsFor?.(view)}
+            places={placesFor?.(view)}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="p-5">
@@ -108,44 +164,79 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
         </button>
       </div>
 
-      {worksSlot}
-
-      <ul className="mt-5 space-y-3">
+      <p className="mt-5 text-[11px] text-muted-foreground">Dots toggle pins on the map; tap a row for details.</p>
+      <ul className="mt-1.5 space-y-1">
         {byWeight.map((c) => (
-          <li key={c} className="text-sm">
-            <details className="group">
-              <summary className="flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">
+          <li key={c} className="flex items-center gap-1">
+            {pins && onTogglePin && (
+              <button
+                type="button"
+                aria-pressed={pins.has(c)}
+                aria-label={`${pins.has(c) ? "Hide" : "Show"} ${CATEGORY_LABELS[c]} pins on the map`}
+                title={pins.has(c) ? "Hide pins on the map" : "Show pins on the map"}
+                onClick={() => onTogglePin(c)}
+                className={cn(
+                  "grid size-6 shrink-0 place-items-center rounded-full border transition-colors",
+                  pins.has(c) ? "border-slate-800 bg-slate-800" : "border-border bg-white hover:bg-muted",
+                )}
+              >
+                <span className="size-2.5 rounded-full" style={{ background: PIN_COLORS[c] }} />
+              </button>
+            )}
+            <button
+              onClick={() => onView(c)}
+              className="group min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted/70"
+            >
+              <span className="flex items-center justify-between">
                 <span className="flex items-center gap-1">
-                  <ChevronRight className="size-3.5 text-muted-foreground transition-transform group-open:rotate-90" />
                   {CATEGORY_LABELS[c]}
-                  <span className="ml-1.5 text-xs text-muted-foreground">
-                    weight {Math.round(weights[c] * 100)}%
-                  </span>
+                  <span className="ml-1.5 text-xs text-muted-foreground">weight {Math.round(weights[c] * 100)}%</span>
                 </span>
-                <span className="font-semibold tabular-nums">{scores[c]}</span>
-              </summary>
-              {facts && <p className="mt-0.5 pl-5 text-xs leading-snug text-muted-foreground">{facts[c]}</p>}
-              {facts && c === "education" && (
-                <p className="mt-1 pl-5 text-[11px] leading-snug text-muted-foreground">{EDUCATION_CAVEAT}</p>
-              )}
-            </details>
-            <div className="mt-1 h-1.5 rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-slate-800 transition-all"
-                style={{ width: `${scores[c]}%` }}
-              />
-            </div>
+                <span className="flex items-center gap-1 font-semibold tabular-nums">
+                  {scores[c]}
+                  <ChevronRight className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </span>
+              <span className="mt-1 block h-1.5 rounded-full bg-muted">
+                <span
+                  className="block h-full rounded-full bg-slate-800 transition-all"
+                  style={{ width: `${scores[c]}%` }}
+                />
+              </span>
+            </button>
           </li>
         ))}
       </ul>
 
-      {(safety !== null || minSafety > 0) && (
-        <SafetySection safety={safety} minSafety={minSafety} indicators={indicators} />
-      )}
-
-      {air !== null && <AirSection air={air} indicators={indicators} />}
-
-      {placesSlot}
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {worksCount > 0 && (
+          <button
+            onClick={() => onView("works")}
+            className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+          >
+            <TriangleAlert className="size-3.5" />
+            {worksCount} {worksCount === 1 ? "work" : "works"} nearby
+          </button>
+        )}
+        {hasSafety && (
+          <button
+            onClick={() => onView("safety")}
+            className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium hover:bg-muted"
+          >
+            <ShieldCheck className="size-3.5" />
+            Safety {safety === null ? "n/a" : safety}
+          </button>
+        )}
+        {air !== null && (
+          <button
+            onClick={() => onView("air")}
+            className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium hover:bg-muted"
+          >
+            <Wind className="size-3.5" />
+            Air {air}
+          </button>
+        )}
+      </div>
 
       <h3 className="mt-6 text-sm font-semibold">Why it matches you</h3>
       <ul className="mt-2 space-y-1.5">
@@ -172,9 +263,46 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
       )}
       <p className="mt-5 text-[11px] text-muted-foreground">
         {source === "supabase"
-          ? "Scores are calculated from OpenStreetMap data within about 1 km of the area’s centre."
+          ? "Scores are calculated from OpenStreetMap data within about 1 km of the area’s centre. Tap a category for details."
           : "Demo uses simulated scores, not real city data."}
       </p>
+    </div>
+  );
+}
+
+function CategoryDetail({
+  category,
+  score,
+  weight,
+  fact,
+  controls,
+  places,
+}: {
+  category: Category;
+  score: number;
+  weight: number;
+  fact?: string;
+  controls?: ReactNode;
+  places?: ReactNode;
+}) {
+  return (
+    <div className="mt-4">
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {CATEGORY_LABELS[category]} · weight {Math.round(weight * 100)}%
+      </div>
+      <div className="mt-1 flex items-baseline gap-1.5">
+        <span className="text-4xl font-semibold tabular-nums">{score}</span>
+        <span className="text-sm text-muted-foreground">/ 100</span>
+      </div>
+      <div className="mt-2 h-1.5 rounded-full bg-muted">
+        <div className="h-full rounded-full bg-slate-800 transition-all" style={{ width: `${score}%` }} />
+      </div>
+      {fact && <p className="mt-3 text-sm leading-snug text-slate-700">{fact}</p>}
+      {controls}
+      {places}
+      {fact && category === "education" && (
+        <p className="mt-4 text-[11px] leading-snug text-muted-foreground">{EDUCATION_CAVEAT}</p>
+      )}
     </div>
   );
 }
@@ -195,7 +323,7 @@ function AirSection({ air, indicators }: { air: number; indicators: HexIndicator
         <div className="h-full rounded-full bg-slate-800 transition-all" style={{ width: `${air}%` }} />
       </div>
       {level && <p className="mt-1.5 text-xs text-slate-700">{level}</p>}
-      <details className="group mt-2">
+      <details open className="group mt-2">
         <summary className="flex cursor-pointer list-none items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground">
           <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
           Details
@@ -226,7 +354,7 @@ function SafetySection({
   const nightlife = indicators ? describeNightlife(indicators) : null;
   const below = safety !== null && minSafety > 0 && safety < minSafety;
   return (
-    <div className="mt-6 rounded-2xl border border-border/70 p-3.5">
+    <div className="mt-4 rounded-2xl border border-border/70 p-3.5">
       <div className="flex items-center justify-between text-sm">
         <span className="flex items-center gap-1.5 font-semibold">
           <ShieldCheck className="size-4 text-slate-700" />
@@ -251,7 +379,7 @@ function SafetySection({
         </p>
       )}
 
-      <details className="group mt-2">
+      <details open className="group mt-2">
         <summary className="flex cursor-pointer list-none items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground">
           <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
           Details
