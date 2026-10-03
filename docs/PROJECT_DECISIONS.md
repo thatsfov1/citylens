@@ -466,6 +466,14 @@ changes a score.
   walk/bike/car, a dashed straight line for public transport) and the panel then uses the routed minutes and km. Bulk routing only
   sends cells whose estimate is within 1.6x the limit (all ~2,800 at once timed out). Verified: parsers (unit tests) and the
   fallback path; the live server was unreachable at the end of the session, so routed output was only seen on a 3-point request.
+- **Transit itinerary (selected area only):** `scripts/gtfs/build-timetable.ts [YYYYMMDD]` turns the official ZTP GTFS feeds into
+  `data/gtfs/timetable.json` (~360 KB, committed: stops + patterns of weekday 06:30-10:30 departures; default date 20261006, pass
+  a weekday inside the feed window to refresh). `src/lib/data/transit.ts` is a small RAPTOR-style planner (walk <=800 m to/from
+  stops, <=250 m walking transfers, max 3 rides, 08:00 departure). `POST /api/commute/route-line` with mode `transit` returns
+  `source: "gtfs"` plus `transit` (legs: line, headsign, board/alight stop and time, stops, minutes; door-to-door minutes
+  without the wait for the first vehicle); the area panel lists the steps. No plan or no timetable falls back to the old
+  estimate and dashed line. The map-wide commute filter still uses the estimate. Not real-time (no GTFS-RT), no rail
+  (SKA/Koleje Malopolskie), dwell times ignored.
 - Limits / not done: no minimum-suitability threshold input; no LLM explanation of the trade-off yet (if added, give it the
   computed candidates only: suitability, minutes, reasons); "Adjust preferences" does not
   carry the workplace back; the public routing server is best-effort and has no SLA.

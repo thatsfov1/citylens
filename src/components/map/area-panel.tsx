@@ -4,7 +4,8 @@ import { RentSection } from "./rent-filter";
 import { MODE_LABELS, formatMinutes, type TravelMode } from "@/lib/scoring/commute";
 import type { RentFilter, RentSummary } from "@/lib/scoring/rent";
 import type { ReactNode } from "react";
-import { ArrowLeft, Briefcase, Check, ChevronRight, Info, MapPin, ShieldCheck, Wind, X } from "lucide-react";
+import { ArrowLeft, Briefcase, Bus, Check, ChevronRight, Footprints, Info, MapPin, ShieldCheck, TramFront, Wind, X } from "lucide-react";
+import type { TransitPlan } from "@/lib/data/transit";
 import { GREEN_COLOR, PLACE_COLORS } from "@/lib/map/places";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
 import { AIR_CAVEAT, EDUCATION_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describeAirLevel, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
@@ -65,7 +66,7 @@ type Props = {
   /** Typical rent of this area for the chosen flat size; set only while a rent budget is active. */
   rent?: (RentSummary & { filter: RentFilter }) | null;
   /** Commute from this area to the workplace; set only while a workplace is chosen. */
-  commute?: { minutes: number; maxMin: number; mode: TravelMode; workName: string; approx: boolean; distanceKm?: number | null } | null;
+  commute?: { minutes: number; maxMin: number; mode: TravelMode; workName: string; approx: boolean; distanceKm?: number | null; transit?: TransitPlan | null } | null;
 };
 
 export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksSlot, sensitivity, rent = null, commute = null }: Props) {
@@ -232,6 +233,7 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
             {MODE_LABELS[commute.mode]} to {commute.workName}
             {commute.distanceKm ? ` · ${commute.distanceKm.toFixed(1)} km` : ""}
           </p>
+          {commute.transit && <TransitSteps plan={commute.transit} />}
           <p className={commute.minutes > commute.maxMin ? "mt-0.5 text-xs text-orange-600" : "mt-0.5 text-xs text-emerald-700"}>
             {commute.minutes > commute.maxMin
               ? `${commute.minutes - commute.maxMin} min over your ${commute.maxMin} min limit`
@@ -444,6 +446,43 @@ export function SafetySection({
       )}
       <p className="mt-3 text-[11px] leading-snug text-muted-foreground">{SAFETY_NOT_INCLUDED}</p>
       </details>
+    </div>
+  );
+}
+
+/** Step-by-step bus/tram itinerary from the official ZTP Kraków timetable. */
+function TransitSteps({ plan }: { plan: TransitPlan }) {
+  return (
+    <div className="mt-2">
+      <ol className="space-y-1.5">
+        {plan.legs.map((leg, i) =>
+          leg.type === "walk" ? (
+            <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+              <Footprints className="mt-0.5 size-3.5 shrink-0" />
+              <span>
+                Walk {leg.minutes} min ({leg.meters} m) to {leg.to}
+              </span>
+            </li>
+          ) : (
+            <li key={i} className="flex items-start gap-2 text-xs">
+              {leg.mode === "tram" ? <TramFront className="mt-0.5 size-3.5 shrink-0 text-sky-700" /> : <Bus className="mt-0.5 size-3.5 shrink-0 text-sky-700" />}
+              <span>
+                <span className="font-semibold">
+                  {leg.mode === "tram" ? "Tram" : "Bus"} {leg.line}
+                </span>{" "}
+                towards {leg.headsign}
+                <br />
+                <span className="text-muted-foreground">
+                  Board at {leg.boardStop} ({leg.departs}) · get off at {leg.alightStop} ({leg.arrives}) · {leg.stops} {leg.stops === 1 ? "stop" : "stops"}, {leg.minutes} min
+                </span>
+              </span>
+            </li>
+          ),
+        )}
+      </ol>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        {plan.transfers === 0 ? "No transfers" : `${plan.transfers} ${plan.transfers === 1 ? "transfer" : "transfers"}`} · leave about {plan.leaveAt}, arrive {plan.arriveAt} · typical weekday morning, ZTP Kraków timetable
+      </p>
     </div>
   );
 }
