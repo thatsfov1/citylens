@@ -66,14 +66,12 @@ export function levelsToImportance(levels: Levels): Importance {
   return out;
 }
 
-/** Static class names per category (Tailwind needs full strings); palette: ink glass with one hue per category. */
-export const CATEGORY_STYLE: Record<
-  Category,
-  { tile: string; fill: string; chip: string; dot: string }
-> = {
-  sport: { tile: "bg-ink/70 border-sun text-mist", fill: "bg-sun", chip: "bg-white/10 border-sun/70 text-mist", dot: "bg-sun" },
-  culture: { tile: "bg-ink/70 border-rose text-mist", fill: "bg-rose", chip: "bg-white/10 border-rose/70 text-mist", dot: "bg-rose" },
-  greenery: { tile: "bg-ink/70 border-mint text-mist", fill: "bg-mint", chip: "bg-white/10 border-mint/70 text-mist", dot: "bg-mint" },
-  shopping: { tile: "bg-ink/70 border-sky text-mist", fill: "bg-sky", chip: "bg-white/10 border-sky/70 text-mist", dot: "bg-sky" },
-  transport: { tile: "bg-ink/70 border-lilac text-mist", fill: "bg-lilac", chip: "bg-white/10 border-lilac/70 text-mist", dot: "bg-lilac" },
+/** Static class names per category (Tailwind needs full strings). Black and white for now: the same style for every category. */
+const MONO = { tile: "bg-white border-black text-black", fill: "bg-black", chip: "bg-white border-black/40 text-black", dot: "bg-black" };
+export const CATEGORY_STYLE: Record<Category, { tile: string; fill: string; chip: string; dot: string }> = {
+  sport: MONO,
+  culture: MONO,
+  greenery: MONO,
+  shopping: MONO,
+  transport: MONO,
 };

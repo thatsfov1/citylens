@@ -76,21 +76,21 @@ export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCatego
   return (
     <section
       aria-label="Rozmowa z asystentem"
-      className="w-full rounded-[2rem] border border-white/15 bg-ink/70 p-4 text-mist shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-6"
+      className="w-full rounded-2xl border border-black/15 bg-white p-4 text-black sm:p-5"
     >
-      <div ref={listRef} className="max-h-[42vh] min-h-48 space-y-3 overflow-y-auto pr-1" aria-live="polite">
+      <div ref={listRef} className="max-h-[46vh] min-h-56 space-y-3 overflow-y-auto pr-1" aria-live="polite">
         <div className="flex items-end gap-2">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sun text-ink">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-black text-white">
             <Bot className="size-5" aria-hidden />
           </span>
-          <div className="max-w-[85%] rounded-3xl rounded-bl-md bg-white/10 px-4 py-2.5 text-base leading-relaxed text-mist">
+          <div className="max-w-[85%] rounded-3xl rounded-bl-md bg-black/5 px-4 py-2.5 text-base leading-relaxed text-black">
             {greeting.thinking ? (
               <TypingDots />
             ) : (
               <>
                 <span className="sr-only">{GREETING}</span>
                 <span aria-hidden>{greeting.shown}</span>
-                {!greeting.done && <span aria-hidden className="animate-caret ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 bg-sun" />}
+                {!greeting.done && <span aria-hidden className="animate-caret ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 bg-black" />}
               </>
             )}
           </div>
@@ -101,7 +101,7 @@ export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCatego
         {pending && (
           <div className="flex items-end gap-2">
             <span className="size-9 shrink-0" />
-            <div className="rounded-3xl rounded-bl-md bg-white/10 px-4 py-3">
+            <div className="rounded-3xl rounded-bl-md bg-black/5 px-4 py-3">
               <span className="sr-only">Asystent pisze…</span>
               <TypingDots />
             </div>
@@ -110,14 +110,14 @@ export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCatego
       </div>
 
       {error && (
-        <p role="alert" className="mt-2 rounded-2xl bg-sun/15 px-3 py-2 text-sm text-sun">
+        <p role="alert" className="mt-2 rounded-2xl bg-black/5 px-3 py-2 text-sm text-black">
           {error}
         </p>
       )}
 
       {chips.length > 0 && (
         <div className="mt-3">
-          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-mist/70">Twoje parametry</p>
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-black/70">Twoje parametry</p>
           <ul className="flex flex-wrap gap-2">
             {chips.map((c) => (
               <li
@@ -131,7 +131,7 @@ export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCatego
                   type="button"
                   onClick={() => onEditCategory(c)}
                   aria-label={`${CATEGORY_PL[c].label}: ${levelToPercent(levels[c]!)}%. Zmień`}
-                  className="flex items-center gap-1.5 rounded-full py-1 pl-3 pr-1.5 outline-none focus-visible:ring-4 focus-visible:ring-sun/60"
+                  className="flex items-center gap-1.5 rounded-full py-1 pl-3 pr-1.5 outline-none focus-visible:ring-4 focus-visible:ring-black/30"
                 >
                   <span className={cn("size-2.5 rounded-full", CATEGORY_STYLE[c].dot)} aria-hidden />
                   {CATEGORY_PL[c].label} · {levelToPercent(levels[c]!)}%
@@ -140,7 +140,7 @@ export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCatego
                   type="button"
                   onClick={() => onRemoveCategory(c)}
                   aria-label={`Usuń parametr: ${CATEGORY_PL[c].label}`}
-                  className="mr-1 rounded-full p-1 outline-none hover:bg-white/15 focus-visible:ring-4 focus-visible:ring-sun/60"
+                  className="mr-1 rounded-full p-1 outline-none hover:bg-black/10 focus-visible:ring-4 focus-visible:ring-black/30"
                 >
                   <X className="size-3.5" aria-hidden />
                 </button>
@@ -162,7 +162,7 @@ export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCatego
                 type="button"
                 disabled={pending}
                 onClick={() => void send(s)}
-                className="whitespace-nowrap rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-xs text-mist outline-none transition hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-sun/60 active:scale-95 disabled:opacity-50"
+                className="whitespace-nowrap rounded-full border border-black/20 bg-black/5 px-2.5 py-1 text-xs text-black outline-none transition hover:bg-black/10 focus-visible:ring-2 focus-visible:ring-black/30 active:scale-95 disabled:opacity-50"
               >
                 {s}
               </button>
@@ -174,7 +174,7 @@ export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCatego
           onClick={() => setSuggestionStart((s) => (s + SUGGESTIONS_VISIBLE) % SUGGESTIONS.length)}
           aria-label="Pokaż inne propozycje"
           title="Pokaż inne propozycje"
-          className="group flex size-7 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-sun outline-none transition hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-sun/60"
+          className="group flex size-7 shrink-0 items-center justify-center rounded-full border border-black/20 bg-black/5 text-black outline-none transition hover:bg-black/10 focus-visible:ring-2 focus-visible:ring-black/30"
         >
           <RefreshCw className="size-3.5 transition-transform duration-300 group-hover:rotate-180 motion-reduce:transition-none" aria-hidden />
         </button>
@@ -187,13 +187,13 @@ export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCatego
           maxLength={500}
           placeholder="Napisz, czego szukasz w okolicy…"
           aria-label="Opisz swoje preferencje"
-          className="h-14 min-w-0 flex-1 rounded-full border border-white/20 bg-white/10 px-6 text-base text-mist outline-none placeholder:text-mist/60 focus:border-sun focus-visible:ring-4 focus-visible:ring-sun/20"
+          className="h-14 min-w-0 flex-1 rounded-full border border-black/20 bg-black/5 px-6 text-base text-black outline-none placeholder:text-black/60 focus:border-black focus-visible:ring-4 focus-visible:ring-black/30"
         />
         <button
           type="submit"
           disabled={pending || !input.trim()}
           aria-label="Wyślij"
-          className="flex size-14 shrink-0 items-center justify-center rounded-full bg-sun text-ink outline-none transition hover:bg-sun/85 focus-visible:ring-4 focus-visible:ring-sun/60 active:scale-90 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-mist/50"
+          className="flex size-14 shrink-0 items-center justify-center rounded-full bg-black text-white outline-none transition hover:bg-black/80 focus-visible:ring-4 focus-visible:ring-black/30 active:scale-90 disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/50"
         >
           <Send className="size-5" aria-hidden />
         </button>
@@ -207,7 +207,7 @@ function Bubble({ role, text }: { role: ChatMessage["role"]; text: string }) {
   return (
     <div className={cn("animate-pop flex", user ? "justify-end" : "items-end gap-2")}>
       {!user && (
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sun text-ink">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-black text-white">
           <Bot className="size-5" aria-hidden />
         </span>
       )}
@@ -215,8 +215,8 @@ function Bubble({ role, text }: { role: ChatMessage["role"]; text: string }) {
         className={cn(
           "max-w-[85%] px-4 py-2.5 text-base leading-relaxed",
           user
-            ? "rounded-3xl rounded-br-md bg-sun text-ink"
-            : "rounded-3xl rounded-bl-md bg-white/10 text-mist",
+            ? "rounded-3xl rounded-br-md bg-black text-white"
+            : "rounded-3xl rounded-bl-md bg-black/5 text-black",
         )}
       >
         {text}
@@ -231,7 +231,7 @@ function TypingDots() {
       {[0, 1, 2].map((i) => (
         <span
           key={i}
-          className="animate-typing-dot size-2 rounded-full bg-sun"
+          className="animate-typing-dot size-2 rounded-full bg-black"
           style={{ animationDelay: `${i * 0.15}s` }}
         />
       ))}

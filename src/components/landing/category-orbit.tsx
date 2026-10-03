@@ -129,23 +129,23 @@ function CategoryBubble({
           if (!open) onOpenChange({ category, via: "click" });
           else if (open.via === "hover") onOpenChange({ category, via: "click" });
         }}
-        className="group flex flex-col items-center gap-1.5 rounded-3xl p-1 outline-none focus-visible:ring-4 focus-visible:ring-sun/60"
+        className="group flex flex-col items-center gap-1.5 rounded-3xl p-1 outline-none focus-visible:ring-4 focus-visible:ring-black/30"
       >
         <span
           className={cn(
-            "animate-float relative flex size-12 items-center justify-center rounded-full border-2 shadow-md shadow-black/30 backdrop-blur transition-transform group-hover:scale-110 group-active:scale-95 sm:size-14",
+            "animate-float relative flex size-12 items-center justify-center rounded-full border-2 transition-transform group-hover:scale-110 group-active:scale-95 sm:size-14",
             style.tile,
           )}
           style={{ animationDelay: `${-index * 1.1}s` }}
         >
-          <span aria-hidden className="text-2xl leading-none sm:text-3xl">{EMOJI[category]}</span>
+          <span aria-hidden className="text-2xl leading-none grayscale sm:text-3xl">{EMOJI[category]}</span>
           {value && (
-            <span className="animate-pop absolute -right-2 -top-2 rounded-full border-2 border-ink bg-sun px-1.5 text-[11px] font-semibold leading-5 text-ink">
+            <span className="animate-pop absolute -right-2 -top-2 rounded-full border-2 border-white bg-black px-1.5 text-[11px] font-semibold leading-5 text-white">
               {levelToPercent(value)}%
             </span>
           )}
         </span>
-        <span className="text-xs font-semibold text-mist [text-shadow:0_1px_8px_rgba(0,0,0,0.6)]">{label}</span>
+        <span className="text-xs font-semibold text-black ">{label}</span>
       </button>
 
       {open && (
@@ -195,30 +195,30 @@ function LevelPanel({
       role="dialog"
       aria-label={`Ważność kategorii ${label}`}
       className={cn(
-        "animate-expand fixed left-1/2 top-1/2 z-40 w-[min(19rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-[2rem] border-2 bg-ink p-4 text-mist shadow-2xl shadow-black/50",
+        "animate-expand fixed left-1/2 top-1/2 z-40 w-[min(19rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-[2rem] border-2 bg-white p-4 text-black shadow-xl",
         "lg:absolute lg:left-1/2 lg:top-0 lg:translate-y-[-1rem]",
         style.tile.split(" ")[1],
       )}
     >
       <div className="flex items-start gap-3">
         <span className={cn("flex size-11 shrink-0 items-center justify-center rounded-full border-2", style.tile)}>
-          <span aria-hidden className="text-2xl leading-none">{EMOJI[category]}</span>
+          <span aria-hidden className="text-2xl leading-none grayscale">{EMOJI[category]}</span>
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-base font-bold text-mist">{label}</p>
-          <p className="text-xs leading-snug text-mist/70">{hint}</p>
+          <p className="text-base font-bold text-black">{label}</p>
+          <p className="text-xs leading-snug text-black/70">{hint}</p>
         </div>
         <button
           type="button"
           onClick={onClose}
           aria-label="Zamknij"
-          className="-mr-1 -mt-1 rounded-full p-1.5 text-mist/70 outline-none hover:bg-white/10 focus-visible:ring-4 focus-visible:ring-sun/60"
+          className="-mr-1 -mt-1 rounded-full p-1.5 text-black/70 outline-none hover:bg-black/10 focus-visible:ring-4 focus-visible:ring-black/30"
         >
           <X className="size-4" />
         </button>
       </div>
 
-      <p className="mt-3 text-sm font-medium text-mist">Jak ważna jest dla Ciebie ta kategoria?</p>
+      <p className="mt-3 text-sm font-medium text-black">Jak ważna jest dla Ciebie ta kategoria?</p>
       <div
         role="radiogroup"
         aria-label={`Ważność: ${label}`}
@@ -243,16 +243,16 @@ function LevelPanel({
               onPointerEnter={() => setHovered(n)}
               onFocus={() => setHovered(null)}
               className={cn(
-                "flex-1 rounded-xl border-2 outline-none transition-all duration-150 focus-visible:ring-4 focus-visible:ring-sun/60",
-                filled ? cn(style.fill, "border-white/20") : "border-white/20 bg-white/10 hover:bg-white/20",
-                draft === n && "ring-2 ring-mist ring-offset-2 ring-offset-ink",
+                "flex-1 rounded-xl border-2 outline-none transition-all duration-150 focus-visible:ring-4 focus-visible:ring-black/30",
+                filled ? cn(style.fill, "border-black/20") : "border-black/20 bg-black/5 hover:bg-black/10",
+                draft === n && "ring-2 ring-black ring-offset-2 ring-offset-white",
               )}
               style={{ height: `${1.75 + n * 0.5}rem` }}
             />
           );
         })}
       </div>
-      <p aria-live="polite" className="mt-2 h-5 text-center text-sm font-semibold text-mist">
+      <p aria-live="polite" className="mt-2 h-5 text-center text-sm font-semibold text-black">
         {shown ? `${levelToPercent(shown)}% ważności, ${LEVEL_NAMES[shown]}` : "Wybierz poziom"}
       </p>
 
@@ -260,7 +260,7 @@ function LevelPanel({
         type="button"
         disabled={draft === null}
         onClick={() => draft && onConfirm(draft)}
-        className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-sun text-sm font-semibold text-ink outline-none transition hover:bg-sun/85 focus-visible:ring-4 focus-visible:ring-sun/60 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-mist/50"
+        className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-black text-sm font-semibold text-white outline-none transition hover:bg-black/80 focus-visible:ring-4 focus-visible:ring-black/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-black/10 disabled:text-black/50"
       >
         <Check className="size-4" />
         {saved ? "Zaktualizuj" : "Zatwierdź"}

@@ -6,9 +6,9 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { importanceToQuery, type Importance } from "@/lib/scoring/preferences";
 import type { Category } from "@/types";
-import { Background } from "./background";
 import { CategoryOrbit, type OpenState } from "./category-orbit";
 import { ChatPanel } from "./chat-panel";
+import { KrakowShape } from "./krakow-shape";
 import { levelsFromImportance, levelsToImportance, type Level, type Levels } from "./landing-copy";
 import { OsmAttribution } from "@/components/osm-attribution";
 
@@ -31,46 +31,59 @@ export function Landing({ initial }: { initial?: Importance }) {
   }
 
   return (
-    <main className="relative isolate flex flex-1 flex-col items-center overflow-x-clip px-4 py-8 sm:px-6 sm:py-12">
-      <Background />
+    <main className="font-landing relative isolate flex flex-1 flex-col items-center overflow-x-clip bg-[#ebebeb] px-4 py-8 text-black sm:px-6 sm:py-12">
+      <h1 className="max-w-3xl text-balance text-center text-3xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">
+        Znajdź w <AccentWord>Krakowie</AccentWord> miejsce, które pasuje do <AccentWord>Ciebie</AccentWord>
+      </h1>
 
-      <div className="flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-5 text-center">
-        <h1 className="text-balance text-3xl font-semibold leading-[1.05] tracking-tight text-mist [text-shadow:0_2px_24px_rgba(0,0,0,0.55)] sm:text-5xl">
-          Znajdź w <em className="font-display font-normal italic text-sun">Krakowie</em> miejsce, które pasuje do{" "}
-          <em className="font-display font-normal italic text-sun">Ciebie</em>
-        </h1>
+      <div className="mt-10 grid w-full max-w-6xl flex-1 items-center gap-8 lg:grid-cols-2 lg:gap-12">
+        <div className="mx-auto w-full max-w-xl">
+          <KrakowShape />
+        </div>
 
-        <div className="w-full text-left">
+        <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
           <ChatPanel
             levels={levels}
             onImportance={(i) => setLevels(levelsFromImportance(i))}
             onEditCategory={(category) => setOpen({ category, via: "external" })}
             onRemoveCategory={removeLevel}
           />
-        </div>
 
-        <div className="w-full">
-          <p className="mb-2 text-xs text-mist/80 [text-shadow:0_1px_8px_rgba(0,0,0,0.6)]">Albo ustaw ważność ręcznie</p>
-          <CategoryOrbit levels={levels} open={open} onOpenChange={setOpen} onConfirm={setLevel} />
-        </div>
+          <div>
+            <p className="mb-2 text-center text-xs text-black/60">Albo ustaw ważność ręcznie</p>
+            <CategoryOrbit levels={levels} open={open} onOpenChange={setOpen} onConfirm={setLevel} />
+          </div>
 
-        <div className="flex flex-col items-center gap-2">
-          <Button
-            type="button"
-            disabled={!hasChips}
-            onClick={() => router.push(`/map?${importanceToQuery(levelsToImportance(levels))}`)}
-            className="h-12 gap-2 rounded-full bg-sun px-8 text-base font-semibold text-ink shadow-lg shadow-black/30 hover:bg-sun/85 disabled:bg-white/15 disabled:text-mist/60 disabled:shadow-none"
-          >
-            Pokaż moją mapę
-            <ArrowRight className="size-5" aria-hidden />
-          </Button>
-          <p className="text-sm text-mist/80 [text-shadow:0_1px_8px_rgba(0,0,0,0.6)]">
-            {hasChips ? "Preferencje możesz zmienić w dowolnym momencie." : "Dodaj co najmniej jeden parametr, aby zobaczyć mapę."}
-          </p>
+          <div className="flex flex-col items-center gap-2">
+            <Button
+              type="button"
+              disabled={!hasChips}
+              onClick={() => router.push(`/map?${importanceToQuery(levelsToImportance(levels))}`)}
+              className="h-12 gap-2 rounded-full bg-black px-8 text-base font-semibold text-white hover:bg-black/80 disabled:bg-black/10 disabled:text-black/50"
+            >
+              Pokaż moją mapę
+              <ArrowRight className="size-5" aria-hidden />
+            </Button>
+            <p className="text-sm text-black/60">
+              {hasChips ? "Preferencje możesz zmienić w dowolnym momencie." : "Dodaj co najmniej jeden parametr, aby zobaczyć mapę."}
+            </p>
+          </div>
         </div>
       </div>
 
-      <OsmAttribution className="mt-8 text-center text-mist/70" />
+      <OsmAttribution className="mt-8 text-center text-black/50" />
     </main>
+  );
+}
+
+/** Script word drawn twice, the back copy offset and softened, so the two layers overlap into a shadow. */
+function AccentWord({ children }: { children: string }) {
+  return (
+    <span className="relative inline-block font-script text-[1.5em] font-normal leading-none">
+      <span aria-hidden className="absolute left-[0.04em] top-[0.07em] select-none text-black/25 blur-[1.5px]">
+        {children}
+      </span>
+      <span className="relative">{children}</span>
+    </span>
   );
 }
