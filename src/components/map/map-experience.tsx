@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, GraduationCap, Hexagon, ShieldCheck } from "lucide-react";
-import { AreaPanel } from "./area-panel";
+import { AreaPanel, type PanelView } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { OsmAttribution } from "@/components/osm-attribution";
 import { ModeSelector } from "./mode-selector";
-import { PlacesList } from "./places-list";
+import { CategoryPlaces } from "./places-list";
 import { WorksWarnings } from "./works-warnings";
 import { EDUCATION_KIND_STAGES } from "@/lib/data/osm";
+import { summarizeWorks } from "@/lib/data/works";
 import { defaultPinCategories } from "@/lib/map/places";
 import { NO_DATA_COLOR } from "@/lib/map/zones";
 import { MIN_SAFETY_LEVELS, importanceToQuery, type Importance } from "@/lib/scoring/preferences";
@@ -19,7 +20,6 @@ import type { HexSource, HexDetails } from "@/lib/supabase/hex-scores";
 import {
   EDUCATION_STAGES,
   EDUCATION_STAGE_LABELS,
-  type Category,
   type EducationStage,
   type HexData,
   type MapMode,
@@ -121,19 +121,19 @@ export function MapExperience({
     };
   }, [selected, source]);
 
-  // Which categories are pinned: the active mode (or top preferences), adjustable with chips.
-  // Overrides are tied to the (mode, hexagon) they were made in, so they reset on change.
-  const pinKey = `${mode}|${selected}`;
-  const [pinOverride, setPinOverride] = useState<{ key: string; cats: Set<Category> } | null>(null);
+  // Detail view of the panel, tied to the hexagon it was opened in so it resets when another one is picked.
+  const [detail, setDetail] = useState<{ hex: string | null; view: PanelView | null }>({ hex: null, view: null });
+  const view = detail.hex === selected ? detail.view : null;
+  const setView = (v: PanelView | null) => setDetail({ hex: selected, view: v });
+  // Pins: the open category, else the active mode (or the top preferences).
   const pinCategories = useMemo(
-    () => (pinOverride?.key === pinKey ? pinOverride.cats : defaultPinCategories(mode === "safety" ? "forYou" : mode, weights)),
-    [pinOverride, pinKey, mode, weights],
+    () =>
+      view && view !== "safety" && view !== "air" && view !== "works"
+        ? new Set([view])
+        : defaultPinCategories(mode === "safety" ? "forYou" : mode, weights),
+    [view, mode, weights],
   );
-  const togglePin = (c: Category) => {
-    const next = new Set(pinCategories);
-    if (!next.delete(c)) next.add(c);
-    setPinOverride({ key: pinKey, cats: next });
-  };
+  const worksCount = useMemo(() => summarizeWorks(works, new Date()).warnings.length, [works]);
   // Education pins follow the selected life stages; a school of unknown level counts for both school stages.
   const placesView = useMemo(
     () =>
@@ -179,8 +179,8 @@ export function MapExperience({
       </div>
 
       <aside className="absolute inset-x-0 bottom-0 max-h-[55%] overflow-y-auto rounded-t-3xl border border-border/70 bg-white/95 shadow-2xl backdrop-blur sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-16 sm:max-h-[calc(100%-5.5rem)] sm:w-[22rem] sm:rounded-3xl">
-        {showStageFilter && <StageFilter value={stages} onToggle={toggleStage} />}
-        {hasSafety && <SafetyFilter value={minSafety} onChange={changeMinSafety} />}
+        {!view && showStageFilter && <StageFilter value={stages} onToggle={toggleStage} />}
+        {!view && hasSafety && <SafetyFilter value={minSafety} onChange={changeMinSafety} />}
         <AreaPanel
           scores={hex?.scores ?? null}
           safety={hex?.safety ?? null}
@@ -192,13 +192,16 @@ export function MapExperience({
           weights={weights}
           stages={stages}
           onClose={() => setSelected(null)}
+          view={view}
+          onView={setView}
+          worksCount={worksCount}
           worksSlot={<WorksWarnings works={works} />}
-          placesSlot={
+          controlsFor={(c) => (c === "education" && hasStages ? <StageFilter value={stages} onToggle={toggleStage} inline /> : null)}
+          placesFor={(c) =>
             placesView && (
-              <PlacesList
+              <CategoryPlaces
+                category={c}
                 places={placesView}
-                active={pinCategories}
-                onToggle={togglePin}
                 hovered={hoveredPlace}
                 onHover={setHoveredPlace}
                 onFocus={(id) => setFocusPlace((f) => ({ id, n: (f?.n ?? 0) + 1 }))}
@@ -213,9 +216,9 @@ export function MapExperience({
   );
 }
 
-function StageFilter({ value, onToggle }: { value: EducationStage[]; onToggle: (s: EducationStage) => void }) {
+function StageFilter({ value, onToggle, inline = false }: { value: EducationStage[]; onToggle: (s: EducationStage) => void; inline?: boolean }) {
   return (
-    <div className="border-b border-border/70 px-5 py-3">
+    <div className={inline ? "mt-4" : "border-b border-border/70 px-5 py-3"}>
       <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         <GraduationCap className="size-3.5" />
         Education: which stages matter?
