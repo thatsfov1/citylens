@@ -123,6 +123,8 @@ type Props = {
   focusPlace: { id: number; n: number } | null;
   /** Minimum safety level (0 = off): hexes below it are dimmed outside the Safety view. */
   minSafety: number;
+  /** Hexes outside the "near a place" radius: dimmed like the safety filter, in every mode but Safety. */
+  outside?: ReadonlySet<string>;
   /** Safety / air values of the selected hexagon (null = no data); shown as badges on its border. */
   badges?: HexBadges;
   /** Areas in the side-by-side comparison; they stay outlined even when not selected. */
@@ -187,7 +189,7 @@ function cornerAt(selected: string, degrees: number): [number, number] {
   return cellToBoundary(selected).reduce((best, v) => (diff(v) < diff(best) ? v : best)) as [number, number];
 }
 
-export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, badges, compared, onBadge }: Props) {
+export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, badges, compared, onBadge }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -234,7 +236,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     withSafety.forEach((i, k) => (safetyPct[i] = safetyRanks[k]));
     pct.safety = safetyPct;
     // Below the user's minimum safety level (unknown ≠ unsafe: cells without data are never filtered out).
-    const belowMin = hexes.map((h) => minSafety > 0 && h.safety != null && h.safety < minSafety);
+    const belowMin = hexes.map((h) => (minSafety > 0 && h.safety != null && h.safety < minSafety) || !!outside?.has(h.h3Index));
     const cells = hexes.map((h) => h.h3Index);
     const fields = Object.fromEntries(
       Object.keys(pct).map((m) => [
@@ -263,6 +265,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
           ...scores,
           safety: safety ?? null,
           belowMin: belowMin[i] ? 1 : 0,
+          outside: outside?.has(hexes[i].h3Index) ? 1 : 0,
           personal: personal[i],
           ...Object.fromEntries(
             Object.entries(pct).map(([mode, v]) => [pctProp(mode as MapMode), v[i]]),
@@ -272,7 +275,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       })),
     };
     return { geojson, fields, tops };
-  }, [hexes, weights, minSafety]);
+  }, [hexes, weights, minSafety, outside]);
 
   const districts = useMemo(() => districtLayers(hexes), [hexes]);
 
@@ -579,7 +582,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         x: e.point.x,
         y: e.point.y,
         district: (props.district as string) || "Kraków",
-        label: m !== "safety" && props.belowMin === 1 ? `${label} · below your minimum safety` : label,
+        label: m !== "safety" && props.belowMin === 1 ? `${label} · ${props.outside === 1 ? "outside your chosen radius" : "below your minimum safety"}` : label,
         value: noSafety ? "" : `${Math.round(value as number)}`,
       });
     });

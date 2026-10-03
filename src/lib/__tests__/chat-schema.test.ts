@@ -31,3 +31,11 @@ test("request limits", () => {
   const many = Array.from({ length: 13 }, () => ({ role: "user", text: "a" }));
   assert.ok(!chatRequestSchema.safeParse({ messages: many }).success);
 });
+
+test("nearPlace is optional and validated", () => {
+  const base = { reply: "ok", importance: null, stages: null };
+  assert.equal(parseChatOutput(JSON.stringify(base)).nearPlace, undefined);
+  const r = parseChatOutput(JSON.stringify({ ...base, nearPlace: { query: "AGH", radiusM: 1000 } }));
+  assert.equal(r.nearPlace?.query, "AGH");
+  assert.throws(() => parseChatOutput(JSON.stringify({ ...base, nearPlace: { query: "AGH", radiusM: 777 } })));
+});
