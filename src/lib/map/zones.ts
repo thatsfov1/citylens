@@ -6,6 +6,14 @@ export const BAND_COUNT = 5;
 /** Muted red → orange → yellow → light green → green. */
 export const BAND_COLORS = ["#d9695f", "#e49a5c", "#e8d26a", "#9bc77a", "#4ea36f"] as const;
 
+export const BAND_LABELS = [
+  "Weaker match",
+  "Below-average match",
+  "Average match",
+  "Good match",
+  "Strong match",
+] as const;
+
 export function bandOf(pct: number): number {
   return Math.min(BAND_COUNT - 1, Math.max(0, Math.floor(pct * BAND_COUNT)));
 }

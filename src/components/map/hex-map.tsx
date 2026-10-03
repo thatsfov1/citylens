@@ -8,7 +8,7 @@ import { cellPolygon } from "@/lib/h3/grid";
 import { KRAKOW_BOUNDS, boundaryFeature, outsideMaskFeature } from "@/lib/h3/mask";
 import { calculatePersonalScore } from "@/lib/scoring/personal-score";
 import { percentileRanks } from "@/lib/scoring/percentile";
-import { BAND_COLORS, bandOf, bandZones } from "@/lib/map/zones";
+import { BAND_COLORS, BAND_LABELS, bandOf, bandZones } from "@/lib/map/zones";
 import { CATEGORIES, type CategoryWeights, type HexData, type MapMode } from "@/types";
 
 const SOURCE = "hexes";
@@ -56,6 +56,8 @@ const zoneColorExpression = [
   BAND_FILLS[BAND_FILLS.length - 1],
 ] as unknown as maplibregl.ExpressionSpecification;
 
+type Tip = { x: number; y: number; district: string; label: string; value: string };
+
 type Props = {
   hexes: HexData[];
   weights: CategoryWeights;
@@ -71,6 +73,8 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
   const onSelectRef = useRef(onSelect);
   const fitRef = useRef<{ zoom: number; center: [number, number] } | null>(null);
   const [zoomedIn, setZoomedIn] = useState(false);
+  const [tip, setTip] = useState<Tip | null>(null);
+  const modeRef = useRef(mode);
 
   const { geojson, zones } = useMemo(() => {
     const personal = hexes.map((h) => calculatePersonalScore(h.scores, weights));
@@ -84,10 +88,11 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
     ) as Record<MapMode, GeoJSON.FeatureCollection>;
     const geojson: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
-      features: hexes.map(({ h3Index, scores }, i) => ({
+      features: hexes.map(({ h3Index, scores, district }, i) => ({
         type: "Feature",
         properties: {
           h3Index,
+          district: district ?? "",
           ...scores,
           personal: personal[i],
           ...Object.fromEntries(
@@ -104,6 +109,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
   const initial = useRef({ geojson, zones, mode, selected });
   useEffect(() => {
     onSelectRef.current = onSelect;
+    modeRef.current = mode;
     initial.current = { geojson, zones, mode, selected };
   });
 
@@ -259,12 +265,24 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
     });
     map.on("mousemove", "hex-fill", (e) => {
       map.getCanvas().style.cursor = "pointer";
-      const id = (e.features?.[0]?.properties?.h3Index as string | undefined) ?? "";
+      const props = e.features?.[0]?.properties;
+      const id = (props?.h3Index as string | undefined) ?? "";
       map.setFilter("hex-hover", ["==", ["get", "h3Index"], id]);
+      if (!props) return;
+      const m = modeRef.current;
+      const value = m === "forYou" ? props.personal : props[m];
+      setTip({
+        x: e.point.x,
+        y: e.point.y,
+        district: (props.district as string) || "Kraków",
+        label: BAND_LABELS[bandOf(props[pctProp(m)] as number)],
+        value: `${Math.round(value as number)}`,
+      });
     });
     map.on("mouseleave", "hex-fill", () => {
       map.getCanvas().style.cursor = "";
       map.setFilter("hex-hover", ["==", ["get", "h3Index"], ""]);
+      setTip(null);
     });
 
     return () => {
@@ -310,6 +328,17 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
   return (
     <div className="absolute inset-0">
       <div ref={container} className="size-full" />
+      {tip && (
+        <div
+          className="pointer-events-none absolute z-10 rounded-lg border border-border/70 bg-white/95 px-2.5 py-1.5 text-xs shadow-lg backdrop-blur"
+          style={{ left: tip.x + 14, top: tip.y + 14 }}
+        >
+          <div className="font-medium text-slate-900">{tip.district}</div>
+          <div className="text-slate-600">
+            {tip.label} · {tip.value}/100
+          </div>
+        </div>
+      )}
       {zoomedIn && (
         <button
           type="button"
