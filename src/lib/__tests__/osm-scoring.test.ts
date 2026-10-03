@@ -29,6 +29,8 @@ test("classifyPoi maps OSM tags to categories", () => {
   assert.equal(classifyPoi({ historic: "castle" })?.category, "culture");
   assert.equal(classifyPoi({ amenity: "community_centre" })?.category, "culture");
   assert.equal(classifyPoi({ amenity: "bench" }), null);
+  assert.equal(classifyPoi({ shop: "vacant" }), null);
+  assert.equal(classifyPoi({ shop: "disused" }), null);
 });
 
 test("poi scoring decays with distance and ignores far features", () => {

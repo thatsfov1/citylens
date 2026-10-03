@@ -2,7 +2,15 @@
 
 import { Check, Info, MapPin, X } from "lucide-react";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
-import { CATEGORIES, CATEGORY_LABELS, type CategoryScores, type CategoryWeights } from "@/types";
+import { describeAll } from "@/lib/scoring/facts";
+import type { HexSource } from "@/lib/supabase/hex-scores";
+import {
+  CATEGORIES,
+  CATEGORY_LABELS,
+  type CategoryScores,
+  type CategoryWeights,
+  type HexIndicators,
+} from "@/types";
 import { cn } from "@/lib/utils";
 
 const LEVEL_STYLE: Record<MatchLevel, string> = {
@@ -13,11 +21,14 @@ const LEVEL_STYLE: Record<MatchLevel, string> = {
 
 type Props = {
   scores: CategoryScores | null;
+  district: string | null;
+  indicators: HexIndicators | null;
+  source: HexSource;
   weights: CategoryWeights;
   onClose: () => void;
 };
 
-export function AreaPanel({ scores, weights, onClose }: Props) {
+export function AreaPanel({ scores, district, indicators, source, weights, onClose }: Props) {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
 
   if (!scores) {
@@ -56,14 +67,15 @@ export function AreaPanel({ scores, weights, onClose }: Props) {
     );
   }
 
-  const ex = explainMatch(scores, weights);
+  const facts = indicators ? describeAll(indicators) : undefined;
+  const ex = explainMatch(scores, weights, facts);
 
   return (
     <div className="p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Area match
+            Area match{district ? ` · ${district}` : ""}
           </div>
           <div className={cn("mt-1 text-5xl font-semibold tabular-nums", LEVEL_STYLE[ex.level])}>
             {ex.score}%
@@ -91,6 +103,7 @@ export function AreaPanel({ scores, weights, onClose }: Props) {
               </span>
               <span className="font-semibold tabular-nums">{scores[c]}</span>
             </div>
+            {facts && <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{facts[c]}</p>}
             <div className="mt-1 h-1.5 rounded-full bg-muted">
               <div
                 className="h-full rounded-full bg-slate-800 transition-all"
@@ -125,7 +138,9 @@ export function AreaPanel({ scores, weights, onClose }: Props) {
         </>
       )}
       <p className="mt-5 text-[11px] text-muted-foreground">
-        Demo uses simulated scores, not real city data yet.
+        {source === "supabase"
+          ? "Scores are calculated from OpenStreetMap data within about 1 km of the area’s centre."
+          : "Demo uses simulated scores, not real city data."}
       </p>
     </div>
   );

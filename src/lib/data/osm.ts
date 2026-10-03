@@ -38,6 +38,8 @@ type OsmElement = {
 
 const toRing = (g: { lat: number; lon: number }[]): Ring => g.map((p) => [p.lon, p.lat]);
 
+const NOT_A_SHOP = new Set(["vacant", "no", "disused", "closed"]);
+
 /** Maps OSM tags to a scoring category; null if irrelevant. Mirrors the tag lists in AGENTS.md §8. */
 export function classifyPoi(tags: Tags): { category: PoiCategory; kind: string; weight: number } | null {
   const leisure = tags.leisure;
@@ -55,7 +57,8 @@ export function classifyPoi(tags: Tags): { category: PoiCategory; kind: string; 
   if (a === "community_centre") return { category: "culture", kind: a, weight: 0.7 };
 
   const shop = tags.shop;
-  if (shop) {
+  // Empty or disused units are not shops anyone can use.
+  if (shop && !NOT_A_SHOP.has(shop)) {
     if (shop === "mall" || shop === "department_store") return { category: "shopping", kind: shop, weight: 4 };
     if (shop === "supermarket") return { category: "shopping", kind: shop, weight: 2 };
     return { category: "shopping", kind: shop, weight: 0.7 };

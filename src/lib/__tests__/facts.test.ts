@@ -1,0 +1,36 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { describeAll, describeCategory } from "../scoring/facts";
+import { explainMatch } from "../scoring/explain";
+import type { HexIndicators } from "../../types";
+
+const empty = { raw: 0, within500: 0, within1000: 0, nearest: null };
+const ind: HexIndicators = {
+  sport: { raw: 1, within500: 0, within1000: 4, nearest: { name: null, kind: "pitch", distanceM: 820 } },
+  culture: empty,
+  shopping: { raw: 5, within500: 37, within1000: 164, nearest: { name: "Biedronka", kind: "supermarket", distanceM: 68 } },
+  transport: { raw: 3, within500: 1, within1000: 6, nearest: { name: "Prusy Rondo", kind: "bus_stop", distanceM: 468 } },
+  greenery: { raw: 0.4, coverShare: 0.08, nearestPark: { name: "Park Rzeczny Białucha", kind: "green_area", distanceM: 156, areaHa: 1.6 } },
+};
+
+test("describes categories from indicators", () => {
+  assert.match(describeCategory("shopping", ind), /37 shops within 500 m; nearest: Biedronka \(supermarket\), 70 m away/);
+  assert.match(describeCategory("sport", ind), /none within 500 m; nearest: a sports pitch, 820 m away/);
+  assert.match(describeCategory("culture", ind), /no cultural venues within 1 km/);
+  assert.match(describeCategory("greenery", ind), /Park Rzeczny Białucha \(1.6 ha\), 160 m away; ~8% green cover/);
+});
+
+test("ignores vacant units as the nearest shop", () => {
+  const v = { ...ind, shopping: { ...ind.shopping, nearest: { name: null, kind: "vacant", distanceM: 68 } } };
+  assert.equal(describeCategory("shopping", v), "37 shops within 500 m");
+});
+
+test("explainMatch uses facts when given and generic text otherwise", () => {
+  const scores = { sport: 20, culture: 10, greenery: 90, shopping: 90, transport: 30 };
+  const weights = { sport: 0.1, culture: 0, greenery: 0.5, shopping: 0.1, transport: 0.3 };
+  const withFacts = explainMatch(scores, weights, describeAll(ind));
+  assert.ok(withFacts.reasons[0].startsWith("Greenery: Park Rzeczny"));
+  assert.ok(withFacts.considerations.some((c) => c.startsWith("Transport is below")));
+  const generic = explainMatch(scores, weights);
+  assert.ok(generic.reasons[0].includes("top priority"));
+});

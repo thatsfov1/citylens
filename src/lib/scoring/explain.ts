@@ -35,6 +35,8 @@ const HEADLINES: Record<MatchLevel, string> = {
 export function explainMatch(
   scores: CategoryScores,
   weights: CategoryWeights,
+  /** Optional data-backed sentences per category (see facts.ts); used instead of generic text. */
+  facts?: Record<Category, string>,
 ): Explanation {
   const score = Math.round(calculatePersonalScore(scores, weights));
   const level = matchLevel(score);
@@ -50,13 +52,17 @@ export function explainMatch(
     const label = CATEGORY_LABELS[c];
     if (scores[c] >= HIGH) {
       reasons.push(
-        c === byWeight[0]
-          ? `Strong ${label.toLowerCase()} score aligns with your top priority.`
-          : `${label} also matches your preferences well.`,
+        facts
+          ? `${label}: ${facts[c]}.`
+          : c === byWeight[0]
+            ? `Strong ${label.toLowerCase()} score aligns with your top priority.`
+            : `${label} also matches your preferences well.`,
       );
     } else if (scores[c] < LOW) {
       considerations.push(
-        `${label} availability is below what you asked for in this area.`,
+        facts
+          ? `${label} is below what you asked for here: ${facts[c]}.`
+          : `${label} availability is below what you asked for in this area.`,
       );
     }
   }
