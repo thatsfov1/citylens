@@ -128,7 +128,7 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   `scripts/safety/build-lighting.ts` → `data/safety/lighting.json`), **CCTV** 0.25 (cameras mapped in OSM within 500 m)
   and **help nearby** 0.25 (distance to the nearest police 40% / fire station 30% / hospital or clinic 30% within 3 km).
   Camera, emergency and nightlife points come from `scripts/safety/build-features.ts` → `data/safety/features.json`
-  (commit it once generated; without it `compute.ts` scores lighting only). Overpass mirrors rate-limit (429/504); the
+  (committed, ~30 KB: 30 police, 71 fire stations, 215 hospitals/clinics, 569 cameras, 304 nightlife venues; without it `compute.ts` scores lighting only). Overpass mirrors rate-limit (429/504); the
   script backs off and retries across mirrors. **Nightlife** (bars, pubs, clubs within 300 m) is shown in the panel as
   "After dark" context and is deliberately NOT scored: it cuts both ways (livelier streets vs. noise). Road safety
   (crossings, traffic calming, major roads, accidents) was dropped on purpose. Each indicator's own score and share
