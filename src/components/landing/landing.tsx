@@ -8,7 +8,7 @@ import { importanceToQuery, type Importance } from "@/lib/scoring/preferences";
 import type { Category } from "@/types";
 import { CategoryOrbit, type OpenState } from "./category-orbit";
 import { ChatPanel } from "./chat-panel";
-import { KrakowShape } from "./krakow-shape";
+import { HexField } from "./hex-field";
 import { levelsFromImportance, levelsToImportance, type Level, type Levels } from "./landing-copy";
 import { OsmAttribution } from "@/components/osm-attribution";
 
@@ -38,7 +38,7 @@ export function Landing({ initial }: { initial?: Importance }) {
 
       <div className="mt-10 grid w-full max-w-6xl flex-1 items-center gap-8 lg:grid-cols-2 lg:gap-12">
         <div className="mx-auto w-full max-w-xl">
-          <KrakowShape />
+          <HexField />
         </div>
 
         <div className="mx-auto flex w-full max-w-xl flex-col gap-5">
