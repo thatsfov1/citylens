@@ -61,6 +61,8 @@ type Props = {
   controlsFor?: (c: Category) => ReactNode;
   /** Full construction / renovation warnings, each with its source. */
   worksSlot?: ReactNode;
+  /** Parking card for renters with a car (only while "I have a car" is on). */
+  parkingSlot?: ReactNode;
   /** Does the match survive nudging one priority? Null = not computed. */
   sensitivity?: Sensitivity | null;
   /** Typical rent of this area for the chosen flat size; set only while a rent budget is active. */
@@ -69,7 +71,7 @@ type Props = {
   commute?: { minutes: number; maxMin: number; mode: TravelMode; workName: string; approx: boolean; distanceKm?: number | null; transit?: TransitPlan | null } | null;
 };
 
-export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksSlot, sensitivity, rent = null, commute = null }: Props) {
+export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksSlot, parkingSlot, sensitivity, rent = null, commute = null }: Props) {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
   // Bars are relative to the largest weight, so the top priority fills the bar.
   const maxWeight = Math.max(...CATEGORIES.map((c) => weights[c]), 0.0001);
@@ -218,6 +220,7 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
       </ul>
 
       {rent && <RentSection {...rent} district={district} />}
+      {parkingSlot}
 
       {commute && (
         <div className="mt-4 rounded-xl border border-border/70 bg-muted/40 px-3 py-2.5 text-sm">

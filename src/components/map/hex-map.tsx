@@ -1,5 +1,6 @@
 "use client";
 
+import type { ParkingPin } from "@/lib/scoring/parking";
 import { FULL_SHARE } from "@/lib/scoring/rent";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
@@ -23,6 +24,7 @@ const TOP_SOURCE = "top-zone";
 const DISTRICT_LINE_SOURCE = "district-outlines";
 const DISTRICT_LABEL_SOURCE = "district-labels";
 const PLACES_SOURCE = "places";
+const PARKING_SOURCE = "parking-pins";
 const GREEN_SOURCE = "place-green";
 const RING_SOURCE = "place-rings";
 const ROUTE_SOURCE = "commute-route";
@@ -137,6 +139,8 @@ type Props = {
   rentUnknown?: ReadonlySet<string>;
   /** Safety / air values of the selected hexagon (null = no data); shown as badges on its border. */
   badges?: HexBadges;
+  /** Car parks, park and ride and meters around the open area (only while "I have a car" is on). */
+  parkingPins?: readonly ParkingPin[] | null;
   /** Areas in the side-by-side comparison; they stay outlined even when not selected. */
   compared?: readonly string[];
   onBadge?: (kind: BadgeKind) => void;
@@ -199,7 +203,7 @@ function cornerAt(selected: string, degrees: number): [number, number] {
   return cellToBoundary(selected).reduce((best, v) => (diff(v) < diff(best) ? v : best)) as [number, number];
 }
 
-export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentShare, rentUnknown, badges, compared, onBadge }: Props) {
+export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentShare, rentUnknown, badges, compared, onBadge, parkingPins = null }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -609,6 +613,40 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
         },
         paint: { "text-color": "#0f172a", "text-halo-color": "#ffffff", "text-halo-width": 1.6 },
       });
+      // Parking info for renters with a car: separate from the category pins, never part of the scores.
+      map.addSource(PARKING_SOURCE, { type: "geojson", data: EMPTY });
+      map.addLayer({
+        id: "parking-meter",
+        type: "circle",
+        source: PARKING_SOURCE,
+        filter: ["==", ["get", "kind"], "meter"],
+        paint: { "circle-radius": 3, "circle-color": "#64748b", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1, "circle-opacity": 0.9 },
+      });
+      map.addLayer({
+        id: "parking-lot",
+        type: "circle",
+        source: PARKING_SOURCE,
+        filter: ["!=", ["get", "kind"], "meter"],
+        paint: {
+          "circle-radius": ["case", ["==", ["get", "kind"], "parkride"], 11, 8],
+          "circle-color": ["case", ["==", ["get", "kind"], "parkride"], "#7c3aed", "#1d4ed8"],
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 1.5,
+        },
+      });
+      map.addLayer({
+        id: "parking-lot-label",
+        type: "symbol",
+        source: PARKING_SOURCE,
+        filter: ["!=", ["get", "kind"], "meter"],
+        layout: {
+          "text-field": ["case", ["==", ["get", "kind"], "parkride"], "P+R", "P"],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": ["case", ["==", ["get", "kind"], "parkride"], 8, 10],
+          "text-allow-overlap": true,
+        },
+        paint: { "text-color": "#ffffff" },
+      });
       readyRef.current = true;
     });
 
@@ -839,6 +877,23 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
     (map.getSource(PLACES_SOURCE) as maplibregl.GeoJSONSource).setData(selected || hasCompared ? pinsGeoJson : EMPTY);
     (map.getSource(GREEN_SOURCE) as maplibregl.GeoJSONSource).setData(selected || hasCompared ? greenGeoJson : EMPTY);
   }, [selected, hasCompared, pinsGeoJson, greenGeoJson]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    (map.getSource(PARKING_SOURCE) as maplibregl.GeoJSONSource).setData(
+      parkingPins && parkingPins.length > 0
+        ? {
+            type: "FeatureCollection",
+            features: parkingPins.map((p) => ({
+              type: "Feature",
+              properties: { kind: p.kind, label: p.label },
+              geometry: { type: "Point", coordinates: [p.lng, p.lat] },
+            })),
+          }
+        : EMPTY,
+    );
+  }, [parkingPins]);
 
   useEffect(() => {
     const map = mapRef.current;

@@ -8,6 +8,7 @@ import { AirSection, AreaPanel, SafetySection, type PanelView } from "./area-pan
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { CompareTray } from "./compare-tray";
 import { ShareMenu } from "./share-menu";
+import { ParkingCard, useParkingData } from "./parking-card";
 import { SharedBanner } from "./shared-banner";
 import { RentFilter, isRentActive } from "./rent-filter";
 import { FirstMatchCard } from "./first-match-card";
@@ -32,6 +33,7 @@ import { formatRadius, hexesOutsideAnchor, type Anchor } from "@/lib/scoring/anc
 import { MODE_LABELS, classifyCommute, estimateCommutes, type Workplace } from "@/lib/scoring/commute";
 import { normalizeWeights } from "@/lib/scoring/weights";
 import { saveMap } from "@/lib/share/saved";
+import { parkingAround, parkingPins, type ParkingPin } from "@/lib/scoring/parking";
 import { DEFAULT_SHARE, applyShareState, buildShareUrl, savedQuery, type ShareState } from "@/lib/share/state";
 import { formatRentRange, DEFAULT_ROOMS, RENT_MAX, RENT_MIN, classifyHexes, rentToQuery, summarizeRent, type RentFilter as RentBudget } from "@/lib/scoring/rent";
 import type { HexSource, HexDetails } from "@/lib/supabase/hex-scores";
@@ -58,6 +60,7 @@ export function MapExperience({
   initialRent = null,
   workplace = null,
   initialShare,
+  initialCar = false,
 }: {
   hexes: HexData[];
   source: HexSource;
@@ -74,6 +77,8 @@ export function MapExperience({
   workplace?: Workplace | null;
   /** Tab, open area and compared areas from the URL (`?mode=&sel=&cmp=`), already validated against the grid. */
   initialShare?: ShareState & { shared: boolean };
+  /** "I have a car" (`?car=1`): shows parking information for renters. */
+  initialCar?: boolean;
 }) {
   const start = initialShare ?? { ...DEFAULT_SHARE, shared: false };
   // Safety is optional data: the view and the filter only appear when cells carry safety indicators.
@@ -104,6 +109,16 @@ export function MapExperience({
   // Deferred so dragging the slider stays smooth while the map rebuilds.
   const deferredRent = useDeferredValue(rent);
   const rentSets = useMemo(() => (rentActive ? classifyHexes(hexes, deferredRent) : null), [hexes, deferredRent, rentActive]);
+  // Parking is information for renters with a car: never a score, never dims the map. Off by default.
+  const [car, setCar] = useState(initialCar);
+  const changeCar = (v: boolean) => {
+    setCar(v);
+    const url = new URL(window.location.href);
+    if (v) url.searchParams.set("car", "1");
+    else url.searchParams.delete("car");
+    window.history.replaceState(null, "", url);
+  };
+  const parkingData = useParkingData(car);
   // Education has four life stages; the score shown is the mean of the selected ones (recomputed client-side).
   const hasStages = useMemo(() => hexes.some((h) => h.educationStages), [hexes]);
   const [stages, setStages] = useState<EducationStage[]>(initialStages);
@@ -175,6 +190,16 @@ export function MapExperience({
   const hex = useMemo(
     () => (selected ? (viewHexes.find((h) => h.h3Index === selected) ?? null) : null),
     [viewHexes, selected],
+  );
+  // Parking facts and pins for the open area (empty until the snapshot has loaded; a failed load just hides them).
+  const parkingCentre = useMemo(() => (selected ? (cellToLatLng(selected) as [number, number]) : null), [selected]);
+  const parkingFacts = useMemo(
+    () => (car && parkingData && parkingCentre ? parkingAround(parkingCentre, parkingData) : null),
+    [car, parkingData, parkingCentre],
+  );
+  const parkingPinList = useMemo<ParkingPin[] | null>(
+    () => (car && parkingData && parkingCentre ? parkingPins(parkingCentre, parkingData) : null),
+    [car, parkingData, parkingCentre],
   );
 
   // OSM-derived facts for the selected hexagon, fetched on demand (kept out of the initial payload).
@@ -325,7 +350,7 @@ export function MapExperience({
 
   // Filters (safety level, education stages) live in their own window so the side panel stays a summary.
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const hasFilters = hasSafety || showStageFilter || hasRent;
+  const hasFilters = true; // the car switch is always available
   const shareSummary = useMemo(() => {
     const lines: string[] = [];
     const priorities = CATEGORIES.filter((c) => importance[c] > 0)
@@ -338,11 +363,12 @@ export function MapExperience({
     if (anchor && outside) lines.push(`Near ${anchor.name.split(",")[0]} · ${formatRadius(anchor.radiusM)}`);
     if (workplace) lines.push(`Commute to ${workplace.name.split(",")[0]} · up to ${workplace.maxMin} min`);
     if (mode !== "forYou") lines.push(`Tab: ${mode === "safety" ? "Safety" : CATEGORY_LABELS[mode]}`);
+    if (car) lines.push("Parking info on (I have a car)");
     if (compared.length) lines.push(`${compared.length} compared area${compared.length > 1 ? "s" : ""}`);
     if (hex) lines.push(`Open area: ${hex.district ?? "selected hexagon"}`);
     return lines.length ? lines : ["Your preferences"];
-  }, [importance, minSafety, rentActive, rent, anchor, outside, workplace, mode, compared, hex]);
-  const activeFilters = (minSafety > 0 ? 1 : 0) + (rentActive ? 1 : 0) + (hasStages && stages.length < EDUCATION_STAGES.length ? 1 : 0);
+  }, [importance, minSafety, rentActive, rent, anchor, outside, workplace, car, mode, compared, hex]);
+  const activeFilters = (minSafety > 0 ? 1 : 0) + (rentActive ? 1 : 0) + (car ? 1 : 0) + (hasStages && stages.length < EDUCATION_STAGES.length ? 1 : 0);
 
   const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
   const [focusPlace, setFocusPlace] = useState<{ id: number; n: number } | null>(null);
@@ -350,6 +376,7 @@ export function MapExperience({
   return (
     <div className="relative flex-1 overflow-hidden">
       <HexMap
+        parkingPins={parkingPinList}
         commuteRoute={
           workplace && route
             ? { line: route.coordinates, dashed: route.source === "straight", work: [workplace.lng, workplace.lat] }
@@ -404,7 +431,21 @@ export function MapExperience({
           >
             <X className="size-4" />
           </button>
-          {hasRent && <RentFilter value={rent} onChange={changeRent} inline />}
+          {hasRent && <RentFilter value={rent} onChange={changeRent} inline car={car} />}
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-xl bg-muted/60 p-2.5">
+            <input
+              type="checkbox"
+              checked={car}
+              onChange={(e) => changeCar(e.target.checked)}
+              className="mt-0.5 size-4 shrink-0 accent-emerald-600"
+            />
+            <span className="text-xs leading-snug">
+              <span className="font-medium text-slate-900">I have a car (show parking info)</span>
+              <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                Adds car parks, parking meters and park and ride around the open area. Information only, it does not change the scores or the map colours.
+              </span>
+            </span>
+          </label>
           {hasSafety && <SafetyFilter value={minSafety} onChange={changeMinSafety} inline />}
           {showStageFilter && <StageFilter value={stages} onToggle={toggleStage} inline />}
         </section>
@@ -527,6 +568,7 @@ export function MapExperience({
           pins={pinCategories}
           onTogglePin={togglePin}
           worksSlot={<WorksWarnings works={works} />}
+          parkingSlot={car ? <ParkingCard facts={parkingFacts} data={parkingData} district={hex?.district ?? null} /> : null}
           controlsFor={(c) => (c === "education" && hasStages ? <StageFilter value={stages} onToggle={toggleStage} inline /> : null)}
           placesFor={(c) =>
             placesView && (
@@ -550,7 +592,7 @@ export function MapExperience({
         onClear={() => setCompared([])}
       />
 
-      <Legend mode={mode} minSafety={minSafety} rentActive={rentActive} />
+      <Legend mode={mode} minSafety={minSafety} rentActive={rentActive} car={car} />
     </div>
   );
 }
@@ -670,7 +712,7 @@ function SafetyFilter({ value, onChange, inline = false }: { value: number; onCh
   );
 }
 
-function Legend({ mode, minSafety, rentActive }: { mode: MapMode; minSafety: number; rentActive: boolean }) {
+function Legend({ mode, minSafety, rentActive, car }: { mode: MapMode; minSafety: number; rentActive: boolean; car: boolean }) {
   return (
     <div className="pointer-events-none absolute left-3 top-28 rounded-xl border border-border/70 bg-white/90 px-3 py-2 shadow-lg shadow-black/5 backdrop-blur sm:bottom-6 sm:left-4 sm:top-auto">
       <div className="mb-1.5 text-[11px] font-medium text-slate-600">
@@ -704,6 +746,19 @@ function Legend({ mode, minSafety, rentActive }: { mode: MapMode; minSafety: num
             No rent data
           </div>
         </>
+      )}
+      {car && (
+        <div className="mt-1 max-w-52 text-[10px] leading-snug text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="grid size-3.5 place-items-center rounded-full bg-blue-700 text-[8px] font-bold text-white">P</span>
+            Car park
+            <span className="ml-1 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-violet-600 px-0.5 text-[7px] font-bold text-white">P+R</span>
+            Park and ride
+            <span className="ml-1 size-2 rounded-full bg-slate-500" />
+            Meter
+          </span>
+          <div>Parking pins are a rough guide, not a guarantee of a free space.</div>
+        </div>
       )}
       {mode === "safety" && (
         <div className="mt-1 max-w-52 text-[10px] leading-snug text-muted-foreground">

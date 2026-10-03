@@ -53,12 +53,15 @@ export const chatOutputSchema = z.object({
       maxMin: z.number().int().min(5).max(120).nullable(),
     })
     .nullish(),
+  /** True only when the user says they drive or own a car; it only switches on parking information. Null when not mentioned. */
+  hasCar: z.boolean().nullish(),
 });
 
 export type ChatOutput = z.infer<typeof chatOutputSchema>;
 
 /** What `/api/chat` returns: the model output with the place resolved to coordinates (or dropped). */
-export type ChatResult = Omit<ChatOutput, "nearPlace" | "budget" | "workplace"> & {
+export type ChatResult = Omit<ChatOutput, "nearPlace" | "budget" | "workplace" | "hasCar"> & {
+  car: boolean;
   anchor: Anchor | null;
   rent: RentFilter | null;
   work: Workplace | null;

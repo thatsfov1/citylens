@@ -34,6 +34,7 @@ export default async function MapPage({ searchParams }: PageProps<"/map">) {
         initialRent={rentFromQuery(params)}
         workplace={workplaceFromQuery(params.work)}
         initialShare={share}
+        initialCar={params.car === "1"}
         initialStages={parseStages(typeof params.edu === "string" ? params.edu : null)}
       />
     </main>
