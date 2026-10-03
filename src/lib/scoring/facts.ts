@@ -1,4 +1,4 @@
-import type { Category, HexIndicators } from "../../types";
+import { EDUCATION_STAGES, type Category, type EducationStage, type HexIndicators } from "../../types";
 import { airLevel } from "../data/air";
 import { CCTV_RADIUS_M, EMERGENCY_REACH_M, LIGHTING_RADIUS_M, NIGHTLIFE_RADIUS_M, partShares, type SafetyPart } from "../data/safety";
 
@@ -32,9 +32,16 @@ const KIND_LABELS: Record<string, string> = {
   rail_station: "railway station",
   tram_stop: "tram stop",
   bus_stop: "bus stop",
+  kindergarten: "kindergarten",
+  childcare: "nursery",
+  primary_school: "primary school",
+  secondary_school: "secondary school",
+  school: "school",
+  university: "university",
+  college: "college",
 };
 
-const NOUNS: Record<Exclude<Category, "greenery">, [singular: string, plural: string]> = {
+const NOUNS: Record<Exclude<Category, "greenery" | "education">, [singular: string, plural: string]> = {
   sport: ["sports facility", "sports facilities"],
   culture: ["cultural venue", "cultural venues"],
   shopping: ["shop", "shops"],
@@ -68,6 +75,7 @@ export function describeCategory(category: Category, ind: HexIndicators): string
       : "no large park within 1 km";
     return `${park}; ~${cover}% green cover within 500 m`;
   }
+  if (category === "education") return describeEducation(ind);
   const i = ind[category];
   const [one, many] = NOUNS[category];
   if (!i.nearest) return `no ${many} within ${(i.radiusM ?? 1000) / 1000} km`;
@@ -84,8 +92,38 @@ export function describeCategory(category: Category, ind: HexIndicators): string
   return `${count}; nearest: ${describeNearest(i.nearest)}`;
 }
 
-export function describeAll(ind: HexIndicators): Record<Category, string> {
+/** Plain-words limits of the education score, shown next to it. */
+export const EDUCATION_CAVEAT =
+  "Counts schools and kindergartens nearby (OpenStreetMap). It says nothing about quality, free places or which school your address is assigned to.";
+
+const STAGE_NOUNS: Record<EducationStage, [singular: string, plural: string]> = {
+  kindergarten: ["kindergarten or nursery", "kindergartens and nurseries"],
+  primary: ["primary school", "primary schools"],
+  secondary: ["secondary school", "secondary schools"],
+  university: ["university or college", "universities and colleges"],
+};
+
+/**
+ * Education access for the selected life stages, one clause per stage ("2 primary schools within 1 km; nearest: …").
+ * Counts come from the stored per-stage indicators; nothing is generated.
+ */
+export function describeEducation(ind: HexIndicators, stages: readonly EducationStage[] = EDUCATION_STAGES): string {
+  const edu = ind.education;
+  if (!edu) return "no education data for this area yet";
+  const parts = EDUCATION_STAGES.filter((s) => stages.includes(s)).map((s) => {
+    const i = edu.stages[s];
+    const [one, many] = STAGE_NOUNS[s];
+    if (!i.nearest) return `no ${many} within ${(i.radiusM ?? 1000) / 1000} km`;
+    const n = i.within1000;
+    const near = describeNearest(i.nearest);
+    return n > 0 ? `${n} ${n === 1 ? one : many} within 1 km; nearest: ${near}` : `nearest ${one}: ${near}`;
+  });
+  return parts.join(" · ");
+}
+
+export function describeAll(ind: HexIndicators, stages?: readonly EducationStage[]): Record<Category, string> {
   return {
+    education: describeEducation(ind, stages),
     sport: describeCategory("sport", ind),
     culture: describeCategory("culture", ind),
     greenery: describeCategory("greenery", ind),

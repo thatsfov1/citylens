@@ -5,7 +5,7 @@ import { Bot, RefreshCw, Send, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ChatMessage, ChatResult } from "@/lib/llm/chat-schema";
 import type { Importance } from "@/lib/scoring/preferences";
-import { CATEGORIES, type Category } from "@/types";
+import { CATEGORIES, type Category, type EducationStage } from "@/types";
 import {
   CATEGORY_PL,
   CATEGORY_STYLE,
@@ -18,7 +18,7 @@ import {
 
 type Props = {
   levels: Levels;
-  onImportance: (importance: Importance) => void;
+  onImportance: (importance: Importance, stages: EducationStage[] | null) => void;
   onEditCategory: (category: Category) => void;
   onRemoveCategory: (category: Category) => void;
 };
@@ -54,7 +54,7 @@ export function ChatPanel({ levels, onImportance, onEditCategory, onRemoveCatego
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as ChatResult;
       setMessages([...next, { role: "assistant", text: data.reply }]);
-      if (data.importance) onImportance(data.importance);
+      if (data.importance) onImportance(data.importance, data.stages);
     } catch {
       setError("Asystent jest chwilowo niedostępny. Możesz ustawić kategorie samodzielnie, używając ikon poniżej.");
     } finally {

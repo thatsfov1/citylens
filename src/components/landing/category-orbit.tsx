@@ -21,6 +21,7 @@ const EMOJI: Record<Category, string> = {
   greenery: "🌳",
   shopping: "🛍️",
   transport: "🚋",
+  education: "🎓",
 };
 
 /** How the panel was opened: hover closes it again when the pointer leaves, the others don't. */

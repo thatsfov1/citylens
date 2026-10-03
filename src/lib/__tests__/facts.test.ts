@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { describeAll, describeCategory, describeNightlife, describeSafety, describeSafetyParts } from "../scoring/facts";
+import { describeAll, describeCategory, describeEducation, describeNightlife, describeSafety, describeSafetyParts } from "../scoring/facts";
 import { explainMatch } from "../scoring/explain";
 import type { HexIndicators } from "../../types";
 
@@ -26,8 +26,8 @@ test("ignores vacant units as the nearest shop", () => {
 });
 
 test("explainMatch uses facts when given and generic text otherwise", () => {
-  const scores = { sport: 20, culture: 10, greenery: 90, shopping: 90, transport: 30 };
-  const weights = { sport: 0.1, culture: 0, greenery: 0.5, shopping: 0.1, transport: 0.3 };
+  const scores = { sport: 20, culture: 10, greenery: 90, shopping: 90, transport: 30, education: 50 };
+  const weights = { sport: 0.1, culture: 0, greenery: 0.5, shopping: 0.1, transport: 0.3, education: 0 };
   const withFacts = explainMatch(scores, weights, describeAll(ind));
   assert.ok(withFacts.reasons[0].startsWith("Greenery: Park Rzeczny"));
   assert.ok(withFacts.considerations.some((c) => c.startsWith("Transport is below")));
@@ -91,4 +91,32 @@ test("safety is explained indicator by indicator, with scores, shares and contex
   assert.equal(describeNightlife(ind), null);
   const none: HexIndicators = { ...ind, safety: { emergency: { police: null, fire: null, hospital: null } } };
   assert.equal(describeSafetyParts(none)[0].fact, "No police, fire station or hospital within 3.0 km");
+});
+
+test("education facts follow the selected stages and stay factual", () => {
+  const stage = (within1000: number, nearest: { name: string | null; kind: string; distanceM: number } | null) => ({
+    raw: within1000,
+    within500: 0,
+    within1000,
+    nearest,
+  });
+  const edu: HexIndicators = {
+    ...ind,
+    education: {
+      ...stage(3, { name: "Przedszkole nr 5", kind: "kindergarten", distanceM: 220 }),
+      stages: {
+        kindergarten: stage(2, { name: "Przedszkole nr 5", kind: "kindergarten", distanceM: 220 }),
+        primary: stage(1, { name: "SP 12", kind: "primary_school", distanceM: 640 }),
+        secondary: stage(0, null),
+        university: stage(0, null),
+      },
+    },
+  };
+  assert.equal(
+    describeEducation(edu, ["kindergarten"]),
+    "2 kindergartens and nurseries within 1 km; nearest: Przedszkole nr 5 (kindergarten), 220 m away",
+  );
+  assert.match(describeEducation(edu, ["secondary"]), /^no secondary schools within 1 km/);
+  assert.match(describeEducation(edu), /primary school within 1 km; nearest: SP 12/);
+  assert.match(describeEducation(ind), /no education data/); // rows scored before education existed
 });

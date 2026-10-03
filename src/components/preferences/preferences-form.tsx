@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ArrowRight,
   Bike,
+  GraduationCap,
   Landmark,
   ShoppingBag,
   TrainFront,
@@ -30,6 +31,7 @@ const ICONS: Record<Category, LucideIcon> = {
   greenery: Trees,
   shopping: ShoppingBag,
   transport: TrainFront,
+  education: GraduationCap,
 };
 
 const HINTS: Record<Category, string> = {
@@ -38,6 +40,7 @@ const HINTS: Record<Category, string> = {
   greenery: "Parks, gardens, forests nearby",
   shopping: "Supermarkets, shops, malls",
   transport: "Public transport stops and links",
+  education: "Kindergartens, schools, universities nearby",
 };
 
 // One colour per step of the importance scale: red (don't care) → green (essential).

@@ -24,7 +24,7 @@ MapLibre map with H3 hexagons, area panel with data-backed explanations
 
 - Kraków only. H3 resolution 8, ~460 cells (461), clipped to Kraków's administrative boundary
   (`src/lib/h3/grid.ts`, `krakow-boundary.json`).
-- Categories: sport, culture, greenery, shopping, transport.
+- Categories: sport, culture, greenery, shopping, transport, education.
 - Scores are **real**, derived from OpenStreetMap, and already loaded in Supabase.
   `supabase/seed.sql` contains the same 461 rows (verified identical to the live table).
 - The LLM only converts text → importance values. It never scores or names places.
@@ -310,3 +310,33 @@ changes a score.
   Metro (construction tender planned ≈2030) and tram to Mistrzejowice are not included (no reliable geometry/dates yet).
   OSM `highway=construction` and ZTP GTFS-RT ServiceAlerts (`gtfs.ztp.krakow.pl/ServiceAlerts_*.pb`, free-text diversions) are possible
   additions. Permits only count within the last 12 months. Open-ended "ongoing" rows stay visible until the snapshot is refreshed.
+
+## Education category (kindergartens, schools, universities)
+
+- **Sixth weighted category** `education` (`CATEGORIES`, map mode, LLM importance, landing icon 🎓, default importance 20) with four
+  **life stages**: `kindergarten`, `primary`, `secondary`, `university` (`EDUCATION_STAGES` in `src/types`). A parent of a toddler and a
+  student want different maps, so the user picks the stages that matter; the score counts only those.
+- **Data (OSM only):** `amenity=kindergarten|childcare|school|university|college` in the `pois` Overpass query. OSM rarely tags school
+  level, so `classifyPoi` decides by `isced:level` (lowest listed level wins), else by Polish name (`Przedszkole|Żłobek`, `Podstawowa`,
+  `Liceum|Technikum|Branżowa|Zespół Szkół`), else the POI is kind `school` (**level unknown**) and counts for both primary and
+  secondary rather than being guessed. `EDUCATION_KIND_STAGES` (osm.ts) maps kind → stages.
+- **Scoring:** same machinery as other POI categories, one score per stage with its own reach (`EDUCATION_STAGE_SCALE`): kindergarten 1 km,
+  primary 1 km, secondary 2 km, university 2 km (the same distance bands stretched, like culture). Each stage is normalised on its own;
+  `hex_scores.education_score` = rounded mean of the four stage scores.
+- **Why `hex_scores.education_stages jsonb`** (not inside `indicators`): the map list query deliberately omits `indicators`, and the client must
+  recompute the education score for the selected stages on every hexagon. `educationScore` / `withEducationStages`
+  (`src/lib/scoring/education.ts`, tested) do the mean of the selected stage scores; deterministic, no round-trip. Mock data has no stages
+  and the stage filter is hidden then. `indicators.education` holds the facts (combined + per stage) for the panel; it is optional in the Zod
+  schema because older rows lack it.
+- **URL:** `?edu=kg,pr,se,un` (default: all, omitted). The landing page sets it only when the assistant returns stages (`ChatResult.stages`,
+  Zod enum array or null; prompt: toddler → kindergarten, school-age children → primary/secondary, studying → university). The map's
+  "Adjust preferences" link does not carry `edu` back yet.
+- **Places/pins:** `PlaceCategory` includes `education`; `selectPlaces` caps **per kind** (5) and uses the stage's own reach
+  (`placeReachM`), so a dense centre still shows the university next to many kindergartens. `nearest_pois()` was redefined (reach 2 km for
+  education, ranked per kind) — keep it in sync with `placeReachM`. Pins are filtered client-side to the selected stages.
+- **Copy rule:** "education access", never "good schools". The panel states the limits (`EDUCATION_CAVEAT`): counts of nearby places only —
+  **not quality, free places, or the school catchment (rejon) of an address.** Out of scope: rankings, capacity, tuition, travel time.
+- **Migration** `20261003000700_education.sql` adds `education_score` (not null default 0), `education_stages`, widens `pois.category`
+  and redefines `nearest_pois`. **Apply it before deploying this code** (`loadHexes` selects the new columns; otherwise the app silently
+  falls back to mock data). The real numbers need the full OSM extracts (`OSM_DIR=data/osm/full npx tsx scripts/osm/fetch.ts pois`, then
+  `compute.ts` and `export-places.ts`); the committed sample `data/osm/pois.json` predates the education tags and has no schools.
