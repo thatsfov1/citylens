@@ -273,15 +273,6 @@ export function MapExperience({
             onDismiss={() => setFirst(null)}
           />
         )}
-        {!view && (
-          <CompareTray
-            comparison={comparison}
-            selected={selected}
-            onSelect={setSelected}
-            onRemove={(id) => setCompared((c) => c.filter((x) => x !== id))}
-            onClear={() => setCompared([])}
-          />
-        )}
         {!view && showStageFilter && <StageFilter value={stages} onToggle={toggleStage} />}
         {!view && hasSafety && <SafetyFilter value={minSafety} onChange={changeMinSafety} />}
         <AreaPanel
@@ -317,6 +308,14 @@ export function MapExperience({
           }
         />
       </aside>
+
+      <CompareTray
+        comparison={comparison}
+        selected={selected}
+        onSelect={setSelected}
+        onRemove={(id) => setCompared((c) => c.filter((x) => x !== id))}
+        onClear={() => setCompared([])}
+      />
 
       <Legend mode={mode} minSafety={minSafety} />
     </div>
