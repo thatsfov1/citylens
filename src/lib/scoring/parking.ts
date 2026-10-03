@@ -26,6 +26,12 @@ export type ParkingData = {
   meters: MeterRow[];
 };
 
+/** Pin colours on the map and in the map key. */
+export const PARKING_COLORS = { carpark: "#1d4ed8", parkride: "#7c3aed", meter: "#64748b" } as const;
+
+export const METER_LABEL = "Parking meter: street parking nearby is probably paid";
+export const PARKING_CAVEAT = "Rough guide from public map data, not a guarantee of a free space.";
+
 export const NEAR_M = 500;
 export const FAR_M = 1000;
 
@@ -121,7 +127,7 @@ export function parkingPins(center: [number, number], data: ParkingData, radiusM
       .filter((r) => isPublic(r[3]) && near(r))
       .map((r): ParkingPin => ({ kind: "carpark", lat: r[0], lng: r[1], label: carParkLabel(r) })),
     ...data.parkRide.filter(near).map((r): ParkingPin => ({ kind: "parkride", lat: r[0], lng: r[1], label: `Park & ride: ${r[2]}` })),
-    ...data.meters.filter(near).map((r): ParkingPin => ({ kind: "meter", lat: r[0], lng: r[1], label: "Parking meter" })),
+    ...data.meters.filter(near).map((r): ParkingPin => ({ kind: "meter", lat: r[0], lng: r[1], label: METER_LABEL })),
   ];
 }
 
