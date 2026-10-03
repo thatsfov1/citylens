@@ -5,6 +5,7 @@ export const PLACE_COLORS: Record<PlaceCategory, string> = {
   culture: "#9333ea",
   shopping: "#ea580c",
   transport: "#0891b2",
+  education: "#e11d48",
 };
 export const GREEN_COLOR = "#16a34a";
 
@@ -33,6 +34,13 @@ const KIND_LABELS: Record<string, string> = {
   rail_station: "Rail station",
   tram_stop: "Tram stop",
   bus_stop: "Bus stop",
+  kindergarten: "Kindergarten",
+  childcare: "Nursery",
+  primary_school: "Primary school",
+  secondary_school: "Secondary school",
+  school: "School",
+  university: "University",
+  college: "College",
 };
 
 export function kindLabel(kind: string): string {

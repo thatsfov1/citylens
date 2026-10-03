@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { importanceToQuery, type Importance } from "@/lib/scoring/preferences";
-import type { Category } from "@/types";
+import { stagesToParam } from "@/lib/scoring/education";
+import type { Category, EducationStage } from "@/types";
 import { Background } from "./background";
 import { CategoryOrbit, type OpenState } from "./category-orbit";
 import { ChatPanel } from "./chat-panel";
@@ -16,6 +17,8 @@ export function Landing({ initial }: { initial?: Importance }) {
   const router = useRouter();
   const [levels, setLevels] = useState<Levels>(() => (initial ? levelsFromImportance(initial) : {}));
   const [open, setOpen] = useState<OpenState>(null);
+  // Education life stages the assistant picked up from the chat (e.g. a toddler → kindergarten); null = all.
+  const [stages, setStages] = useState<EducationStage[] | null>(null);
   const hasChips = Object.keys(levels).length > 0;
 
   function setLevel(category: Category, level: Level) {
@@ -59,7 +62,10 @@ export function Landing({ initial }: { initial?: Importance }) {
         <div className="mt-6 w-full text-left">
           <ChatPanel
             levels={levels}
-            onImportance={(i) => setLevels(levelsFromImportance(i))}
+            onImportance={(i, s) => {
+              setLevels(levelsFromImportance(i));
+              setStages(s && s.length ? s : null);
+            }}
             onEditCategory={(category) => setOpen({ category, via: "external" })}
             onRemoveCategory={removeLevel}
           />
@@ -68,7 +74,10 @@ export function Landing({ initial }: { initial?: Importance }) {
         <Button
           type="button"
           disabled={!hasChips}
-          onClick={() => router.push(`/map?${importanceToQuery(levelsToImportance(levels))}`)}
+          onClick={() => {
+            const edu = stages && levels.education ? stagesToParam(stages) : null;
+            router.push(`/map?${importanceToQuery(levelsToImportance(levels))}${edu ? `&edu=${edu}` : ""}`);
+          }}
           className="mt-6 h-12 gap-2 rounded-full bg-moss px-8 text-base font-semibold text-white shadow-lg shadow-bark/20 hover:bg-bark disabled:bg-white/15 disabled:text-cream/70 disabled:shadow-none"
         >
           Pokaż moją mapę

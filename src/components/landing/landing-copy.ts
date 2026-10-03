@@ -19,6 +19,7 @@ export const CATEGORY_PL: Record<Category, { label: string; hint: string }> = {
   greenery: { label: "Zieleń", hint: "Parki, ogrody, lasy w pobliżu" },
   shopping: { label: "Zakupy", hint: "Sklepy, supermarkety, centra handlowe" },
   transport: { label: "Transport", hint: "Przystanki i połączenia komunikacji miejskiej" },
+  education: { label: "Edukacja", hint: "Przedszkola, szkoły, uczelnie w pobliżu" },
 };
 
 export const GREETING =
@@ -35,6 +36,7 @@ export const SUGGESTIONS = [
   "Do pracy jeżdżę tramwajem",
   "Mam psa i dużo spaceruję",
   "Studiuję i lubię życie nocne",
+  "Mam małe dziecko i szukam przedszkola",
 ] as const;
 
 export const SUGGESTIONS_VISIBLE = 4;
@@ -101,5 +103,11 @@ export const CATEGORY_STYLE: Record<
     fill: "bg-bark",
     chip: "bg-white border-bark/40 text-bark",
     dot: "bg-bark",
+  },
+  education: {
+    tile: "bg-cream border-moss text-bark",
+    fill: "bg-moss",
+    chip: "bg-cream border-moss text-bark",
+    dot: "bg-moss",
   },
 };

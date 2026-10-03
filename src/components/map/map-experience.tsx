@@ -2,31 +2,45 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Hexagon, ShieldCheck } from "lucide-react";
+import { ArrowLeft, GraduationCap, Hexagon, ShieldCheck } from "lucide-react";
 import { AreaPanel } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { OsmAttribution } from "@/components/osm-attribution";
 import { ModeSelector } from "./mode-selector";
 import { PlacesList } from "./places-list";
 import { WorksWarnings } from "./works-warnings";
+import { EDUCATION_KIND_STAGES } from "@/lib/data/osm";
 import { defaultPinCategories } from "@/lib/map/places";
 import { NO_DATA_COLOR } from "@/lib/map/zones";
 import { MIN_SAFETY_LEVELS, importanceToQuery, type Importance } from "@/lib/scoring/preferences";
+import { stagesToParam, withEducationStages } from "@/lib/scoring/education";
 import { normalizeWeights } from "@/lib/scoring/weights";
 import type { HexSource, HexDetails } from "@/lib/supabase/hex-scores";
-import type { Category, HexData, MapMode, PlacesResponse, WorkNearby } from "@/types";
+import {
+  EDUCATION_STAGES,
+  EDUCATION_STAGE_LABELS,
+  type Category,
+  type EducationStage,
+  type HexData,
+  type MapMode,
+  type PlacesResponse,
+  type WorkNearby,
+} from "@/types";
 
 export function MapExperience({
   hexes,
   source,
   importance,
   initialMinSafety = 0,
+  initialStages = [...EDUCATION_STAGES],
 }: {
   hexes: HexData[];
   source: HexSource;
   importance: Importance;
   /** Minimum safety level from the URL (0 = off). */
   initialMinSafety?: number;
+  /** Education life stages from the URL (`?edu=`); all stages by default. */
+  initialStages?: EducationStage[];
 }) {
   const [mode, setMode] = useState<MapMode>("forYou");
   // Safety is optional data: the view and the filter only appear when cells carry safety indicators.
@@ -40,11 +54,26 @@ export function MapExperience({
     else url.searchParams.delete("minSafety");
     window.history.replaceState(null, "", url);
   };
+  // Education has four life stages; the score shown is the mean of the selected ones (recomputed client-side).
+  const hasStages = useMemo(() => hexes.some((h) => h.educationStages), [hexes]);
+  const [stages, setStages] = useState<EducationStage[]>(initialStages);
+  const toggleStage = (s: EducationStage) => {
+    const next = stages.includes(s) ? stages.filter((x) => x !== s) : [...stages, s];
+    if (next.length === 0) return; // at least one stage must stay selected
+    setStages(next);
+    const url = new URL(window.location.href);
+    const param = stagesToParam(next);
+    if (param) url.searchParams.set("edu", param);
+    else url.searchParams.delete("edu");
+    window.history.replaceState(null, "", url);
+  };
+  const viewHexes = useMemo(() => withEducationStages(hexes, stages), [hexes, stages]);
+  const showStageFilter = hasStages && (mode === "education" || (mode === "forYou" && importance.education > 0));
   const [selected, setSelected] = useState<string | null>(null);
   const weights = useMemo(() => normalizeWeights(importance), [importance]);
   const hex = useMemo(
-    () => (selected ? (hexes.find((h) => h.h3Index === selected) ?? null) : null),
-    [hexes, selected],
+    () => (selected ? (viewHexes.find((h) => h.h3Index === selected) ?? null) : null),
+    [viewHexes, selected],
   );
 
   // OSM-derived facts for the selected hexagon, fetched on demand (kept out of the initial payload).
@@ -105,18 +134,29 @@ export function MapExperience({
     if (!next.delete(c)) next.add(c);
     setPinOverride({ key: pinKey, cats: next });
   };
+  // Education pins follow the selected life stages; a school of unknown level counts for both school stages.
+  const placesView = useMemo(
+    () =>
+      places && {
+        ...places,
+        places: places.places.filter(
+          (p) => p.category !== "education" || (EDUCATION_KIND_STAGES[p.kind] ?? []).some((s) => stages.includes(s)),
+        ),
+      },
+    [places, stages],
+  );
   const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
   const [focusPlace, setFocusPlace] = useState<{ id: number; n: number } | null>(null);
 
   return (
     <div className="relative flex-1 overflow-hidden">
       <HexMap
-        hexes={hexes}
+        hexes={viewHexes}
         weights={weights}
         mode={mode}
         selected={selected}
         onSelect={setSelected}
-        places={places}
+        places={placesView}
         pinCategories={pinCategories}
         hoveredPlace={hoveredPlace}
         onHoverPlace={setHoveredPlace}
@@ -139,6 +179,7 @@ export function MapExperience({
       </div>
 
       <aside className="absolute inset-x-0 bottom-0 max-h-[55%] overflow-y-auto rounded-t-3xl border border-border/70 bg-white/95 shadow-2xl backdrop-blur sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-16 sm:max-h-[calc(100%-5.5rem)] sm:w-[22rem] sm:rounded-3xl">
+        {showStageFilter && <StageFilter value={stages} onToggle={toggleStage} />}
         {hasSafety && <SafetyFilter value={minSafety} onChange={changeMinSafety} />}
         <AreaPanel
           scores={hex?.scores ?? null}
@@ -149,12 +190,13 @@ export function MapExperience({
           indicators={details?.indicators ?? null}
           source={source}
           weights={weights}
+          stages={stages}
           onClose={() => setSelected(null)}
           worksSlot={<WorksWarnings works={works} />}
           placesSlot={
-            places && (
+            placesView && (
               <PlacesList
-                places={places}
+                places={placesView}
                 active={pinCategories}
                 onToggle={togglePin}
                 hovered={hoveredPlace}
@@ -167,6 +209,35 @@ export function MapExperience({
       </aside>
 
       <Legend mode={mode} minSafety={minSafety} />
+    </div>
+  );
+}
+
+function StageFilter({ value, onToggle }: { value: EducationStage[]; onToggle: (s: EducationStage) => void }) {
+  return (
+    <div className="border-b border-border/70 px-5 py-3">
+      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <GraduationCap className="size-3.5" />
+        Education: which stages matter?
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {EDUCATION_STAGES.map((s) => (
+          <button
+            key={s}
+            type="button"
+            aria-pressed={value.includes(s)}
+            onClick={() => onToggle(s)}
+            className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+              value.includes(s) ? "border-slate-800 bg-slate-800 text-white" : "border-border bg-white hover:bg-muted"
+            }`}
+          >
+            {EDUCATION_STAGE_LABELS[s]}
+          </button>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
+        The education score counts only the stages you select. It reflects access to nearby places, not school quality.
+      </p>
     </div>
   );
 }

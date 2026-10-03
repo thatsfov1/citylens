@@ -21,6 +21,7 @@ const GLYPHS = {
   eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   cart: '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
   store: '<path d="m3 9 1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M10 20v-5h4v5"/>',
+  cap: '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
   bag: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
 } as const;
 
@@ -64,6 +65,18 @@ const ICONS: Record<PlaceCategory, { fallback: Glyph; kinds: Record<string, Glyp
       convenience: "cart",
       mall: "store",
       department_store: "store",
+    },
+  },
+  education: {
+    fallback: "cap",
+    kinds: {
+      kindergarten: "pitch",
+      childcare: "pitch",
+      primary_school: "book",
+      secondary_school: "book",
+      school: "book",
+      university: "cap",
+      college: "cap",
     },
   },
 };

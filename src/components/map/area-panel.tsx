@@ -3,13 +3,14 @@
 import type { ReactNode } from "react";
 import { Check, ChevronRight, Info, MapPin, ShieldCheck, Wind, X } from "lucide-react";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
-import { AIR_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describeAirLevel, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
+import { AIR_CAVEAT, EDUCATION_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describeAirLevel, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
 import type { HexSource } from "@/lib/supabase/hex-scores";
 import {
   CATEGORIES,
   CATEGORY_LABELS,
   type CategoryScores,
   type CategoryWeights,
+  type EducationStage,
   type HexIndicators,
 } from "@/types";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,8 @@ type Props = {
   indicators: HexIndicators | null;
   source: HexSource;
   weights: CategoryWeights;
+  /** Education life stages the user selected; the education fact lists only these. */
+  stages?: readonly EducationStage[];
   onClose: () => void;
   /** Pins legend + list of the real places behind the scores. */
   placesSlot?: ReactNode;
@@ -39,7 +42,7 @@ type Props = {
   worksSlot?: ReactNode;
 };
 
-export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, onClose, placesSlot, worksSlot }: Props) {
+export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, placesSlot, worksSlot }: Props) {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
   // Bars are relative to the largest weight, so the top priority fills the bar.
   const maxWeight = Math.max(...CATEGORIES.map((c) => weights[c]), 0.0001);
@@ -81,7 +84,7 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
     );
   }
 
-  const facts = indicators ? describeAll(indicators) : undefined;
+  const facts = indicators ? describeAll(indicators, stages) : undefined;
   const ex = explainMatch(scores, weights, facts);
 
   return (
@@ -122,6 +125,9 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
                 <span className="font-semibold tabular-nums">{scores[c]}</span>
               </summary>
               {facts && <p className="mt-0.5 pl-5 text-xs leading-snug text-muted-foreground">{facts[c]}</p>}
+              {facts && c === "education" && (
+                <p className="mt-1 pl-5 text-[11px] leading-snug text-muted-foreground">{EDUCATION_CAVEAT}</p>
+              )}
             </details>
             <div className="mt-1 h-1.5 rounded-full bg-muted">
               <div

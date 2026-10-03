@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { EDUCATION_STAGES } from "../../types";
 import { importanceSchema, snapImportance } from "../scoring/preferences";
 
 export const MAX_MESSAGES = 12;
@@ -24,6 +25,8 @@ export type ChatMessage = z.infer<typeof chatRequestSchema>["messages"][number];
 export const chatOutputSchema = z.object({
   reply: z.string().min(1).max(600),
   importance: importanceSchema.nullable(),
+  /** Education life stages the user mentioned (e.g. a toddler → kindergarten); null when none were mentioned. */
+  stages: z.array(z.enum(EDUCATION_STAGES)).nullable(),
 });
 
 export type ChatResult = z.infer<typeof chatOutputSchema>;

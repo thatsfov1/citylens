@@ -7,6 +7,7 @@ export const importanceSchema = z.object({
   greenery: z.number().min(0).max(100),
   shopping: z.number().min(0).max(100),
   transport: z.number().min(0).max(100),
+  education: z.number().min(0).max(100),
 });
 
 export type Importance = z.infer<typeof importanceSchema>;
@@ -25,6 +26,7 @@ export const DEFAULT_IMPORTANCE: Importance = {
   greenery: 70,
   shopping: 20,
   transport: 50,
+  education: 20,
 };
 
 export function importanceToQuery(importance: Importance): string {

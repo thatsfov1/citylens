@@ -21,6 +21,7 @@ const EMOJI: Record<Category, string> = {
   greenery: "🌳",
   shopping: "🛍️",
   transport: "🚋",
+  education: "🎓",
 };
 
 /** Hand-picked, deterministic spots (lg+) in the side margins; below lg the circles wrap in a row. */
@@ -30,6 +31,7 @@ const POSITION: Record<Category, string> = {
   greenery: "lg:left-[12%] lg:top-[56%]",
   shopping: "lg:right-[11%] lg:top-[46%]",
   transport: "lg:right-[18%] lg:top-[78%]",
+  education: "lg:left-[18%] lg:top-[82%]",
 };
 
 /** How the panel was opened: hover closes it again when the pointer leaves, the others don't. */

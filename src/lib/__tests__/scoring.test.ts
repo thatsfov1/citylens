@@ -25,21 +25,21 @@ test("demo grid has a sensible number of cells", () => {
 });
 
 test("normalizeWeights sums to 1, and handles all-zero", () => {
-  const w = normalizeWeights({ sport: 50, culture: 10, greenery: 70, shopping: 20, transport: 50 });
+  const w = normalizeWeights({ sport: 50, culture: 10, greenery: 70, shopping: 20, transport: 50, education: 20 });
   assert.ok(Math.abs(CATEGORIES.reduce((s, c) => s + w[c], 0) - 1) < 1e-9);
-  const z = normalizeWeights({ sport: 0, culture: 0, greenery: 0, shopping: 0, transport: 0 });
-  assert.equal(z.sport, 0.2);
+  const z = normalizeWeights({ sport: 0, culture: 0, greenery: 0, shopping: 0, transport: 0, education: 0 });
+  assert.ok(Math.abs(z.sport - 1 / 6) < 1e-9);
 });
 
 test("personal score is the weighted sum", () => {
-  const scores = { sport: 100, culture: 0, greenery: 50, shopping: 0, transport: 0 };
-  const weights = { sport: 0.5, culture: 0, greenery: 0.5, shopping: 0, transport: 0 };
+  const scores = { sport: 100, culture: 0, greenery: 50, shopping: 0, transport: 0, education: 0 };
+  const weights = { sport: 0.5, culture: 0, greenery: 0.5, shopping: 0, transport: 0, education: 0 };
   assert.equal(calculatePersonalScore(scores, weights), 75);
 });
 
 test("explanation reflects priorities and weak spots", () => {
-  const scores = { sport: 80, culture: 20, greenery: 91, shopping: 67, transport: 88 };
-  const weights = { sport: 0.25, culture: 0.3, greenery: 0.2, shopping: 0.05, transport: 0.2 };
+  const scores = { sport: 80, culture: 20, greenery: 91, shopping: 67, transport: 88, education: 50 };
+  const weights = { sport: 0.25, culture: 0.3, greenery: 0.2, shopping: 0.05, transport: 0.2, education: 0 };
   const ex = explainMatch(scores, weights);
   assert.ok(ex.reasons.length > 0);
   assert.ok(ex.considerations.some((c) => c.startsWith("Culture")));

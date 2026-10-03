@@ -6,7 +6,7 @@ import { GREEN_COLOR, PLACE_COLORS, formatDistance, kindLabel, placeTitle } from
 import { cn } from "@/lib/utils";
 
 const COLORS: Record<Category, string> = { ...PLACE_COLORS, greenery: GREEN_COLOR };
-const ORDER: Category[] = ["greenery", "sport", "culture", "shopping", "transport"];
+const ORDER: Category[] = ["greenery", "sport", "culture", "shopping", "transport", "education"];
 
 type Props = {
   places: PlacesResponse;
