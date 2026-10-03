@@ -30,6 +30,8 @@ export function MapExperience({
   const [mode, setMode] = useState<MapMode>("forYou");
   // Safety is optional data: the view and the filter only appear when cells carry safety indicators.
   const hasSafety = useMemo(() => hexes.some((h) => h.safety != null), [hexes]);
+  // Air quality is optional data too: the view only appears when cells carry air indicators.
+  const hasAir = useMemo(() => hexes.some((h) => h.air != null), [hexes]);
   const [minSafety, setMinSafety] = useState(hasSafety ? initialMinSafety : 0);
   const changeMinSafety = (v: number) => {
     setMinSafety(v);
@@ -81,7 +83,7 @@ export function MapExperience({
   const pinKey = `${mode}|${selected}`;
   const [pinOverride, setPinOverride] = useState<{ key: string; cats: Set<Category> } | null>(null);
   const pinCategories = useMemo(
-    () => (pinOverride?.key === pinKey ? pinOverride.cats : defaultPinCategories(mode === "safety" ? "forYou" : mode, weights)),
+    () => (pinOverride?.key === pinKey ? pinOverride.cats : defaultPinCategories(mode === "safety" || mode === "air" ? "forYou" : mode, weights)),
     [pinOverride, pinKey, mode, weights],
   );
   const togglePin = (c: Category) => {
@@ -118,7 +120,7 @@ export function MapExperience({
           Adjust preferences
         </Link>
         <div className="pointer-events-auto max-w-full sm:absolute sm:left-1/2 sm:-translate-x-1/2">
-          <ModeSelector mode={mode} onChange={setMode} hasSafety={hasSafety} />
+          <ModeSelector mode={mode} onChange={setMode} hasSafety={hasSafety} hasAir={hasAir} />
         </div>
       </div>
 
@@ -127,6 +129,7 @@ export function MapExperience({
         <AreaPanel
           scores={hex?.scores ?? null}
           safety={hex?.safety ?? null}
+          air={hex?.air ?? null}
           minSafety={minSafety}
           district={hex?.district ?? null}
           indicators={details?.indicators ?? null}
@@ -188,17 +191,17 @@ function Legend({ mode, minSafety }: { mode: MapMode; minSafety: number }) {
   return (
     <div className="pointer-events-none absolute left-3 top-28 rounded-xl border border-border/70 bg-white/90 px-3 py-2 shadow-lg shadow-black/5 backdrop-blur sm:bottom-6 sm:left-4 sm:top-auto">
       <div className="mb-1.5 text-[11px] font-medium text-slate-600">
-        {mode === "forYou" ? "Match for you" : mode === "safety" ? "Safety indicators" : "Category score"}
+        {mode === "forYou" ? "Match for you" : mode === "safety" ? "Safety indicators" : mode === "air" ? "Air quality" : "Category score"}
       </div>
       <div className="h-2 w-40 rounded-full" style={{ background: LEGEND_GRADIENT }} />
       <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-        <span>{mode === "forYou" ? "Weaker match" : mode === "safety" ? "Fewer in favour" : "Low"}</span>
-        <span>{mode === "forYou" ? "Stronger match" : mode === "safety" ? "More in favour" : "High"}</span>
+        <span>{mode === "forYou" ? "Weaker match" : mode === "safety" ? "Fewer in favour" : mode === "air" ? "More particulates" : "Low"}</span>
+        <span>{mode === "forYou" ? "Stronger match" : mode === "safety" ? "More in favour" : mode === "air" ? "Cleaner air" : "High"}</span>
       </div>
       {mode !== "forYou" && (
         <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <span className="size-2.5 rounded-sm" style={{ background: NO_DATA_COLOR }} />
-          {mode === "safety" ? "No safety data" : "Nothing nearby (no data)"}
+          {mode === "safety" ? "No safety data" : mode === "air" ? "No station in reach" : "Nothing nearby (no data)"}
         </div>
       )}
       {mode !== "safety" && minSafety > 0 && (
@@ -210,6 +213,11 @@ function Legend({ mode, minSafety }: { mode: MapMode; minSafety: number }) {
       {mode === "safety" && (
         <div className="mt-1 max-w-52 text-[10px] leading-snug text-muted-foreground">
           Street lighting, cameras and police, fire and hospital access nearby (OpenStreetMap). Indicators, not a verdict on an area.
+        </div>
+      )}
+      {mode === "air" && (
+        <div className="mt-1 max-w-52 text-[10px] leading-snug text-muted-foreground">
+          Particulate matter (PM10) from GIOŚ stations, interpolated between them. A recent snapshot, not a measurement at each spot.
         </div>
       )}
       <div className="mt-1 text-[10px] text-muted-foreground">

@@ -24,9 +24,14 @@ export type HexData = {
    * Not a category: it is used as a minimum-level filter, never in the weighted score.
    */
   safety?: number | null;
+  /**
+   * Air quality, 0–100 (higher = cleaner), interpolated from a few stations. null/absent = no station in reach.
+   * Not a category: shown as its own map view and in the area panel, never in the weighted score.
+   */
+  air?: number | null;
 };
 
-export type MapMode = "forYou" | Category | "safety";
+export type MapMode = "forYou" | Category | "safety" | "air";
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   sport: "Sport",

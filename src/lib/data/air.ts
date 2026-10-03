@@ -1,0 +1,92 @@
+import { haversine, type LngLat } from "./geo";
+
+// Air-quality indicators per cell (0–100, higher = cleaner air). Deterministic and sourced: every number comes
+// from data/air/stations.json (GIOŚ stations). A cell's value is INTERPOLATED from the few stations around it —
+// it is not a measurement at that spot, and it describes the air, not the neighbourhood (AGENTS.md §3).
+
+export type AirStation = {
+  id: number;
+  name: string;
+  lng: number;
+  lat: number;
+  /** Mean PM2.5 / PM10 in µg/m³ over the snapshot window; absent when the station doesn't measure it. */
+  pm25?: number;
+  pm10?: number;
+  /** Timestamp (local time, as published) of the newest hourly value used. */
+  asOf?: string;
+};
+
+export type AirFile = { source: string; fetched: string; note: string; stations: AirStation[] };
+
+export type AirIndicator = {
+  /** Interpolated concentrations in µg/m³ (rounded to 0.1); absent when no station in reach measures it. */
+  pm25?: number;
+  pm10?: number;
+  /** How many stations contributed, and the closest one. */
+  stations: number;
+  nearest: { name: string; distanceM: number };
+  /** Date of the snapshot (YYYY-MM-DD). */
+  asOf: string;
+};
+
+/** Stations further than this don't describe a cell; beyond it the cell has no air data (unknown ≠ clean). */
+export const AIR_REACH_M = 6000;
+
+/** PM2.5 / PM10 (µg/m³) at which the score is 100 and 0 — loosely the WHO 2021 annual guideline and "poor" EAQI. */
+const SCALE = {
+  pm25: { best: 5, worst: 50 },
+  pm10: { best: 15, worst: 100 },
+} as const;
+
+type Pollutant = keyof typeof SCALE;
+
+/** Inverse-distance-squared mean of the stations that measure `key` within reach; null if none. */
+function idw(center: LngLat, stations: AirStation[], key: Pollutant): { value: number; used: number } | null {
+  let sum = 0;
+  let weight = 0;
+  let used = 0;
+  for (const s of stations) {
+    const v = s[key];
+    if (v === undefined) continue;
+    const d = haversine(center, [s.lng, s.lat]);
+    if (d > AIR_REACH_M) continue;
+    const w = 1 / Math.max(d, 100) ** 2; // floor so a cell on top of a station doesn't divide by ~0
+    sum += v * w;
+    weight += w;
+    used++;
+  }
+  return used === 0 ? null : { value: sum / weight, used };
+}
+
+export function interpolateAir(center: LngLat, file: AirFile): AirIndicator | null {
+  const pm25 = idw(center, file.stations, "pm25");
+  const pm10 = idw(center, file.stations, "pm10");
+  if (!pm25 && !pm10) return null;
+  let nearest: AirIndicator["nearest"] | null = null;
+  const inReach = new Set<number>();
+  for (const s of file.stations) {
+    const d = haversine(center, [s.lng, s.lat]);
+    if (d > AIR_REACH_M || (s.pm25 === undefined && s.pm10 === undefined)) continue;
+    inReach.add(s.id);
+    if (!nearest || d < nearest.distanceM) nearest = { name: s.name, distanceM: Math.round(d) };
+  }
+  const r1 = (n: number) => Math.round(n * 10) / 10;
+  return {
+    ...(pm25 ? { pm25: r1(pm25.value) } : {}),
+    ...(pm10 ? { pm10: r1(pm10.value) } : {}),
+    stations: inReach.size,
+    nearest: nearest as AirIndicator["nearest"],
+    asOf: file.fetched,
+  };
+}
+
+/**
+ * 0–100, higher = cleaner. PM10 drives the score because far more stations report it than PM2.5 (in the committed
+ * snapshot 5 vs 2), so the score is comparable across the whole city; PM2.5 is shown as extra context where known.
+ */
+export function airScore(air: AirIndicator): number {
+  const key: Pollutant = air.pm10 !== undefined ? "pm10" : "pm25";
+  const v = air[key] as number;
+  const { best, worst } = SCALE[key];
+  return Math.round(100 * Math.min(1, Math.max(0, (worst - v) / (worst - best))));
+}

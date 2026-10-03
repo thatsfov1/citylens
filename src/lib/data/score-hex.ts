@@ -1,5 +1,6 @@
 import { haversine, pointInPolygon, type LngLat, type Ring } from "./geo";
 import type { District, GreenArea, Poi, PoiCategory } from "./osm";
+import type { AirIndicator } from "./air";
 import type { SafetyIndicators } from "./safety";
 
 // Deterministic, explainable per-cell scoring from OSM features.
@@ -53,6 +54,8 @@ export type CellIndicators = Record<PoiCategory, PoiIndicators> & {
   greenery: GreenIndicators;
   /** Safety indicators (street lighting, official crime stats); absent when there is no data for the cell. */
   safety?: SafetyIndicators;
+  /** Interpolated air quality (GIOŚ stations); absent when no station is within reach. */
+  air?: AirIndicator;
 };
 
 export function scorePoiCategory(center: LngLat, pois: Poi[], scale = 1): PoiIndicators {

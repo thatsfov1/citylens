@@ -12,13 +12,20 @@ export function ModeSelector({
   mode,
   onChange,
   hasSafety = false,
+  hasAir = false,
 }: {
   mode: MapMode;
   onChange: (m: MapMode) => void;
   /** Show the Safety view only when the data has safety indicators. */
   hasSafety?: boolean;
+  /** Show the Air quality view only when the data has air-quality indicators. */
+  hasAir?: boolean;
 }) {
-  const modes = hasSafety ? [...MODES, { id: "safety" as MapMode, label: "Safety" }] : MODES;
+  const modes = [
+    ...MODES,
+    ...(hasSafety ? [{ id: "safety" as MapMode, label: "Safety" }] : []),
+    ...(hasAir ? [{ id: "air" as MapMode, label: "Air quality" }] : []),
+  ];
   return (
     <div
       role="tablist"

@@ -4,6 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { cellToLatLng } from "h3-js";
 import { cellPolygon, getDemoCells } from "../../src/lib/h3/grid";
 import { parseDistricts, parseGreen, parsePois, type PoiCategory } from "../../src/lib/data/osm";
+import { airScore, interpolateAir, type AirFile } from "../../src/lib/data/air";
 import { combineTransport, type GtfsFile } from "../../src/lib/data/gtfs";
 import {
   cctvRaw,
@@ -61,6 +62,12 @@ function main() {
   const litShare = lighting ? cityLitShare(lighting) : 0;
   console.log("safety:", lighting ? `lighting ${lighting.points.length} segments` : "no lighting data", "|", features ? `features ${features.points.length} points` : "no street features", "|", crime ? `crime ${crime.year}` : "no crime data");
 
+  // Air quality: GIOŚ station snapshot (data/air/stations.json, built by scripts/air/build-air.ts), interpolated to
+  // each cell. Cells with no station within reach get a null air score.
+  const airPath = process.env.AIR_FILE ?? "data/air/stations.json";
+  const air = existsSync(airPath) ? (JSON.parse(readFileSync(airPath, "utf8")) as AirFile) : null;
+  console.log("air:", air ? `${air.stations.length} stations, snapshot ${air.fetched}` : "no air data");
+
   const rows = cells.map((h3Index) => {
     const [lat, lng] = cellToLatLng(h3Index);
     const center: LngLat = [lng, lat];
@@ -78,7 +85,8 @@ function main() {
     if (!built) for (const k of ["cctv", "emergency", "nightlife"] as const) delete safety[k];
     const c = crime ? crimeIndicator(district, crime) : null;
     if (c) safety.crime = c;
-    return { h3Index, district, indicators: { ...indicators, ...(built || c ? { safety } : {}) } };
+    const a = air ? interpolateAir(center, air) : null;
+    return { h3Index, district, indicators: { ...indicators, ...(built || c ? { safety } : {}), ...(a ? { air: a } : {}) } };
   });
 
   // Per-indicator scores are percentile ranks over the cells that have data (higher = better), then combined.
@@ -113,14 +121,15 @@ function main() {
 
   const q = (s: string) => `'${s.replace(/'/g, "''")}'`;
   const values = rows.map((r, i) => {
-    const { greenery, ...rest } = r.indicators; // `rest` still carries safety when present
+    const { greenery, ...rest } = r.indicators; // `rest` still carries safety and air when present
+    const airValue = r.indicators.air ? airScore(r.indicators.air) : null;
     const ind = JSON.stringify({ ...rest, greenery }, (k, v) => (k === "raw" || k === "litShare" ? Math.round(v * 1000) / 1000 : v));
     const wkt = `POLYGON((${cellPolygon(r.h3Index).map(([x, y]) => `${x.toFixed(6)} ${y.toFixed(6)}`).join(",")}))`;
-    return `(${q(r.h3Index)},ST_GeomFromText('${wkt}',4326),${scores.sport[i]},${scores.culture[i]},${scores.greenery[i]},${scores.shopping[i]},${scores.transport[i]},${safetyScores[i] ?? "null"},${r.district ? q(r.district) : "null"},${q(ind)}::jsonb)`;
+    return `(${q(r.h3Index)},ST_GeomFromText('${wkt}',4326),${scores.sport[i]},${scores.culture[i]},${scores.greenery[i]},${scores.shopping[i]},${scores.transport[i]},${safetyScores[i] ?? "null"},${airValue ?? "null"},${r.district ? q(r.district) : "null"},${q(ind)}::jsonb)`;
   });
   writeFileSync(
     "supabase/seed.sql",
-    `insert into public.hex_scores (h3_index, geometry, sport_score, culture_score, greenery_score, shopping_score, transport_score, safety_score, district, indicators) values\n${values.join(",\n")}\non conflict (h3_index) do update set geometry=excluded.geometry, sport_score=excluded.sport_score, culture_score=excluded.culture_score, greenery_score=excluded.greenery_score, shopping_score=excluded.shopping_score, transport_score=excluded.transport_score, safety_score=excluded.safety_score, district=excluded.district, indicators=excluded.indicators;\n`,
+    `insert into public.hex_scores (h3_index, geometry, sport_score, culture_score, greenery_score, shopping_score, transport_score, safety_score, air_score, district, indicators) values\n${values.join(",\n")}\non conflict (h3_index) do update set geometry=excluded.geometry, sport_score=excluded.sport_score, culture_score=excluded.culture_score, greenery_score=excluded.greenery_score, shopping_score=excluded.shopping_score, transport_score=excluded.transport_score, safety_score=excluded.safety_score, air_score=excluded.air_score, district=excluded.district, indicators=excluded.indicators;\n`,
   );
   console.log("wrote supabase/seed.sql with", rows.length, "rows;", rows.filter((r) => !r.district).length, "without district");
 }

@@ -168,6 +168,23 @@ export function describeSafetyParts(ind: HexIndicators): SafetyPartInfo[] {
   return out;
 }
 
+/** Air-quality facts for the panel: the interpolated values, where they come from and how recent they are. */
+export function describeAir(ind: HexIndicators): string[] {
+  const a = ind.air;
+  if (!a) return [];
+  const out: string[] = [];
+  if (a.pm10 !== undefined) out.push(`PM10 about ${a.pm10} µg/m³`);
+  if (a.pm25 !== undefined) out.push(`PM2.5 about ${a.pm25} µg/m³`);
+  out.push(
+    `Interpolated from ${a.stations} ${a.stations === 1 ? "station" : "stations"}; the nearest, ${a.nearest.name}, is ${metres(a.nearest.distanceM)} away`,
+  );
+  return out;
+}
+
+/** What the air-quality figure can and cannot tell you. Shown in the panel. */
+export const AIR_CAVEAT =
+  "A recent snapshot (mean of the last few days of hourly readings), not an annual average, and an estimate between a handful of official stations rather than a measurement at this spot. Air changes a lot with season and weather. Source: GIOŚ.";
+
 /** Night-time context shown next to the safety level. Informational: not part of the score. */
 export function describeNightlife(ind: HexIndicators): string | null {
   const n = ind.safety?.nightlife;

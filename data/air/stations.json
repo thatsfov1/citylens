@@ -1,0 +1,57 @@
+{
+ "source": "GIOŚ — Główny Inspektorat Ochrony Środowiska (api.gios.gov.pl)",
+ "fetched": "2026-10-03",
+ "note": "Mean of the hourly values available from the API (about the last 3 days), µg/m³.",
+ "stations": [
+  {
+   "id": 400,
+   "name": "Aleja Krasińskiego",
+   "lng": 19.926189,
+   "lat": 50.057678,
+   "pm25": 17.4,
+   "asOf": "2026-10-03 18:00:00",
+   "pm10": 35.5
+  },
+  {
+   "id": 401,
+   "name": "ul. Bujaka",
+   "lng": 19.949189,
+   "lat": 50.010575,
+   "pm10": 33.5,
+   "asOf": "2026-10-03 17:00:00"
+  },
+  {
+   "id": 402,
+   "name": "ul. Bulwarowa",
+   "lng": 20.053492,
+   "lat": 50.069308,
+   "pm25": 15.6,
+   "asOf": "2026-10-03 18:00:00",
+   "pm10": 32.3
+  },
+  {
+   "id": 10447,
+   "name": "Os. Wadów",
+   "lng": 20.122561,
+   "lat": 50.100569,
+   "pm10": 21,
+   "asOf": "2026-10-03 17:00:00"
+  },
+  {
+   "id": 11303,
+   "name": "Os. Swoszowice",
+   "lng": 19.936792,
+   "lat": 49.991442,
+   "pm10": 23.2,
+   "asOf": "2026-10-03 17:00:00"
+  },
+  {
+   "id": 16896,
+   "name": "ul. Kamieńskiego",
+   "lng": 19.97846,
+   "lat": 50.024605,
+   "pm10": 37,
+   "asOf": "2026-10-03 18:00:00"
+  }
+ ]
+}

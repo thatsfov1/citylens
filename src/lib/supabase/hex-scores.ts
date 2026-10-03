@@ -16,11 +16,12 @@ const rowSchema = z.object({
   shopping_score: score,
   transport_score: score,
   safety_score: score.nullable(),
+  air_score: score.nullable(),
   district: z.string().nullable(),
 });
 
 // Scores + district only: the heavy `indicators` JSON is fetched per hex on demand.
-const LIST_COLUMNS = "h3_index,sport_score,culture_score,greenery_score,shopping_score,transport_score,safety_score,district";
+const LIST_COLUMNS = "h3_index,sport_score,culture_score,greenery_score,shopping_score,transport_score,safety_score,air_score,district";
 
 export type HexSource = "supabase" | "mock";
 
@@ -38,6 +39,7 @@ export async function loadHexes(): Promise<{ hexes: HexData[]; source: HexSource
         h3Index: r.h3_index,
         district: r.district,
         safety: r.safety_score,
+        air: r.air_score,
         scores: {
           sport: r.sport_score,
           culture: r.culture_score,
@@ -91,6 +93,15 @@ const indicatorsSchema = z.object({
       crime: z
         .object({ area: z.string(), year: z.number(), per1000: z.number(), cityPer1000: z.number() })
         .optional(),
+    })
+    .optional(),
+  air: z
+    .object({
+      pm25: z.number().optional(),
+      pm10: z.number().optional(),
+      stations: z.number(),
+      nearest: z.object({ name: z.string(), distanceM: z.number() }),
+      asOf: z.string(),
     })
     .optional(),
 });
