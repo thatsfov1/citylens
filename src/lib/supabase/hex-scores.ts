@@ -3,7 +3,7 @@ import { cellToLatLng, isValidCell } from "h3-js";
 import { createClient } from "./server";
 import { getHexData } from "../mock-data/hexes";
 import { MAX_RADIUS_M } from "../data/score-hex";
-import { MAX_REACH_M, bboxAround, selectPlaces } from "../data/places";
+import { bboxAround, selectPlaces } from "../data/places";
 import type { LngLat } from "../data/geo";
 import type { HexData, HexIndicators, PlacesResponse } from "../../types";
 
@@ -116,15 +116,10 @@ export async function loadPlaces(h3Index: string): Promise<PlacesResponse | null
     const center: LngLat = [lng, lat];
     const supabase = await createClient();
 
-    const far = bboxAround(center, MAX_REACH_M);
     const near = bboxAround(center, MAX_RADIUS_M);
     const [poisRes, greenRes] = await Promise.all([
-      supabase
-        .from("pois")
-        .select("id,category,kind,name,lat,lng")
-        .gte("lat", far.minLat).lte("lat", far.maxLat)
-        .gte("lng", far.minLng).lte("lng", far.maxLng)
-        .limit(5000),
+      // Picked in the database (nearest per category): a bbox select is capped at 1000 rows by the API.
+      supabase.rpc("nearest_pois", { p_lat: lat, p_lng: lng }),
       supabase
         .from("green_areas")
         .select("name,area_ha,geometry")

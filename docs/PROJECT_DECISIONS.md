@@ -162,20 +162,17 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
 - **Why a new table instead of more `indicators`:** pins need every place's coordinates; storing them in
   `hex_scores.indicators` would duplicate the same POI across neighbouring hexes. Selection (reach, caps)
   happens at request time in `selectPlaces`, so the caps can change without recomputing anything.
-- Only the sample was used to build the UI; the pin/list/fly-in behaviour has not been verified against the
-  full-city data yet.
-
-### TODO for the colleague with the full OSM extracts (`data/osm/full/`)
-
-1. `git pull`, then apply the migration `supabase/migrations/20261003000300_places.sql` if the live DB lacks it
-   (it is already applied to the shared Supabase project).
-2. `OSM_DIR=data/osm/full npx tsx scripts/osm/export-places.ts` → regenerates `supabase/seed-places.sql`
-   (all POIs + green areas ≥ 0.5 ha). Commit it only if its size is reasonable; otherwise load it and keep it out of git.
-3. Load it into Supabase with write access (Supabase MCP / SQL editor / service role). The file starts with
-   `truncate … restart identity`, so it replaces the demo rows; the inserts are chunked (500 POIs / 50 green areas per statement).
-4. Check `GET /api/hexes/<id>/places` for a central and an outer hex (expect pins in range, parks present).
-5. Spot-check on the map: fly-in, rings, pins per mode, park outlines, list hover/click. Tune `CAP`/`BUS_CAP` in
-   `src/lib/data/places.ts` and the 0.5 ha green threshold in the export script if it feels crowded or sparse.
+- **Full-city places are loaded** (15,234 places, 2,490 green areas; transport pins = the same GTFS stops + OSM rail
+  stations as the scores, via `combineTransport`). The full extracts live only on the backend dev's machine, so that
+  person regenerates and loads them: `OSM_DIR=data/osm/full OUT_FILE=<somewhere outside git> npx tsx scripts/osm/export-places.ts`
+  (≈4 MB; do not commit). The Supabase Management API rejects one 4 MB request (HTTP 413): split the file at statement
+  boundaries into ≈1 MB parts and run them in order (first part holds the `truncate`). `supabase/seed-places.sql` in git
+  stays the small dev sample.
+- **`nearest_pois()` (migration `…000400`)**: `loadPlaces` no longer selects by bounding box. The API caps responses
+  at 1000 rows, and in the dense centre a 2 km box holds thousands of places, so the "nearest 10" came out wrong (only
+  one category showed). The SQL function ranks by distance per category (rail/tram separate from buses) and
+  `selectPlaces` still makes the final selection. Constants (reach 2 km culture / 1 km others) are duplicated in the
+  SQL — keep them in sync with `reachM` in `src/lib/data/places.ts`.
 
 ## 7. Code layout & ownership
 

@@ -1,10 +1,13 @@
 // Exports individual places + green outlines (pins shown when a hexagon is opened) to supabase/seed-places.sql.
-// Usage: OSM_DIR=data/osm/full npx tsx scripts/osm/export-places.ts   (default: the small sample in data/osm)
+// Usage: OSM_DIR=data/osm/full [OUT_FILE=…] npx tsx scripts/osm/export-places.ts   (default: the small sample in data/osm)
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { combineTransport, type GtfsFile } from "../../src/lib/data/gtfs";
 import { parseGreen, parsePois } from "../../src/lib/data/osm";
 import type { Ring } from "../../src/lib/data/geo";
 
 const OSM_DIR = process.env.OSM_DIR ?? "data/osm";
+const OUT_FILE = process.env.OUT_FILE ?? "supabase/seed-places.sql";
+const GTFS_FILE = process.env.GTFS_FILE ?? "data/gtfs/stops.json";
 const MIN_GREEN_M2 = 5_000;
 const read = (name: string) => {
   const path = `${OSM_DIR}/${name}.json`;
@@ -28,7 +31,13 @@ function simplify(ring: Ring): Ring {
 }
 
 function main() {
-  const pois = parsePois(read("pois"));
+  let pois = parsePois(read("pois"));
+  // Same transport source as the scores (scripts/osm/compute.ts): GTFS bus/tram stops + OSM rail stations.
+  if (existsSync(GTFS_FILE)) {
+    const osmOther = pois.filter((p) => p.category !== "transport");
+    const transport = combineTransport(pois.filter((p) => p.category === "transport"), JSON.parse(readFileSync(GTFS_FILE, "utf8")) as GtfsFile);
+    pois = [...osmOther, ...transport];
+  }
   const green = parseGreen(read("green")).filter((g) => g.areaM2 >= MIN_GREEN_M2);
 
   const poiRows = pois.map((p) => `(${q(p.category)},${q(p.kind)},${q(p.name)},${r5(p.at[1])},${r5(p.at[0])})`);
@@ -46,7 +55,7 @@ function main() {
     ...chunks(poiRows, 500).map((c) => `insert into public.pois (category, kind, name, lat, lng) values\n${c.join(",\n")};`),
     ...chunks(greenRows, 50).map((c) => `insert into public.green_areas (name, area_ha, min_lat, max_lat, min_lng, max_lng, geometry) values\n${c.join(",\n")};`),
   ].join("\n");
-  writeFileSync("supabase/seed-places.sql", sql + "\n");
-  console.log(`wrote supabase/seed-places.sql: ${poiRows.length} pois, ${greenRows.length} green areas (from ${OSM_DIR})`);
+  writeFileSync(OUT_FILE, sql + "\n");
+  console.log(`wrote ${OUT_FILE}: ${poiRows.length} pois, ${greenRows.length} green areas (from ${OSM_DIR})`);
 }
 main();

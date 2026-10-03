@@ -35,3 +35,11 @@ export function gtfsToPois(file: GtfsFile): Poi[] {
     departuresPerHour: s.departuresPerHour,
   }));
 }
+
+/**
+ * Transport places used for scoring and pins: measured GTFS service for bus/tram, plus OSM rail stations
+ * (the city feeds have no trains). Keeps scores and map pins on the same data.
+ */
+export function combineTransport(osmTransport: Poi[], gtfs: GtfsFile): Poi[] {
+  return [...osmTransport.filter((p) => p.kind === "rail_station"), ...gtfsToPois(gtfs)];
+}

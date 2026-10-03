@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { cellToLatLng } from "h3-js";
 import { cellPolygon, getDemoCells } from "../../src/lib/h3/grid";
 import { parseDistricts, parseGreen, parsePois, type PoiCategory } from "../../src/lib/data/osm";
-import { gtfsToPois, type GtfsFile } from "../../src/lib/data/gtfs";
+import { combineTransport, type GtfsFile } from "../../src/lib/data/gtfs";
 import { CATEGORY_DISTANCE_SCALE, findDistrict, normalizeRaw, scoreGreenery, scorePoiCategory } from "../../src/lib/data/score-hex";
 import type { LngLat } from "../../src/lib/data/geo";
 import type { Category } from "../../src/types";
@@ -30,9 +30,8 @@ function main() {
   // which the city feeds don't cover. Without data/gtfs/stops.json we fall back to OSM stops.
   const gtfsPath = process.env.GTFS_FILE ?? "data/gtfs/stops.json";
   if (existsSync(gtfsPath)) {
-    const gtfs = gtfsToPois(JSON.parse(readFileSync(gtfsPath, "utf8")) as GtfsFile);
-    byCat.transport = [...byCat.transport.filter((p) => p.kind === "rail_station"), ...gtfs];
-    console.log("transport: GTFS", gtfs.length, "stops + OSM rail stations");
+    byCat.transport = combineTransport(byCat.transport, JSON.parse(readFileSync(gtfsPath, "utf8")) as GtfsFile);
+    console.log("transport: GTFS stops + OSM rail stations,", byCat.transport.length, "places");
   } else console.log("transport: OSM stops only (no", gtfsPath + ")");
 
   const rows = cells.map((h3Index) => {
