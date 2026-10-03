@@ -22,7 +22,7 @@ test("parking entries appear only for people with a car, and the grey dot is nam
   assert.deepEqual(parking?.entries.map((e) => e.id), ["carpark", "parkride", "meter"]);
   const meter = parking?.entries.find((e) => e.id === "meter");
   assert.match(meter?.label ?? "", /parkometr/i);
-  assert.match(meter?.meaning ?? "", /paid/i);
+  assert.match(meter?.meaning ?? "", /płatne/i);
   assert.match(parking?.note ?? "", /nie gwarantuje/i);
 });
 
