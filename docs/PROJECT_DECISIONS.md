@@ -346,6 +346,6 @@ changes a score.
   "Why it matches you", "Things to consider". **Detail** (`PanelView` = a category, `safety`, `air` or `works`): one category's score, its
   data-backed fact, its places (`CategoryPlaces`, `places-list.tsx`) and, for education, the stage filter and caveat. "← Overview" goes back.
 - Open detail state lives in `MapExperience` and is tied to the selected hexagon (resets on a new click). Pins follow the map mode / top
-  weights by default; each overview bar has a dot that toggles that category's pins (multi-select, resets on a new hexagon or mode).
+  weights by default; each overview bar has a dot that toggles that category's pins (multi-select; kept across hexagons, resets when the map mode changes).
   Opening a category detail adds its pins to the selection.
 - The education stage filter and the safety filter sit at the top of the overview only (the stage filter is also inside the education detail).

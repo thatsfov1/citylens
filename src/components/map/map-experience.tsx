@@ -127,8 +127,8 @@ export function MapExperience({
   const view = detail.hex === selected ? detail.view : null;
   const setView = (v: PanelView | null) => setDetail({ hex: selected, view: v });
   // Pins: the active mode (or top preferences), adjustable per category. Overrides are tied to the
-  // (mode, hexagon) they were made in, so they reset on change. An open category detail always adds its pins.
-  const pinKey = `${mode}|${selected}`;
+  // mode they were made in (they reset when it changes) and persist across hexagons. An open category detail always adds its pins.
+  const pinKey = mode;
   const [pinOverride, setPinOverride] = useState<{ key: string; cats: Set<Category> } | null>(null);
   const basePins = useMemo(
     () => (pinOverride?.key === pinKey ? pinOverride.cats : defaultPinCategories(mode === "safety" ? "forYou" : mode, weights)),
