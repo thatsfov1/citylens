@@ -11,17 +11,11 @@ const MODES: { id: MapMode; label: string }[] = [
 export function ModeSelector({
   mode,
   onChange,
-  hasSafety = false,
 }: {
   mode: MapMode;
   onChange: (m: MapMode) => void;
-  /** Show the safety view only when the data has safety indicators. */
-  hasSafety?: boolean;
 }) {
-  const modes = [
-    ...MODES,
-    ...(hasSafety ? [{ id: "safety" as MapMode, label: "Bezpieczeństwo" }] : []),
-  ];
+  const modes = MODES;
   return (
     <div
       role="tablist"

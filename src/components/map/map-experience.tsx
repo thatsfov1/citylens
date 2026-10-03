@@ -86,7 +86,7 @@ export function MapExperience({
   const start = initialShare ?? { ...DEFAULT_SHARE, shared: false };
   // Safety is optional data: the view and the filter only appear when cells carry safety indicators.
   const hasSafety = useMemo(() => hexes.some((h) => h.safety != null), [hexes]);
-  const [mode, setMode] = useState<MapMode>(start.mode === "safety" && !hasSafety ? "forYou" : start.mode);
+  const [mode, setMode] = useState<MapMode>(start.mode === "safety" ? "forYou" : start.mode);
   const [minSafety, setMinSafety] = useState(hasSafety ? initialMinSafety : 0);
   const changeMinSafety = (v: number) => {
     setMinSafety(v);
@@ -512,7 +512,7 @@ export function MapExperience({
         )}
         </div>
         <div className="pointer-events-auto max-w-full sm:absolute sm:left-1/2 sm:-translate-x-1/2">
-          <ModeSelector mode={mode} onChange={setMode} hasSafety={hasSafety} />
+          <ModeSelector mode={mode} onChange={setMode} />
         </div>
         <ShareMenu
           getUrl={() => buildShareUrl(window.location.origin, currentSearch(), shareState())}
