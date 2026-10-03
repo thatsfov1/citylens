@@ -56,18 +56,21 @@ export function Landing({ initial }: { initial?: Importance }) {
                 setRent(nextRent);
               }}
             />
-            {importance && (
-              <Button
-                type="button"
-                onClick={() => {
-                  const edu = importance.education > 0 && stages ? stagesToParam(stages) : null;
-                  router.push(`/map?${importanceToQuery(importance)}${edu ? `&edu=${edu}` : ""}${anchor ? `&${anchorToQuery(anchor)}` : ""}${rent ? `&${rentToQuery(rent)}` : ""}`);
-                }}
-                className="mt-5 h-12 w-full justify-between rounded-none bg-[#252d27] px-5 text-sm font-normal text-white hover:bg-[#39443b]"
-              >
-                Pokaż moją mapę
-                <ArrowRight className="size-4" aria-hidden />
-              </Button>
+            <Button
+              type="button"
+              disabled={!importance}
+              onClick={() => {
+                if (!importance) return;
+                const edu = importance.education > 0 && stages ? stagesToParam(stages) : null;
+                router.push(`/map?${importanceToQuery(importance)}${edu ? `&edu=${edu}` : ""}${anchor ? `&${anchorToQuery(anchor)}` : ""}${rent ? `&${rentToQuery(rent)}` : ""}`);
+              }}
+              className="mt-5 h-12 w-full justify-between rounded-none bg-[#252d27] px-5 text-sm font-normal text-white hover:bg-[#39443b] disabled:bg-stone-200 disabled:text-stone-500"
+            >
+              Pokaż moją mapę
+              <ArrowRight className="size-4" aria-hidden />
+            </Button>
+            {!importance && (
+              <p className="mt-2 text-xs text-stone-500">Opisz, czego szukasz, aby zobaczyć mapę.</p>
             )}
           </div>
         </section>
