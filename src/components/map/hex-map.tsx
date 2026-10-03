@@ -171,12 +171,6 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     const safetyPct = hexes.map(() => 0);
     withSafety.forEach((i, k) => (safetyPct[i] = safetyRanks[k]));
     pct.safety = safetyPct;
-    // Air view: same treatment — percentile among cells with a station in reach, the rest are "no data".
-    const withAir = hexes.flatMap((h, i) => (h.air == null ? [] : [i]));
-    const airRanks = percentileRanks(withAir.map((i) => hexes[i].air as number));
-    const airPct = hexes.map(() => 0);
-    withAir.forEach((i, k) => (airPct[i] = airRanks[k]));
-    pct.air = airPct;
     // Below the user's minimum safety level (unknown ≠ unsafe: cells without data are never filtered out).
     const belowMin = hexes.map((h) => minSafety > 0 && h.safety != null && h.safety < minSafety);
     const cells = hexes.map((h) => h.h3Index);
@@ -188,7 +182,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
           values: pct[m],
           // Nothing nearby in a category ≠ weak match: shown as "no data".
           noData: hexes.map((h) =>
-            m === "safety" ? h.safety == null : m === "air" ? h.air == null : m !== "forYou" && h.scores[m as Category] === 0,
+            m === "safety" ? h.safety == null : m !== "forYou" && h.scores[m as Category] === 0,
           ),
         },
       ]),
@@ -199,14 +193,13 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     ) as Record<MapMode, GeoJSON.FeatureCollection>;
     const geojson: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
-      features: hexes.map(({ h3Index, scores, district, safety, air }, i) => ({
+      features: hexes.map(({ h3Index, scores, district, safety }, i) => ({
         type: "Feature",
         properties: {
           h3Index,
           district: district ?? "",
           ...scores,
           safety: safety ?? null,
-          air: air ?? null,
           belowMin: belowMin[i] ? 1 : 0,
           personal: personal[i],
           ...Object.fromEntries(
@@ -505,13 +498,10 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       if (!props) return;
       const m = modeRef.current;
       const noSafety = m === "safety" && props.safety == null;
-      const noAir = m === "air" && props.air == null;
       const value = m === "forYou" ? props.personal : props[m];
       const label = noSafety
         ? "No safety data"
-        : noAir
-          ? "No air data"
-          : m !== "forYou" && m !== "safety" && m !== "air" && props[m] === 0
+        : m !== "forYou" && m !== "safety" && props[m] === 0
           ? "Nothing nearby"
           : BAND_LABELS[bandOf(props[pctProp(m)] as number)];
       setTip({
@@ -519,7 +509,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         y: e.point.y,
         district: (props.district as string) || "Kraków",
         label: m !== "safety" && props.belowMin === 1 ? `${label} · below your minimum safety` : label,
-        value: noSafety || noAir ? "" : `${Math.round(value as number)}`,
+        value: noSafety ? "" : `${Math.round(value as number)}`,
       });
     });
     map.on("mouseleave", "hex-fill", () => {

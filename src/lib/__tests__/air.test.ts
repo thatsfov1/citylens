@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AIR_REACH_M, airScore, interpolateAir, type AirFile, type AirIndicator } from "../data/air";
+import { AIR_REACH_M, airLevel, airScore, interpolateAir, type AirFile, type AirIndicator } from "../data/air";
 
 const center: [number, number] = [19.9372, 50.0614];
 const at = (m: number): { lng: number; lat: number } => ({ lng: center[0], lat: center[1] + m / 110574 });
@@ -64,4 +64,14 @@ test("PM2.5 is used for the score only when PM10 is missing", () => {
   const base = { stations: 1, nearest: { name: "A", distanceM: 1 }, asOf: "2026-10-03" };
   assert.equal(airScore({ ...base, pm10: 15, pm25: 50 }), 100);
   assert.equal(airScore({ ...base, pm25: 50 }), 0);
+});
+
+test("air level follows the PM10 bands, falling back to PM2.5", () => {
+  const base = { stations: 1, nearest: { name: "A", distanceM: 1 }, asOf: "2026-10-03" };
+  assert.equal(airLevel({ ...base, pm10: 15 }), "good");
+  assert.equal(airLevel({ ...base, pm10: 30 }), "fair");
+  assert.equal(airLevel({ ...base, pm10: 45 }), "moderate");
+  assert.equal(airLevel({ ...base, pm10: 80 }), "poor");
+  assert.equal(airLevel({ ...base, pm10: 300 }), "very poor");
+  assert.equal(airLevel({ ...base, pm25: 15 }), "fair");
 });

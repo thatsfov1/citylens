@@ -1,4 +1,5 @@
 import type { Category, HexIndicators } from "../../types";
+import { airLevel } from "../data/air";
 import { CCTV_RADIUS_M, EMERGENCY_REACH_M, LIGHTING_RADIUS_M, NIGHTLIFE_RADIUS_M, partShares, type SafetyPart } from "../data/safety";
 
 // Turns stored OSM indicators into short, factual sentences. Deterministic; no LLM involved.
@@ -179,6 +180,12 @@ export function describeAir(ind: HexIndicators): string[] {
     `Interpolated from ${a.stations} ${a.stations === 1 ? "station" : "stations"}; the nearest, ${a.nearest.name}, is ${metres(a.nearest.distanceM)} away`,
   );
   return out;
+}
+
+/** One-line, plain-language reading of the air for a quick look; null when the area has no air data. */
+export function describeAirLevel(ind: HexIndicators): string | null {
+  if (!ind.air) return null;
+  return `Recently ${airLevel(ind.air)} here: handy for a quick eyeball, not a precise reading.`;
 }
 
 /** What the air-quality figure can and cannot tell you. Shown in the panel. */

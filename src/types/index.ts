@@ -26,12 +26,12 @@ export type HexData = {
   safety?: number | null;
   /**
    * Air quality, 0–100 (higher = cleaner), interpolated from a few stations. null/absent = no station in reach.
-   * Not a category: shown as its own map view and in the area panel, never in the weighted score.
+   * Not a category: shown only in the area panel, never on the map or in the weighted score.
    */
   air?: number | null;
 };
 
-export type MapMode = "forYou" | Category | "safety" | "air";
+export type MapMode = "forYou" | Category | "safety";
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   sport: "Sport",

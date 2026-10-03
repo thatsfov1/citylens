@@ -80,6 +80,20 @@ export function interpolateAir(center: LngLat, file: AirFile): AirIndicator | nu
   };
 }
 
+export const AIR_LEVELS = ["good", "fair", "moderate", "poor", "very poor"] as const;
+export type AirLevel = (typeof AIR_LEVELS)[number];
+
+/** Upper bounds (µg/m³) of the first four levels, following the European Air Quality Index bands. */
+const LEVEL_BOUNDS = { pm10: [20, 40, 50, 100], pm25: [10, 20, 25, 50] } as const;
+
+/** Plain-language level for quick reading; uses PM10 like the score, PM2.5 only when PM10 is missing. */
+export function airLevel(air: AirIndicator): AirLevel {
+  const key: Pollutant = air.pm10 !== undefined ? "pm10" : "pm25";
+  const v = air[key] as number;
+  const i = LEVEL_BOUNDS[key].findIndex((max) => v < max);
+  return AIR_LEVELS[i === -1 ? AIR_LEVELS.length - 1 : i];
+}
+
 /**
  * 0–100, higher = cleaner. PM10 drives the score because far more stations report it than PM2.5 (in the committed
  * snapshot 5 vs 2), so the score is comparable across the whole city; PM2.5 is shown as extra context where known.

@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { Check, ChevronRight, Info, MapPin, ShieldCheck, Wind, X } from "lucide-react";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
-import { AIR_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
+import { AIR_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describeAirLevel, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
 import type { HexSource } from "@/lib/supabase/hex-scores";
 import {
   CATEGORIES,
@@ -133,7 +133,7 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
         <SafetySection safety={safety} minSafety={minSafety} indicators={indicators} />
       )}
 
-      {air !== null && <AirSection air={air} indicators={indicators} />}
+      {air !== null && <AirSection indicators={indicators} />}
 
       {placesSlot}
 
@@ -169,8 +169,9 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
   );
 }
 
-function AirSection({ air, indicators }: { air: number; indicators: HexIndicators | null }) {
+function AirSection({ indicators }: { indicators: HexIndicators | null }) {
   const facts = indicators ? describeAir(indicators) : [];
+  const level = indicators ? describeAirLevel(indicators) : null;
   return (
     <div className="mt-4 rounded-2xl border border-border/70 p-3.5">
       <div className="flex items-center justify-between text-sm">
@@ -178,11 +179,8 @@ function AirSection({ air, indicators }: { air: number; indicators: HexIndicator
           <Wind className="size-4 text-slate-700" />
           Air quality
         </span>
-        <span className="font-semibold tabular-nums">{air}/100</span>
       </div>
-      <div className="mt-1.5 h-1.5 rounded-full bg-muted">
-        <div className="h-full rounded-full bg-slate-800 transition-all" style={{ width: `${air}%` }} />
-      </div>
+      {level && <p className="mt-1.5 text-xs text-slate-700">{level}</p>}
       {facts.length > 0 && (
         <ul className="mt-2 space-y-1 text-xs text-slate-700">
           {facts.map((f) => (
