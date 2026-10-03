@@ -19,27 +19,23 @@ import {
 export const isRentActive = (f: Filter) => f.min > RENT_MIN || f.max < RENT_MAX;
 
 /** Monthly rent budget: two handles (the ends mean "no limit"), the flat size, and whether czynsz counts. */
-export function RentFilter({ value, onChange, inline = false, car = false }: { value: Filter; onChange: (v: Filter) => void; inline?: boolean; car?: boolean }) {
+export function RentFilter({ value, onChange, car = false }: { value: Filter; onChange: (v: Filter) => void; car?: boolean }) {
   const active = isRentActive(value);
   const fee = cityRent(value.rooms)?.fee ?? null;
   return (
-    <div className={inline ? "" : "border-b border-border/70 px-5 py-3"}>
+    <div>
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          <Banknote className="size-3.5" />
-          Monthly rent budget
-        </div>
+        <div className="text-sm font-semibold tabular-nums">Monthly rent: {formatRentRange(value)}</div>
         {active && (
           <button
             type="button"
             onClick={() => onChange({ ...value, min: RENT_MIN, max: RENT_MAX })}
             className="text-[11px] font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
           >
-            Reset
+            Reset range
           </button>
         )}
       </div>
-      <div className="mt-2 text-sm font-semibold tabular-nums">{formatRentRange(value)}</div>
       <Slider
         className="mt-3"
         min={RENT_MIN}

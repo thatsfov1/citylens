@@ -522,3 +522,18 @@ changes a score.
   with a legend entry and the same caveat.
 - Limits: OSM access/fee tags are incomplete (untagged lots count as public); street parking is not a space count; meters are from
   2019; no pin tooltips yet; refresh the snapshot by re-running the script.
+
+
+## Map key and the Filters window
+
+- **Map key:** the legend card has a "Map key" button that expands a list of what each symbol means. It is data
+  (`src/lib/map/key.ts`, tested in `map-key.test.ts`) drawn by `map-key.tsx`, and only lists what is on the map now: places and
+  green outlines when an area is open, **P / P+R / parking meter (the grey dot)** only with "I have a car", the hexagon badges
+  (safety, air, works, compare), rings, compared outline, route and work marker. The "Strongest areas" and "District borders" rows are
+  always listed because those toggles live inside `HexMap`. Parking pins show a tooltip (hover on desktop, tap on touch) with their
+  name and the no-guarantee reminder; taps on pins do not select the hexagon under them. Pin colours and the caveat text are shared
+  constants in `src/lib/scoring/parking.ts`.
+- **Filters window** (`filters-window.tsx`, `filter-group.tsx`): one collapsible group per filter (Rent budget, Car and parking,
+  Minimum safety level, Education stages) with the current value in the header; groups with a value set start open, otherwise the
+  first one does. The window scrolls on short screens and has "Reset all" (rent range, safety, education stages; not the car switch).
+  `SafetyFilter` / `StageFilter` moved out of `map-experience.tsx`.

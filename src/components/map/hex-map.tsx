@@ -1,6 +1,6 @@
 "use client";
 
-import type { ParkingPin } from "@/lib/scoring/parking";
+import { PARKING_CAVEAT, PARKING_COLORS, type ParkingPin } from "@/lib/scoring/parking";
 import { FULL_SHARE } from "@/lib/scoring/rent";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
@@ -25,6 +25,7 @@ const DISTRICT_LINE_SOURCE = "district-outlines";
 const DISTRICT_LABEL_SOURCE = "district-labels";
 const PLACES_SOURCE = "places";
 const PARKING_SOURCE = "parking-pins";
+const PARKING_PIN_LAYERS = ["parking-lot", "parking-meter"];
 const GREEN_SOURCE = "place-green";
 const RING_SOURCE = "place-rings";
 const ROUTE_SOURCE = "commute-route";
@@ -211,6 +212,8 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
   const fitRef = useRef<{ zoom: number; center: [number, number] } | null>(null);
   const [zoomedIn, setZoomedIn] = useState(false);
   const [tip, setTip] = useState<Tip | null>(null);
+  // Tooltip of a parking pin: hover on desktop, tap on touch screens.
+  const [pinTip, setPinTip] = useState<{ x: number; y: number; label: string } | null>(null);
   const modeRef = useRef(mode);
   const [showTop, setShowTop] = useState(false);
   const showTopRef = useRef(showTop);
@@ -620,7 +623,7 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
         type: "circle",
         source: PARKING_SOURCE,
         filter: ["==", ["get", "kind"], "meter"],
-        paint: { "circle-radius": 3, "circle-color": "#64748b", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1, "circle-opacity": 0.9 },
+        paint: { "circle-radius": 4, "circle-color": PARKING_COLORS.meter, "circle-stroke-color": "#ffffff", "circle-stroke-width": 1, "circle-opacity": 0.9 },
       });
       map.addLayer({
         id: "parking-lot",
@@ -629,7 +632,7 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
         filter: ["!=", ["get", "kind"], "meter"],
         paint: {
           "circle-radius": ["case", ["==", ["get", "kind"], "parkride"], 11, 8],
-          "circle-color": ["case", ["==", ["get", "kind"], "parkride"], "#7c3aed", "#1d4ed8"],
+          "circle-color": ["case", ["==", ["get", "kind"], "parkride"], PARKING_COLORS.parkride, PARKING_COLORS.carpark],
           "circle-stroke-color": "#ffffff",
           "circle-stroke-width": 1.5,
         },
@@ -657,17 +660,18 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
     });
     map.on("mouseleave", "place-pins", () => onHoverPlaceRef.current(null));
     map.on("click", "hex-fill", (e) => {
-      if (map.queryRenderedFeatures(e.point, { layers: ["place-pins"] }).length > 0) return;
+      if (map.queryRenderedFeatures(e.point, { layers: ["place-pins", ...PARKING_PIN_LAYERS] }).length > 0) return;
       const id = e.features?.[0]?.properties?.h3Index as string | undefined;
       if (id) onSelectRef.current(id);
     });
     map.on("click", (e) => {
       if (!map.getLayer("hex-fill")) return;
       if (
-        map.queryRenderedFeatures(e.point, { layers: ["hex-fill", "place-pins"] }).length === 0
+        map.queryRenderedFeatures(e.point, { layers: ["hex-fill", "place-pins", ...PARKING_PIN_LAYERS] }).length === 0
       ) {
         onSelectRef.current(null);
       }
+      if (map.queryRenderedFeatures(e.point, { layers: PARKING_PIN_LAYERS }).length === 0) setPinTip(null);
     });
     map.on("mousemove", "hex-fill", (e) => {
       map.getCanvas().style.cursor = "pointer";
@@ -696,6 +700,21 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
         value: noSafety ? "" : `${Math.round(value as number)}`,
       });
     });
+    for (const layer of PARKING_PIN_LAYERS) {
+      const show = (e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) => {
+        const label = e.features?.[0]?.properties?.label as string | undefined;
+        if (label) setPinTip({ x: e.point.x, y: e.point.y, label });
+      };
+      map.on("mousemove", layer, (e) => {
+        map.getCanvas().style.cursor = "help";
+        show(e);
+      });
+      map.on("click", layer, show);
+      map.on("mouseleave", layer, () => {
+        map.getCanvas().style.cursor = "";
+        setPinTip(null);
+      });
+    }
     map.on("mouseleave", "hex-fill", () => {
       map.getCanvas().style.cursor = "";
       map.setFilter("hex-hover", ["==", ["get", "h3Index"], ""]);
@@ -974,6 +993,16 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
         District borders
       </button>
       </div>
+      {pinTip && (
+        <div
+          role="tooltip"
+          className="pointer-events-none absolute z-10 max-w-60 rounded-lg border border-border/70 bg-white/95 px-2.5 py-1.5 text-xs shadow-lg backdrop-blur"
+          style={{ left: pinTip.x + 14, top: pinTip.y + 14 }}
+        >
+          <div className="font-medium text-slate-900">{pinTip.label}</div>
+          <div className="mt-0.5 text-[11px] text-slate-500">{PARKING_CAVEAT}</div>
+        </div>
+      )}
       {tip && (
         <div
           className="pointer-events-none absolute z-10 rounded-lg border border-border/70 bg-white/95 px-2.5 py-1.5 text-xs shadow-lg backdrop-blur"
