@@ -1,6 +1,6 @@
 "use client";
 
-import { Banknote } from "lucide-react";
+import { Banknote, ExternalLink } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import {
   RENT_MAX,
@@ -10,6 +10,7 @@ import {
   ROOMS_OPTIONS,
   formatRentRange,
   formatZl,
+  otodomUrl,
   type RentFilter as Filter,
   type RentFit,
   type RentStats,
@@ -75,14 +76,23 @@ export function RentFilter({ value, onChange, inline = false }: { value: Filter;
         {active
           ? "Districts whose typical rent is outside the range are greyed out and left out of “Strongest areas”. Districts with too few listings stay lightly shaded."
           : "Optional: grey out districts whose typical asking rent is outside your budget."}{" "}
-        Asking prices from {RENT_META.listings.toLocaleString("en")} listings (Otodom, {RENT_META.snapshot}), per district.
+        Asking prices from {RENT_META.listings.toLocaleString("en")} listings on Otodom.pl (snapshot {RENT_META.snapshot}), per district.
       </p>
+      <a
+        href={otodomUrl(value)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-800"
+      >
+        Browse these offers on Otodom
+        <ExternalLink className="size-3" aria-hidden />
+      </a>
     </div>
   );
 }
 
 /** The typical rent of the selected area for the chosen flat size, with how it fits the budget. */
-export function RentSection({ stats, rooms, fit, district }: { stats: RentStats | null; rooms: Rooms; fit: RentFit; district: string | null }) {
+export function RentSection({ stats, rooms, fit, district, filter }: { stats: RentStats | null; rooms: Rooms; fit: RentFit; district: string | null; filter: Filter }) {
   const size = ROOMS_OPTIONS.find((r) => r.value === rooms)?.label ?? "";
   return (
     <div className="mt-5 rounded-2xl border border-border/70 p-4">
@@ -108,12 +118,21 @@ export function RentSection({ stats, rooms, fit, district }: { stats: RentStats 
             Middle half of offers: {formatZl(stats.p25)} – {formatZl(stats.p75)} / month
           </div>
           <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
-            Asking prices in {district ?? "this district"} from {stats.n} listings{stats.n < 15 ? " (few offers, treat as rough)" : ""}. An estimate for the whole district, not for this hexagon.
+            Asking prices in {district ?? "this district"} from {stats.n} listings on Otodom.pl ({RENT_META.snapshot}){stats.n < 15 ? ", few offers, treat as rough" : ""}. An estimate for the whole district, not for this hexagon.
           </p>
         </>
       ) : (
         <p className="mt-2 text-sm text-muted-foreground">Too few listings for {size.toLowerCase()} flats in {district ?? "this district"} to estimate.</p>
       )}
+      <a
+        href={otodomUrl(filter, district)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-800"
+      >
+        See current offers{district ? ` in ${district}` : ""} on Otodom
+        <ExternalLink className="size-3" aria-hidden />
+      </a>
     </div>
   );
 }
