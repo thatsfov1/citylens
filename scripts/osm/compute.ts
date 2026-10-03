@@ -8,8 +8,9 @@ import { findDistrict, normalizeRaw, scoreGreenery, scorePoiCategory } from "../
 import type { LngLat } from "../../src/lib/data/geo";
 import type { Category } from "../../src/types";
 
+const OSM_DIR = process.env.OSM_DIR ?? "data/osm";
 const read = (name: string) => {
-  const path = `data/osm/${name}.json`;
+  const path = `${OSM_DIR}/${name}.json`;
   if (!existsSync(path)) throw new Error(`${path} missing — run: npx tsx scripts/osm/fetch.ts`);
   return JSON.parse(readFileSync(path, "utf8"));
 };

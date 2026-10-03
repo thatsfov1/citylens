@@ -3,6 +3,7 @@
 // Data © OpenStreetMap contributors, ODbL.
 import { mkdirSync, writeFileSync } from "node:fs";
 
+const OUT_DIR = process.env.OSM_DIR ?? "data/osm";
 const BBOX = "49.95,19.75,50.15,20.15"; // s,w,n,e — covers the city with margin
 const MIRRORS = [
   "https://overpass-api.de/api/interpreter",
@@ -23,11 +24,11 @@ const QUERIES: Record<string, string> = {
   nwr["leisure"~"^(park|garden|nature_reserve)$"](${BBOX});
   nwr["landuse"~"^(forest|recreation_ground|village_green)$"](${BBOX});
   nwr["natural"="wood"](${BBOX});
-);out geom tags;`,
+);out geom;`,
   districts: `[out:json][timeout:180];
 area["name"="Kraków"]["admin_level"="6"]->.k;
 rel(area.k)["boundary"="administrative"]["admin_level"="9"];
-out geom tags;`,
+out geom;`,
 };
 
 async function run(name: string) {
@@ -38,11 +39,14 @@ async function run(name: string) {
         method: "POST",
         body: new URLSearchParams({ data: QUERIES[name] }),
         headers: { "User-Agent": "winhackyeah-smart-city/0.1" },
+        signal: AbortSignal.timeout(120_000),
       });
       if (!res.ok) throw new Error(`${res.status}`);
-      const json = (await res.json()) as { elements: unknown[] };
-      mkdirSync("data/osm", { recursive: true });
-      writeFileSync(`data/osm/${name}.json`, JSON.stringify(json.elements));
+      const json = (await res.json()) as { elements: { members?: unknown[] }[] };
+      // Some mirrors answer `out geom` for relations without member geometry — try the next one.
+      if (name === "districts" && !json.elements.some((e) => e.members?.length)) throw new Error("no geometry");
+      mkdirSync(OUT_DIR, { recursive: true });
+      writeFileSync(`${OUT_DIR}/${name}.json`, JSON.stringify(json.elements));
       console.log(name, json.elements.length, "elements from", url);
       return;
     } catch (e) {

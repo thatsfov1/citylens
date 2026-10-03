@@ -34,3 +34,28 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Data & attribution
+
+Points of interest, green areas and district boundaries come from
+[OpenStreetMap](https://www.openstreetmap.org/copyright) — © OpenStreetMap contributors,
+available under the [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/).
+
+### OSM data pipeline
+
+The demo never calls Overpass at runtime. Raw extracts are downloaded once, scored offline, and the
+per-hex scores are stored in Supabase.
+
+```bash
+# 1. Download full extracts (gitignored, ~20 MB) from the Overpass API
+OSM_DIR=data/osm/full npx tsx scripts/osm/fetch.ts [pois|green|districts]
+
+# 2. Score every hex from the full data -> writes supabase/seed.sql
+OSM_DIR=data/osm/full npx tsx scripts/osm/compute.ts
+
+# 3. (Optional) refresh the small committed sample in data/osm/ used for dev/tests
+npx tsx scripts/osm/sample.ts
+```
+
+`data/osm/*.json` is a small deterministic **sample** (not the whole city) so the pipeline can run
+without the full download. Real scores must be computed from `data/osm/full/`.
