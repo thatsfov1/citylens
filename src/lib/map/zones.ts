@@ -6,6 +6,10 @@ export const BAND_COUNT = 5;
 /** Muted red → orange → yellow → light green → green. */
 export const BAND_COLORS = ["#d9695f", "#e49a5c", "#e8d26a", "#9bc77a", "#4ea36f"] as const;
 
+/** Extra pseudo-band for hexes with nothing nearby in a category (shown neutral grey). */
+export const NO_DATA_BAND = BAND_COUNT;
+export const NO_DATA_COLOR = "#b8bec6";
+
 export const BAND_LABELS = [
   "Weaker match",
   "Below-average match",
@@ -23,7 +27,7 @@ export function bandOf(pct: number): number {
  * (multi)polygon, so no borders are drawn between them.
  */
 export function bandZones(cells: string[], bands: number[]): GeoJSON.FeatureCollection {
-  const byBand: string[][] = Array.from({ length: BAND_COUNT }, () => []);
+  const byBand: string[][] = Array.from({ length: BAND_COUNT + 1 }, () => []);
   cells.forEach((cell, i) => byBand[bands[i]].push(cell));
   return {
     type: "FeatureCollection",

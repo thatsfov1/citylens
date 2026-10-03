@@ -8,8 +8,8 @@ import { cellPolygon } from "@/lib/h3/grid";
 import { KRAKOW_BOUNDS, boundaryFeature, outsideMaskFeature } from "@/lib/h3/mask";
 import { calculatePersonalScore } from "@/lib/scoring/personal-score";
 import { percentileRanks } from "@/lib/scoring/percentile";
-import { BAND_COLORS, BAND_LABELS, bandOf, bandZones } from "@/lib/map/zones";
-import { CATEGORIES, type CategoryWeights, type HexData, type MapMode } from "@/types";
+import { BAND_COLORS, BAND_LABELS, NO_DATA_BAND, NO_DATA_COLOR, bandOf, bandZones } from "@/lib/map/zones";
+import { CATEGORIES, type Category, type CategoryWeights, type HexData, type MapMode } from "@/types";
 
 const SOURCE = "hexes";
 const ZONES_SOURCE = "zones";
@@ -42,6 +42,7 @@ const hexToRgba = (hex: string, a: number) => {
   return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
 };
 const BAND_FILLS = BAND_COLORS.map((c) => hexToRgba(c, ZONE_ALPHA));
+const NO_DATA_FILL = hexToRgba(NO_DATA_COLOR, 0.45);
 
 export const LEGEND_GRADIENT = `linear-gradient(to right, ${BAND_COLORS.map(
   (c, i) => `${c} ${i * 20}%, ${c} ${(i + 1) * 20}%`,
@@ -53,6 +54,8 @@ const zoneColorExpression = [
   "match",
   ["get", "band"],
   ...BAND_FILLS.slice(0, -1).flatMap((c, i) => [i, c]),
+  NO_DATA_BAND,
+  NO_DATA_FILL,
   BAND_FILLS[BAND_FILLS.length - 1],
 ] as unknown as maplibregl.ExpressionSpecification;
 
@@ -84,7 +87,16 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
     }
     const cells = hexes.map((h) => h.h3Index);
     const zones = Object.fromEntries(
-      Object.entries(pct).map(([m, v]) => [m, bandZones(cells, v.map(bandOf))]),
+      Object.entries(pct).map(([m, v]) => [
+        m,
+        bandZones(
+          cells,
+          v.map((p, i) =>
+            // Nothing nearby in a category ≠ weak match: shown as "no data".
+            m !== "forYou" && hexes[i].scores[m as Category] === 0 ? NO_DATA_BAND : bandOf(p),
+          ),
+        ),
+      ]),
     ) as Record<MapMode, GeoJSON.FeatureCollection>;
     const geojson: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
@@ -275,7 +287,10 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
         x: e.point.x,
         y: e.point.y,
         district: (props.district as string) || "Kraków",
-        label: BAND_LABELS[bandOf(props[pctProp(m)] as number)],
+        label:
+          m !== "forYou" && props[m] === 0
+            ? "Nothing nearby"
+            : BAND_LABELS[bandOf(props[pctProp(m)] as number)],
         value: `${Math.round(value as number)}`,
       });
     });
