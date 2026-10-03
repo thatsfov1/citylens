@@ -16,13 +16,15 @@ const rowSchema = z.object({
   greenery_score: score,
   shopping_score: score,
   transport_score: score,
+  education_score: score,
+  education_stages: z.object({ kindergarten: score, primary: score, secondary: score, university: score }).nullable(),
   safety_score: score.nullable(),
   air_score: score.nullable(),
   district: z.string().nullable(),
 });
 
 // Scores + district only: the heavy `indicators` JSON is fetched per hex on demand.
-const LIST_COLUMNS = "h3_index,sport_score,culture_score,greenery_score,shopping_score,transport_score,safety_score,air_score,district";
+const LIST_COLUMNS = "h3_index,sport_score,culture_score,greenery_score,shopping_score,transport_score,education_score,education_stages,safety_score,air_score,district";
 
 export type HexSource = "supabase" | "mock";
 
@@ -41,12 +43,14 @@ export async function loadHexes(): Promise<{ hexes: HexData[]; source: HexSource
         district: r.district,
         safety: r.safety_score,
         air: r.air_score,
+        educationStages: r.education_stages ?? undefined,
         scores: {
           sport: r.sport_score,
           culture: r.culture_score,
           greenery: r.greenery_score,
           shopping: r.shopping_score,
           transport: r.transport_score,
+          education: r.education_score,
         },
       })),
     };
@@ -75,6 +79,8 @@ const indicatorsSchema = z.object({
   culture: poiIndicator,
   shopping: poiIndicator,
   transport: poiIndicator,
+  // Optional: rows scored before education existed have no such key.
+  education: poiIndicator.extend({ stages: z.object({ kindergarten: poiIndicator, primary: poiIndicator, secondary: poiIndicator, university: poiIndicator }) }).optional(),
   greenery: z.object({
     raw: z.number(),
     coverShare: z.number(),
@@ -131,7 +137,7 @@ export async function loadHexDetails(h3Index: string): Promise<HexDetails | null
 
 const poiRow = z.object({
   id: z.number(),
-  category: z.enum(["sport", "culture", "shopping", "transport"]),
+  category: z.enum(["sport", "culture", "shopping", "transport", "education"]),
   kind: z.string(),
   name: z.string().nullable(),
   lat: z.number(),

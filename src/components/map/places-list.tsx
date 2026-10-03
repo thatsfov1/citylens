@@ -1,101 +1,68 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import { CATEGORY_LABELS, type Category, type PlacesResponse } from "@/types";
 import { GREEN_COLOR, PLACE_COLORS, formatDistance, kindLabel, placeTitle } from "@/lib/map/places";
 import { cn } from "@/lib/utils";
 
 const COLORS: Record<Category, string> = { ...PLACE_COLORS, greenery: GREEN_COLOR };
-const ORDER: Category[] = ["greenery", "sport", "culture", "shopping", "transport"];
 
 type Props = {
+  category: Category;
   places: PlacesResponse;
-  active: ReadonlySet<Category>;
-  onToggle: (c: Category) => void;
   hovered: number | null;
   onHover: (id: number | null) => void;
   onFocus: (id: number) => void;
 };
 
-/** Category chips (what is pinned on the map) + the places grouped by category. */
-export function PlacesList({ places, active, onToggle, hovered, onHover, onFocus }: Props) {
+/** The real places behind one category's score (the same ones pinned on the map). */
+export function CategoryPlaces({ category: c, places, hovered, onHover, onFocus }: Props) {
   const parks = places.green.features;
-  return (
-    <section className="mt-6">
-      <h3 className="text-sm font-semibold">Places behind these scores</h3>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {ORDER.map((c) => (
-          <button
-            key={c}
-            type="button"
-            aria-pressed={active.has(c)}
-            onClick={() => onToggle(c)}
-            className={cn(
-              "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-              active.has(c) ? "border-slate-800 bg-slate-800 text-white" : "border-border bg-white hover:bg-muted",
-            )}
-          >
-            <span className="size-2 rounded-full" style={{ background: COLORS[c] }} />
-            {CATEGORY_LABELS[c]}
-          </button>
-        ))}
-      </div>
+  const items = c === "greenery" ? [] : places.places.filter((p) => p.category === c);
+  const count = c === "greenery" ? parks.length : items.length;
 
-      {ORDER.filter((c) => active.has(c)).map((c) => {
-        const items = c === "greenery" ? [] : places.places.filter((p) => p.category === c);
-        if (c === "greenery" ? parks.length === 0 : items.length === 0) {
-          return (
-            <p key={c} className="mt-3 text-xs text-muted-foreground">
-              {CATEGORY_LABELS[c]}: nothing within reach.
-            </p>
-          );
-        }
-        return (
-          <details key={c} className="group mt-3">
-            <summary className="flex cursor-pointer list-none items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground [&::-webkit-details-marker]:hidden">
-              <ChevronRight className="size-3.5 transition-transform group-open:rotate-90" />
-              {CATEGORY_LABELS[c]}
-              <span className="font-normal normal-case tracking-normal">
-                ({c === "greenery" ? parks.length : items.length})
-              </span>
-            </summary>
-            <ul className="mt-1">
-              {c === "greenery"
-                ? parks.map((f, i) => (
-                    <li key={i} className="flex justify-between gap-3 py-1 text-sm">
-                      <span className="truncate">{(f.properties?.name as string | null) ?? "Green area"}</span>
-                      <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
-                        {Number(f.properties?.areaHa).toFixed(1)} ha
-                      </span>
-                    </li>
-                  ))
-                : items.map((p) => (
-                    <li key={p.id}>
-                      <button
-                        type="button"
-                        onMouseEnter={() => onHover(p.id)}
-                        onMouseLeave={() => onHover(null)}
-                        onClick={() => onFocus(p.id)}
-                        className={cn(
-                          "flex w-full items-baseline justify-between gap-3 rounded-md px-1.5 py-1 text-left text-sm hover:bg-muted",
-                          hovered === p.id && "bg-muted",
-                        )}
-                      >
-                        <span className="min-w-0 truncate">
-                          <span className="mr-1.5 inline-block size-2 rounded-full" style={{ background: COLORS[c] }} />
-                          {placeTitle(p)}
-                          {p.name && <span className="ml-1.5 text-xs text-muted-foreground">{kindLabel(p.kind)}</span>}
-                        </span>
-                        <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
-                          {formatDistance(p.distanceM)}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-            </ul>
-          </details>
-        );
-      })}
+  return (
+    <section className="mt-5">
+      <h3 className="text-sm font-semibold">
+        Places behind this score <span className="font-normal text-muted-foreground">({count})</span>
+      </h3>
+      {count === 0 ? (
+        <p className="mt-2 text-xs text-muted-foreground">{CATEGORY_LABELS[c]}: nothing within reach.</p>
+      ) : (
+        <ul className="mt-1.5">
+          {c === "greenery"
+            ? parks.map((f, i) => (
+                <li key={i} className="flex justify-between gap-3 py-1 text-sm">
+                  <span className="truncate">{(f.properties?.name as string | null) ?? "Green area"}</span>
+                  <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
+                    {Number(f.properties?.areaHa).toFixed(1)} ha
+                  </span>
+                </li>
+              ))
+            : items.map((p) => (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    onMouseEnter={() => onHover(p.id)}
+                    onMouseLeave={() => onHover(null)}
+                    onClick={() => onFocus(p.id)}
+                    className={cn(
+                      "flex w-full items-baseline justify-between gap-3 rounded-md px-1.5 py-1 text-left text-sm hover:bg-muted",
+                      hovered === p.id && "bg-muted",
+                    )}
+                  >
+                    <span className="min-w-0 truncate">
+                      <span className="mr-1.5 inline-block size-2 rounded-full" style={{ background: COLORS[c] }} />
+                      {placeTitle(p)}
+                      {p.name && <span className="ml-1.5 text-xs text-muted-foreground">{kindLabel(p.kind)}</span>}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
+                      {formatDistance(p.distanceM)}
+                    </span>
+                  </button>
+                </li>
+              ))}
+        </ul>
+      )}
       <p className="mt-2 text-[11px] text-muted-foreground">
         Dashed rings mark 500 m and 1 km from the area’s centre. Source: OpenStreetMap.
       </p>

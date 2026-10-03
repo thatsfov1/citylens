@@ -1,12 +1,13 @@
 /**
- * Landing background: the Kraków video, softened (80% visible, blurred) over a light grey base.
- * The video is scaled up slightly so the blur does not leave soft edges. Hidden for reduced motion.
+ * Landing background: looping Kraków video (muted, decorative) under a dark scrim so light text stays readable.
+ * Put the file at `public/videos/krakow.mp4`. If it is missing (or the user prefers reduced motion) the dark
+ * base colour is shown instead, so the page still works.
  */
 export function Background({ videoSrc = "/videos/krakow.mp4" }: { videoSrc?: string }) {
   return (
-    <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden bg-[#ebebeb]">
+    <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden bg-ink">
       <video
-        className="absolute inset-0 size-full scale-110 object-cover opacity-80 blur-md motion-reduce:hidden"
+        className="absolute inset-0 size-full object-cover motion-reduce:hidden"
         src={videoSrc}
         autoPlay
         muted
@@ -14,7 +15,8 @@ export function Background({ videoSrc = "/videos/krakow.mp4" }: { videoSrc?: str
         playsInline
         preload="auto"
       />
-      <div className="absolute inset-0 bg-white/25" />
+      <div className="absolute inset-0 bg-ink/70" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/50" />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { haversine, pointInPolygon, type LngLat, type Ring } from "./geo";
-import type { District, GreenArea, Poi, PoiCategory } from "./osm";
+import { EDUCATION_KIND_STAGES, type District, type GreenArea, type Poi, type PoiCategory } from "./osm";
+import { EDUCATION_STAGES, type EducationStage } from "../../types";
 import type { AirIndicator } from "./air";
 import type { SafetyIndicators } from "./safety";
 
@@ -28,6 +29,16 @@ export const CATEGORY_DISTANCE_SCALE: Record<PoiCategory, number> = {
   culture: 2,
   shopping: 1,
   transport: 1,
+  // Widest stage reach (secondary / university); each stage has its own, see EDUCATION_STAGE_SCALE.
+  education: 2,
+};
+
+/** Reach multiplier per education stage: kindergartens and primary schools are walked to, older students travel. */
+export const EDUCATION_STAGE_SCALE: Record<EducationStage, number> = {
+  kindergarten: 1,
+  primary: 1,
+  secondary: 2,
+  university: 2,
 };
 
 export type Nearest = { name: string | null; kind: string; distanceM: number; departuresPerHour?: number };
@@ -50,7 +61,12 @@ export type GreenIndicators = {
   nearestPark: (Nearest & { areaHa: number }) | null;
 };
 
-export type CellIndicators = Record<PoiCategory, PoiIndicators> & {
+/** Education: the combined view (widest reach) plus one indicator set per life stage. */
+export type EducationIndicators = PoiIndicators & { stages: Record<EducationStage, PoiIndicators> };
+
+export type CellIndicators = Record<Exclude<PoiCategory, "education">, PoiIndicators> & {
+  /** Absent in rows scored before education existed. */
+  education?: EducationIndicators;
   greenery: GreenIndicators;
   /** Safety indicators (street lighting, official crime stats); absent when there is no data for the cell. */
   safety?: SafetyIndicators;
@@ -83,6 +99,19 @@ export function scorePoiCategory(center: LngLat, pois: Poi[], scale = 1): PoiInd
   const out: PoiIndicators = { radiusM, raw, within500, within1000, nearest };
   if (departures500 !== null) out.departuresPerHourWithin500 = Math.round(departures500 * 10) / 10;
   return out;
+}
+
+/**
+ * Education indicators for one cell. Each stage is scored only from the POIs serving it, within its own reach;
+ * the combined set (counts, nearest) uses all education POIs at the widest reach.
+ */
+export function scoreEducation(center: LngLat, pois: Poi[]): EducationIndicators {
+  const stages = {} as Record<EducationStage, PoiIndicators>;
+  for (const stage of EDUCATION_STAGES) {
+    const own = pois.filter((p) => EDUCATION_KIND_STAGES[p.kind]?.includes(stage));
+    stages[stage] = scorePoiCategory(center, own, EDUCATION_STAGE_SCALE[stage]);
+  }
+  return { ...scorePoiCategory(center, pois, CATEGORY_DISTANCE_SCALE.education), stages };
 }
 
 /** Distance in metres from a point to a ring's edge (local planar approximation). */

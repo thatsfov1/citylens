@@ -24,7 +24,7 @@ MapLibre map with H3 hexagons, area panel with data-backed explanations
 
 - Kraków only. H3 resolution 8, ~460 cells (461), clipped to Kraków's administrative boundary
   (`src/lib/h3/grid.ts`, `krakow-boundary.json`).
-- Categories: sport, culture, greenery, shopping, transport.
+- Categories: sport, culture, greenery, shopping, transport, education.
 - Scores are **real**, derived from OpenStreetMap, and already loaded in Supabase.
   `supabase/seed.sql` contains the same 461 rows (verified identical to the live table).
 - The LLM only converts text → importance values. It never scores or names places.
@@ -310,3 +310,104 @@ changes a score.
   Metro (construction tender planned ≈2030) and tram to Mistrzejowice are not included (no reliable geometry/dates yet).
   OSM `highway=construction` and ZTP GTFS-RT ServiceAlerts (`gtfs.ztp.krakow.pl/ServiceAlerts_*.pb`, free-text diversions) are possible
   additions. Permits only count within the last 12 months. Open-ended "ongoing" rows stay visible until the snapshot is refreshed.
+
+## Education category (kindergartens, schools, universities)
+
+- **Sixth weighted category** `education` (`CATEGORIES`, map mode, LLM importance, landing icon 🎓, default importance 20) with four
+  **life stages**: `kindergarten`, `primary`, `secondary`, `university` (`EDUCATION_STAGES` in `src/types`). A parent of a toddler and a
+  student want different maps, so the user picks the stages that matter; the score counts only those.
+- **Data (OSM only):** `amenity=kindergarten|childcare|school|university|college` in the `pois` Overpass query. OSM rarely tags school
+  level, so `classifyPoi` decides by `isced:level` (lowest listed level wins), else by Polish name (`Przedszkole|Żłobek`, `Podstawowa`,
+  `Liceum|Technikum|Branżowa|Zespół Szkół`), else the POI is kind `school` (**level unknown**) and counts for both primary and
+  secondary rather than being guessed. `EDUCATION_KIND_STAGES` (osm.ts) maps kind → stages.
+- **Scoring:** same machinery as other POI categories, one score per stage with its own reach (`EDUCATION_STAGE_SCALE`): kindergarten 1 km,
+  primary 1 km, secondary 2 km, university 2 km (the same distance bands stretched, like culture). Each stage is normalised on its own;
+  `hex_scores.education_score` = rounded mean of the four stage scores.
+- **Why `hex_scores.education_stages jsonb`** (not inside `indicators`): the map list query deliberately omits `indicators`, and the client must
+  recompute the education score for the selected stages on every hexagon. `educationScore` / `withEducationStages`
+  (`src/lib/scoring/education.ts`, tested) do the mean of the selected stage scores; deterministic, no round-trip. Mock data has no stages
+  and the stage filter is hidden then. `indicators.education` holds the facts (combined + per stage) for the panel; it is optional in the Zod
+  schema because older rows lack it.
+- **URL:** `?edu=kg,pr,se,un` (default: all, omitted). The landing page sets it only when the assistant returns stages (`ChatResult.stages`,
+  Zod enum array or null; prompt: toddler → kindergarten, school-age children → primary/secondary, studying → university). The map's
+  "Adjust preferences" link does not carry `edu` back yet.
+- **Places/pins:** `PlaceCategory` includes `education`; `selectPlaces` caps **per kind** (5) and uses the stage's own reach
+  (`placeReachM`), so a dense centre still shows the university next to many kindergartens. `nearest_pois()` was redefined (reach 2 km for
+  education, ranked per kind) — keep it in sync with `placeReachM`. Pins are filtered client-side to the selected stages.
+- **Copy rule:** "education access", never "good schools". The panel states the limits (`EDUCATION_CAVEAT`): counts of nearby places only —
+  **not quality, free places, or the school catchment (rejon) of an address.** Out of scope: rankings, capacity, tuition, travel time.
+- **Migration** `20261003000700_education.sql` adds `education_score` (not null default 0), `education_stages`, widens `pois.category`
+  and redefines `nearest_pois`. **Apply it before deploying this code** (`loadHexes` selects the new columns; otherwise the app silently
+  falls back to mock data). The real numbers need the full OSM extracts (`OSM_DIR=data/osm/full npx tsx scripts/osm/fetch.ts pois`, then
+  `compute.ts` and `export-places.ts`); the committed sample `data/osm/pois.json` predates the education tags and has no schools.
+
+## Area panel: overview + per-category detail
+- The side panel (`area-panel.tsx`) has two views. **Overview:** match %, six clickable category bars, small chips for works / safety / air,
+  "Why it matches you", "Things to consider". **Detail** (`PanelView` = a category, `safety`, `air` or `works`): one category's score, its
+  data-backed fact, its places (`CategoryPlaces`, `places-list.tsx`) and, for education, the stage filter and caveat. "← Overview" goes back.
+- Open detail state lives in `MapExperience` and is tied to the selected hexagon (resets on a new click). Pins follow the map mode / top
+  weights by default; each overview bar has a dot that toggles that category's pins (multi-select; kept across hexagons, resets when the map mode changes).
+  Opening a category detail adds its pins to the selection.
+- The education stage filter and the safety filter sit at the top of the overview only (the stage filter is also inside the education detail).
+
+## Caching of per-hexagon responses
+- Client: `src/lib/map/hex-cache.ts` (`fetchCached`) keeps successful `/api/hexes/[h3]`, `/places` and `/works` responses in memory for the
+  session, so clicking back to a hexagon makes no requests. Not persisted to web storage (reload clears it; failures are never cached).
+- Server: those routes send `Cache-Control: public, max-age=3600, stale-while-revalidate=86400` (works: 900 / 3600, since the snapshot is
+  refreshed daily; a failed works load answers `no-store`). **After reseeding `hex_scores`, `pois` or `works`, browsers may serve the old
+  copy for up to an hour** (a hard reload bypasses it).
+
+## "Your first match" (map load)
+- With real data (`source === "supabase"`, never the simulated demo scores) the map opens by selecting the top-scoring area, via the same fly-in
+  as a click. `strongestAreas` (`src/lib/scoring/first-match.ts`) ranks the top 10% by personal score (the same share the map highlights),
+  skips cells below the minimum safety level, and breaks ties by h3 index (deterministic). The ranking is fixed at that moment.
+- `FirstMatchCard` (top of the side panel, overview only) shows score, district, the first `explainMatch` reason, one trade-off only if the data
+  yields one, and one real contributing place (`topContributor`: nearest place of the highest-weighted category, or the largest park). It appears
+  only once the area's indicators have loaded, so it never shows generic text. Copy: "one of the stronger matches", never "best".
+- "Compare another area" walks the ranked list (wraps); dismissing the card (×) ends it. No side-by-side comparison yet.
+
+## Preference sensitivity ("How stable is this match?")
+- Overview-panel card (`sensitivity-section.tsx`) fed by `computeSensitivity` (`src/lib/scoring/sensitivity.ts`, tested). It nudges each category's
+  importance ±25 (clamped, no-op nudges skipped), recomputes every hexagon's personal score and percentile band (same bands as the map colours) and
+  reports whether the selected area changes band. Stable = same band under all nudges; otherwise it lists "if X matters more/less → <band>".
+- Deterministic, client-side, from stored scores only (no LLM, no API). Ignores the safety filter, like the map colouring. Returns null when all importances are 0.
+
+## Works time view ("What's changing nearby")
+- The works detail view groups the existing sourced records with `groupWorks` (`src/lib/data/works.ts`, tested): **Under way now** (nearest first), **Planned**
+  (earliest stated start first, undated last) and **Permit issued, no schedule** (one summary line). No cap, same deterministic wording, sources always shown.
+- Information only: works never change a score and no impact on the match is implied (no defensible impact model). The overview chip counts under-way + planned.
+
+## Compare areas
+- "Add to comparison" in the area panel keeps up to 3 areas (`MAX_COMPARED`); `CompareTray` shows match % and the six category scores side by side, higher value per row in green
+  (no leader on ties). Tap a column to open that area, × removes it. `compareAreas` (`src/lib/scoring/compare.ts`, tested) uses stored scores and the current weights only: deterministic, client-side,
+  state lives in `MapExperience` and resets on reload (not in the URL yet). Copy: "a different fit, not a worse place".
+- The comparison is its own floating window left of the side panel (stays open while browsing areas and detail views; stacked under the top bar on mobile).
+- Row order and summary: rows are sorted by weight × spread between the areas (what actually decides the comparison), then by weight; zero-weight rows are dimmed. A one-line summary
+  names the stronger match and the category adding most to its lead (weight × lead over the others' average), or says "about equally" when match scores are within 3 points. Deterministic, no LLM.
+
+## Hexagon badges (safety, air, works, compare)
+- The selected hexagon carries badges on its corners (MapLibre markers in `hex-map.tsx`, shown from zoom 12.5 so they don't overlap at city zoom): safety and air with their score, works with a count
+  (only if > 0), and a +/✓ compare button. Native tooltips on hover. Safety, air and works open a floating info window (same `SafetySection` / `AirSection` / `WorksWarnings` content);
+  the compare badge adds/removes the area (max 3). They replace the chip row and the "Add to comparison" button that used to be in the side panel.
+- Areas in the comparison keep a dashed outline on the map (`hex-compared` layer) while another area is selected.
+- Compared areas also keep their places on the map: `MapExperience` fetches `/api/hexes/[h3]/places` for each compared area (cached) and merges them with the selected area's before passing them to `HexMap`
+  (deduped by place id / park). The side-panel place lists still show only the selected area.
+- **Filters window:** the minimum safety level and the education stage filter moved out of the side panel (which stays a summary) into a "Filters" button + floating window at the top left
+  (count of active filters on the button). The stage filter is still also inside the education category detail.
+
+
+## "Near a place" (location anchor)
+
+- The chat LLM may copy a place the user named (university, station, landmark…) into `nearPlace {query, radiusM}`
+  (radius 500/1000/1500/2000 m). It never produces coordinates. `POST /api/chat` resolves the name from our own `pois`
+  table (`src/lib/supabase/anchors.ts`, ranking in `src/lib/data/anchors.ts`) and returns `anchor {name, lat, lng, radiusM}`
+  or `null` (unknown names are silently dropped).
+- The anchor travels in the URL as `?near=lat,lng,radiusM,name`. On the map it is a **filter, not a score term**: hexes
+  whose centre is beyond the radius are dimmed like the safety filter and left out of "Strongest areas"
+  (`src/lib/scoring/anchor.ts`, deterministic, client-side). Weights and stored scores are untouched.
+- Streets/addresses: when `pois` has no match, `src/lib/data/nominatim.ts` does one bounded Nominatim lookup (Kraków
+  box, 4 s timeout, best-effort: failure = no anchor). It returns a single point (the street's centre), so for a long
+  street the radius is measured from its middle. The demo path (named POIs) stays offline-safe.
+- Limits: a place missing from `pois` resolves only if Nominatim is reachable; the best match is picked automatically
+  (exact name, then anchor-like kind), no disambiguation UI; no pin for the anchor on the map; "Adjust preferences"
+  does not carry the anchor back to the landing page.

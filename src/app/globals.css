@@ -9,22 +9,19 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-bricolage);
   --font-display: var(--font-fraunces);
-  --font-landing: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-title: var(--font-inter), "Helvetica Neue", Helvetica, sans-serif;
-  --font-script: var(--font-script-face), cursive;
   --color-bark: #6E3511;
   --color-sage: #91AC67;
   --color-moss: #597928;
   --color-cream: #FCECD8;
-  /* Landing palette: night glass over the video, one coral accent, a distinct hue per category. */
+  /* Landing palette: night glass over the video, one amber accent, a distinct hue per category. */
   --color-ink: #0B1620;
   --color-mist: #E9F1F4;
-  --color-coral: #FF7A66;
-  --color-aqua: #4FD6E0;
+  --color-sun: #FFB547;
   --color-rose: #F58FB2;
   --color-mint: #5FE3A1;
   --color-sky: #7CC4FF;
   --color-lilac: #B9A2FF;
+  --color-coral: #FF8A6B;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { describeWork, durationLabel, relativeStart, summarizeWorks } from "../data/works";
+import { describeWork, durationLabel, groupWorks, relativeStart, summarizeWorks } from "../data/works";
 import type { WorkNearby } from "../../types";
 
 const today = new Date(2026, 9, 3); // 3 Oct 2026
@@ -48,5 +48,27 @@ describe("works text", () => {
     assert.deepEqual(s.warnings.map((x) => x.id), [3, 2]);
     assert.equal(s.permits?.count, 2);
     assert.equal(s.permits?.nearestM, 200);
+  });
+});
+
+describe("groupWorks", () => {
+  it("groups by status without a cap, orders planned by start, drops ended works", () => {
+    const g = groupWorks(
+      [
+        w({ id: 1, status: "ongoing", dateTo: "2026-09-01" }), // ended
+        w({ id: 2, status: "ongoing", distanceM: 700 }),
+        w({ id: 3, status: "ongoing", distanceM: 90 }),
+        w({ id: 4, status: "planned", dateFrom: "2028-01-01" }),
+        w({ id: 5, status: "planned", dateFrom: "2027-01-01" }),
+        w({ id: 6, status: "planned" }), // no stated start: last
+        w({ id: 7, status: "decision", distanceM: 300 }),
+        w({ id: 8, status: "decision", distanceM: 120 }),
+      ],
+      today,
+    );
+    assert.deepEqual(g.ongoing.map((x) => x.id), [3, 2]);
+    assert.deepEqual(g.planned.map((x) => x.id), [5, 4, 6]);
+    assert.equal(g.permits?.count, 2);
+    assert.equal(g.permits?.nearestM, 120);
   });
 });

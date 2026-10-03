@@ -126,3 +126,26 @@ export function summarizeWorks(works: WorkNearby[], today: Date, max = 4): Works
       : null,
   };
 }
+
+export type WorksGroups = {
+  /** Under way now, nearest first. */
+  ongoing: WorkWarning[];
+  /** Officially planned, earliest start first; works without a stated start come last. */
+  planned: WorkWarning[];
+  /** Permits: an investment is being prepared but no schedule is published. */
+  permits: WorksSummary["permits"];
+};
+
+/** Time view of the same records: what is under way, what is planned, what only has a permit. Nothing is capped or invented. */
+export function groupWorks(works: WorkNearby[], today: Date): WorksGroups {
+  const current = works.filter((w) => isCurrent(w, today));
+  const ongoing = current.filter((w) => w.status === "ongoing").sort((a, b) => a.distanceM - b.distanceM);
+  const planned = current
+    .filter((w) => w.status === "planned")
+    .sort((a, b) => (a.dateFrom ?? "9999").localeCompare(b.dateFrom ?? "9999") || a.distanceM - b.distanceM);
+  return {
+    ongoing: ongoing.map((w) => describeWork(w, today)),
+    planned: planned.map((w) => describeWork(w, today)),
+    permits: summarizeWorks(works, today, 0).permits,
+  };
+}

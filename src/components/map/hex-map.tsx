@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { cellToLatLng } from "h3-js";
+import { cellToBoundary, cellToLatLng } from "h3-js";
 import { KRAKOW_CENTER, KRAKOW_INITIAL_ZOOM } from "@/lib/h3/config";
 import { cellPolygon } from "@/lib/h3/grid";
 import { GREEN_COLOR, PLACE_COLORS, circleRing, placeTitle } from "@/lib/map/places";
@@ -123,9 +123,73 @@ type Props = {
   focusPlace: { id: number; n: number } | null;
   /** Minimum safety level (0 = off): hexes below it are dimmed outside the Safety view. */
   minSafety: number;
+  /** Hexes outside the "near a place" radius: dimmed like the safety filter, in every mode but Safety. */
+  outside?: ReadonlySet<string>;
+  /** Safety / air values of the selected hexagon (null = no data); shown as badges on its border. */
+  badges?: HexBadges;
+  /** Areas in the side-by-side comparison; they stay outlined even when not selected. */
+  compared?: readonly string[];
+  onBadge?: (kind: BadgeKind) => void;
 };
 
-export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety }: Props) {
+const BADGE_MIN_ZOOM = 12.5;
+
+export type BadgeKind = "safety" | "air" | "works" | "compare";
+export type HexBadges = {
+  safety: number | null;
+  air: number | null;
+  /** Construction / renovation works nearby (badge only when > 0). */
+  works: number;
+  compare: { added: boolean; full: boolean };
+};
+
+const BADGE_ICONS = {
+  safety:
+    '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  works:
+    '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  air: '<path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/>',
+} as const;
+
+const BADGE_BASE =
+  "flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold tabular-nums shadow-lg";
+
+function badgeElement(
+  icon: keyof typeof BADGE_ICONS,
+  label: string | number | null,
+  title: string,
+  onClick: () => void,
+  tone = "border-border/70 bg-white text-slate-900 hover:bg-slate-50",
+): HTMLElement {
+  const el = document.createElement("button");
+  el.type = "button";
+  el.title = title;
+  el.setAttribute("aria-label", title);
+  el.className = `${BADGE_BASE} ${tone}`;
+  el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${BADGE_ICONS[icon]}</svg>`;
+  if (label !== null) el.append(String(label));
+  el.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onClick();
+  });
+  return el;
+}
+
+/** The hexagon corner closest to a compass direction (degrees, 0 = east, counter-clockwise). */
+function cornerAt(selected: string, degrees: number): [number, number] {
+  const [clat, clng] = cellToLatLng(selected);
+  const k = Math.cos((clat * Math.PI) / 180);
+  const want = (degrees * Math.PI) / 180;
+  const diff = ([lat, lng]: [number, number]) => {
+    const a = Math.atan2(lat - clat, (lng - clng) * k);
+    return Math.abs(Math.atan2(Math.sin(a - want), Math.cos(a - want)));
+  };
+  return cellToBoundary(selected).reduce((best, v) => (diff(v) < diff(best) ? v : best)) as [number, number];
+}
+
+export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, badges, compared, onBadge }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -172,7 +236,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     withSafety.forEach((i, k) => (safetyPct[i] = safetyRanks[k]));
     pct.safety = safetyPct;
     // Below the user's minimum safety level (unknown ≠ unsafe: cells without data are never filtered out).
-    const belowMin = hexes.map((h) => minSafety > 0 && h.safety != null && h.safety < minSafety);
+    const belowMin = hexes.map((h) => (minSafety > 0 && h.safety != null && h.safety < minSafety) || !!outside?.has(h.h3Index));
     const cells = hexes.map((h) => h.h3Index);
     const fields = Object.fromEntries(
       Object.keys(pct).map((m) => [
@@ -201,6 +265,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
           ...scores,
           safety: safety ?? null,
           belowMin: belowMin[i] ? 1 : 0,
+          outside: outside?.has(hexes[i].h3Index) ? 1 : 0,
           personal: personal[i],
           ...Object.fromEntries(
             Object.entries(pct).map(([mode, v]) => [pctProp(mode as MapMode), v[i]]),
@@ -210,7 +275,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       })),
     };
     return { geojson, fields, tops };
-  }, [hexes, weights, minSafety]);
+  }, [hexes, weights, minSafety, outside]);
 
   const districts = useMemo(() => districtLayers(hexes), [hexes]);
 
@@ -390,6 +455,15 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         filter: ["==", ["get", "h3Index"], ""],
         paint: { "line-color": "#0f172a", "line-width": 1.5, "line-opacity": 0.55 },
       });
+      // Areas added to the comparison keep a lighter outline while another area is selected.
+      map.addLayer({
+        id: "hex-compared",
+        type: "line",
+        source: SOURCE,
+        filter: ["==", ["get", "h3Index"], ""],
+        layout: { "line-join": "round" },
+        paint: { "line-color": "#0f172a", "line-width": 2.5, "line-dasharray": [2, 1.2] },
+      });
       map.addLayer({
         id: "hex-selected-glow",
         type: "line",
@@ -508,7 +582,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         x: e.point.x,
         y: e.point.y,
         district: (props.district as string) || "Kraków",
-        label: m !== "safety" && props.belowMin === 1 ? `${label} · below your minimum safety` : label,
+        label: m !== "safety" && props.belowMin === 1 ? `${label} · ${props.outside === 1 ? "outside your chosen radius" : "below your minimum safety"}` : label,
         value: noSafety ? "" : `${Math.round(value as number)}`,
       });
     });
@@ -562,6 +636,63 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     map.setPaintProperty("heat-raster", "raster-opacity", selected ? DIMMED_OPACITY : 1);
   }, [selected]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    map.setFilter("hex-compared", ["in", ["get", "h3Index"], ["literal", [...(compared ?? [])]]]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `compared` content changes identity every render; key by joined ids
+  }, [(compared ?? []).join(",")]);
+
+  // Safety / air badges sit on the selected hexagon's two northern corners; clicking one opens its info window.
+  const onBadgeRef = useRef(onBadge);
+  useEffect(() => {
+    onBadgeRef.current = onBadge;
+  }, [onBadge]);
+  const safetyBadge = badges?.safety ?? null;
+  const airBadge = badges?.air ?? null;
+  const worksBadge = badges?.works ?? 0;
+  const compareAdded = badges?.compare.added ?? false;
+  const compareFull = badges?.compare.full ?? false;
+  const hasBadges = badges !== undefined;
+  const hasCompared = (compared?.length ?? 0) > 0;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !selected || !hasBadges) return;
+    const markers: maplibregl.Marker[] = [];
+    const place = (el: HTMLElement, degrees: number) => {
+      const [lat, lng] = cornerAt(selected, degrees);
+      markers.push(new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map));
+    };
+    const open = (kind: BadgeKind) => () => onBadgeRef.current?.(kind);
+    if (safetyBadge !== null) place(badgeElement("safety", safetyBadge, "Safety indicators: click for details", open("safety")), 150);
+    if (airBadge !== null) place(badgeElement("air", airBadge, "Air quality: click for details", open("air")), 30);
+    if (worksBadge > 0) {
+      const title = `${worksBadge} ${worksBadge === 1 ? "work" : "works"} nearby: click for details`;
+      place(badgeElement("works", worksBadge, title, open("works"), "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"), 210);
+    }
+    const compareTitle = compareAdded ? "Remove from comparison" : compareFull ? "Comparison full (3 areas)" : "Add to comparison";
+    place(
+      badgeElement(
+        compareAdded ? "check" : "plus",
+        null,
+        compareTitle,
+        open("compare"),
+        compareAdded
+          ? "border-slate-800 bg-slate-800 text-white hover:bg-slate-700"
+          : `border-border/70 bg-white text-slate-900 hover:bg-slate-50 ${compareFull ? "opacity-60" : ""}`,
+      ),
+      330,
+    );
+    // At city zoom a hexagon is tiny and the badges would overlap, so show them once zoomed in.
+    const sync = () => markers.forEach((m) => (m.getElement().style.display = map.getZoom() >= BADGE_MIN_ZOOM ? "" : "none"));
+    sync();
+    map.on("zoom", sync);
+    return () => {
+      map.off("zoom", sync);
+      markers.forEach((m) => m.remove());
+    };
+  }, [selected, hasBadges, safetyBadge, airBadge, worksBadge, compareAdded, compareFull]);
+
   // Selecting a hexagon flies in; deselecting flies back to where the user was.
   useEffect(() => {
     const map = mapRef.current;
@@ -613,9 +744,9 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
-    (map.getSource(PLACES_SOURCE) as maplibregl.GeoJSONSource).setData(selected ? pinsGeoJson : EMPTY);
-    (map.getSource(GREEN_SOURCE) as maplibregl.GeoJSONSource).setData(selected ? greenGeoJson : EMPTY);
-  }, [selected, pinsGeoJson, greenGeoJson]);
+    (map.getSource(PLACES_SOURCE) as maplibregl.GeoJSONSource).setData(selected || hasCompared ? pinsGeoJson : EMPTY);
+    (map.getSource(GREEN_SOURCE) as maplibregl.GeoJSONSource).setData(selected || hasCompared ? greenGeoJson : EMPTY);
+  }, [selected, hasCompared, pinsGeoJson, greenGeoJson]);
 
   useEffect(() => {
     const map = mapRef.current;
