@@ -376,3 +376,8 @@ changes a score.
 - The works detail view groups the existing sourced records with `groupWorks` (`src/lib/data/works.ts`, tested): **Under way now** (nearest first), **Planned**
   (earliest stated start first, undated last) and **Permit issued, no schedule** (one summary line). No cap, same deterministic wording, sources always shown.
 - Information only: works never change a score and no impact on the match is implied (no defensible impact model). The overview chip counts under-way + planned.
+
+## Compare areas
+- "Add to comparison" in the area panel keeps up to 3 areas (`MAX_COMPARED`); `CompareTray` shows match % and the six category scores side by side, higher value per row in green
+  (no leader on ties). Tap a column to open that area, × removes it. `compareAreas` (`src/lib/scoring/compare.ts`, tested) uses stored scores and the current weights only: deterministic, client-side,
+  state lives in `MapExperience` and resets on reload (not in the URL yet). Copy: "a different fit, not a worse place".

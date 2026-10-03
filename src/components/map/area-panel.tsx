@@ -61,9 +61,11 @@ type Props = {
   worksSlot?: ReactNode;
   /** Does the match survive nudging one priority? Null = not computed. */
   sensitivity?: Sensitivity | null;
+  /** Add / remove this area from the side-by-side comparison. */
+  compare?: { added: boolean; full: boolean; onToggle: () => void };
 };
 
-export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksCount = 0, worksSlot, sensitivity }: Props) {
+export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksCount = 0, worksSlot, sensitivity, compare }: Props) {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
   // Bars are relative to the largest weight, so the top priority fills the bar.
   const maxWeight = Math.max(...CATEGORIES.map((c) => weights[c]), 0.0001);
@@ -241,6 +243,16 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
           </button>
         )}
       </div>
+
+      {compare && (
+        <button
+          onClick={compare.onToggle}
+          disabled={!compare.added && compare.full}
+          className="mt-4 w-full rounded-full border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
+        >
+          {compare.added ? "Remove from comparison" : compare.full ? "Comparison full (3 areas)" : "Add to comparison"}
+        </button>
+      )}
 
       <h3 className="mt-6 text-sm font-semibold">Why it matches you</h3>
       <ul className="mt-2 space-y-1.5">
