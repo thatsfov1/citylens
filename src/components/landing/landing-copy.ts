@@ -71,7 +71,7 @@ export const CATEGORY_STYLE: Record<
   Category,
   { tile: string; fill: string; chip: string; dot: string }
 > = {
-  sport: { tile: "bg-ink/70 border-sun text-mist", fill: "bg-sun", chip: "bg-white/10 border-sun/70 text-mist", dot: "bg-sun" },
+  sport: { tile: "bg-ink/70 border-aqua text-mist", fill: "bg-aqua", chip: "bg-white/10 border-aqua/70 text-mist", dot: "bg-aqua" },
   culture: { tile: "bg-ink/70 border-rose text-mist", fill: "bg-rose", chip: "bg-white/10 border-rose/70 text-mist", dot: "bg-rose" },
   greenery: { tile: "bg-ink/70 border-mint text-mist", fill: "bg-mint", chip: "bg-white/10 border-mint/70 text-mist", dot: "bg-mint" },
   shopping: { tile: "bg-ink/70 border-sky text-mist", fill: "bg-sky", chip: "bg-white/10 border-sky/70 text-mist", dot: "bg-sky" },

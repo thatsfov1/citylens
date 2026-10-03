@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Fraunces, Geist_Mono, Pinyon_Script } from "next/font/google";
+import { Bricolage_Grotesque, Fraunces, Geist_Mono, Great_Vibes } from "next/font/google";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -13,9 +13,9 @@ const fraunces = Fraunces({
   style: ["italic"],
 });
 
-// Stand-in for Tempting (a licensed font): used only until public/fonts/Tempting.woff2 exists.
-const pinyon = Pinyon_Script({
-  variable: "--font-pinyon",
+// Script face for the accent words on the landing page.
+const greatVibes = Great_Vibes({
+  variable: "--font-script-face",
   subsets: ["latin", "latin-ext"],
   weight: "400",
 });
@@ -35,7 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pl"
-      className={`${bricolage.variable} ${fraunces.variable} ${pinyon.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${bricolage.variable} ${fraunces.variable} ${greatVibes.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

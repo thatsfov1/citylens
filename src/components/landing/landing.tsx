@@ -59,7 +59,7 @@ export function Landing({ initial }: { initial?: Importance }) {
             type="button"
             disabled={!hasChips}
             onClick={() => router.push(`/map?${importanceToQuery(levelsToImportance(levels))}`)}
-            className="h-12 gap-2 rounded-full bg-sun px-8 text-base font-semibold text-ink shadow-lg shadow-black/30 hover:bg-sun/85 disabled:bg-white/15 disabled:text-mist/60 disabled:shadow-none"
+            className="h-12 gap-2 rounded-full bg-coral px-8 text-base font-semibold text-ink shadow-lg shadow-black/30 hover:bg-coral/85 disabled:bg-white/15 disabled:text-mist/60 disabled:shadow-none"
           >
             Pokaż moją mapę
             <ArrowRight className="size-5" aria-hidden />
@@ -79,10 +79,10 @@ export function Landing({ initial }: { initial?: Importance }) {
 function AccentWord({ children }: { children: string }) {
   return (
     <span className="relative inline-block font-script text-[1.5em] font-normal leading-none">
-      <span aria-hidden className="absolute left-[0.04em] top-[0.07em] select-none text-rose/70 blur-[1.5px]">
+      <span aria-hidden className="absolute left-[0.04em] top-[0.07em] select-none text-aqua/60 blur-[1.5px]">
         {children}
       </span>
-      <span className="relative text-sun">{children}</span>
+      <span className="relative text-coral">{children}</span>
     </span>
   );
 }

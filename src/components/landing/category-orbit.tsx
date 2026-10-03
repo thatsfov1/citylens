@@ -129,7 +129,7 @@ function CategoryBubble({
           if (!open) onOpenChange({ category, via: "click" });
           else if (open.via === "hover") onOpenChange({ category, via: "click" });
         }}
-        className="group flex flex-col items-center gap-1.5 rounded-3xl p-1 outline-none focus-visible:ring-4 focus-visible:ring-sun/60"
+        className="group flex flex-col items-center gap-1.5 rounded-3xl p-1 outline-none focus-visible:ring-4 focus-visible:ring-coral/60"
       >
         <span
           className={cn(
@@ -140,7 +140,7 @@ function CategoryBubble({
         >
           <span aria-hidden className="text-2xl leading-none sm:text-3xl">{EMOJI[category]}</span>
           {value && (
-            <span className="animate-pop absolute -right-2 -top-2 rounded-full border-2 border-ink bg-sun px-1.5 text-[11px] font-semibold leading-5 text-ink">
+            <span className="animate-pop absolute -right-2 -top-2 rounded-full border-2 border-ink bg-coral px-1.5 text-[11px] font-semibold leading-5 text-ink">
               {levelToPercent(value)}%
             </span>
           )}
@@ -212,7 +212,7 @@ function LevelPanel({
           type="button"
           onClick={onClose}
           aria-label="Zamknij"
-          className="-mr-1 -mt-1 rounded-full p-1.5 text-mist/70 outline-none hover:bg-white/10 focus-visible:ring-4 focus-visible:ring-sun/60"
+          className="-mr-1 -mt-1 rounded-full p-1.5 text-mist/70 outline-none hover:bg-white/10 focus-visible:ring-4 focus-visible:ring-coral/60"
         >
           <X className="size-4" />
         </button>
@@ -243,7 +243,7 @@ function LevelPanel({
               onPointerEnter={() => setHovered(n)}
               onFocus={() => setHovered(null)}
               className={cn(
-                "flex-1 rounded-xl border-2 outline-none transition-all duration-150 focus-visible:ring-4 focus-visible:ring-sun/60",
+                "flex-1 rounded-xl border-2 outline-none transition-all duration-150 focus-visible:ring-4 focus-visible:ring-coral/60",
                 filled ? cn(style.fill, "border-white/20") : "border-white/20 bg-white/10 hover:bg-white/20",
                 draft === n && "ring-2 ring-mist ring-offset-2 ring-offset-ink",
               )}
@@ -260,7 +260,7 @@ function LevelPanel({
         type="button"
         disabled={draft === null}
         onClick={() => draft && onConfirm(draft)}
-        className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-sun text-sm font-semibold text-ink outline-none transition hover:bg-sun/85 focus-visible:ring-4 focus-visible:ring-sun/60 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-mist/50"
+        className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-coral text-sm font-semibold text-ink outline-none transition hover:bg-coral/85 focus-visible:ring-4 focus-visible:ring-coral/60 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-mist/50"
       >
         <Check className="size-4" />
         {saved ? "Zaktualizuj" : "Zatwierdź"}
