@@ -13,6 +13,14 @@
   --color-sage: #91AC67;
   --color-moss: #597928;
   --color-cream: #FCECD8;
+  /* Landing palette: night glass over the video, one amber accent, a distinct hue per category. */
+  --color-ink: #0B1620;
+  --color-mist: #E9F1F4;
+  --color-sun: #FFB547;
+  --color-rose: #F58FB2;
+  --color-mint: #5FE3A1;
+  --color-sky: #7CC4FF;
+  --color-lilac: #B9A2FF;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
