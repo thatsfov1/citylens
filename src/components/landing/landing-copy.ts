@@ -67,39 +67,39 @@ export function levelsToImportance(levels: Levels): Importance {
   return out;
 }
 
-/** Static class names per category (Tailwind needs full strings). */
+/** Static class names per category (Tailwind needs full strings); palette: bark / sage / moss / cream. */
 export const CATEGORY_STYLE: Record<
   Category,
   { tile: string; fill: string; chip: string; dot: string }
 > = {
   sport: {
-    tile: "bg-orange-100 border-orange-300 text-orange-900",
-    fill: "bg-orange-500",
-    chip: "bg-orange-100 border-orange-300 text-orange-950",
-    dot: "bg-orange-500",
+    tile: "bg-cream border-bark/40 text-bark",
+    fill: "bg-bark",
+    chip: "bg-cream border-bark/40 text-bark",
+    dot: "bg-bark",
   },
   culture: {
-    tile: "bg-violet-100 border-violet-300 text-violet-900",
-    fill: "bg-violet-500",
-    chip: "bg-violet-100 border-violet-300 text-violet-950",
-    dot: "bg-violet-500",
+    tile: "bg-white border-sage text-bark",
+    fill: "bg-sage",
+    chip: "bg-white border-sage text-bark",
+    dot: "bg-sage",
   },
   greenery: {
-    tile: "bg-emerald-100 border-emerald-300 text-emerald-900",
-    fill: "bg-emerald-500",
-    chip: "bg-emerald-100 border-emerald-300 text-emerald-950",
-    dot: "bg-emerald-500",
+    tile: "bg-sage/30 border-moss text-bark",
+    fill: "bg-moss",
+    chip: "bg-sage/30 border-moss text-bark",
+    dot: "bg-moss",
   },
   shopping: {
-    tile: "bg-pink-100 border-pink-300 text-pink-900",
-    fill: "bg-pink-500",
-    chip: "bg-pink-100 border-pink-300 text-pink-950",
-    dot: "bg-pink-500",
+    tile: "bg-cream border-sage text-bark",
+    fill: "bg-sage",
+    chip: "bg-cream border-sage text-bark",
+    dot: "bg-sage",
   },
   transport: {
-    tile: "bg-sky-100 border-sky-300 text-sky-900",
-    fill: "bg-sky-500",
-    chip: "bg-sky-100 border-sky-300 text-sky-950",
-    dot: "bg-sky-500",
+    tile: "bg-white border-bark/40 text-bark",
+    fill: "bg-bark",
+    chip: "bg-white border-bark/40 text-bark",
+    dot: "bg-bark",
   },
 };

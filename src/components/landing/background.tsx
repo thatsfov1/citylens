@@ -5,7 +5,7 @@
  */
 export function Background({ videoSrc }: { videoSrc?: string }) {
   return (
-    <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-sky-50">
+    <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden bg-cream">
       {videoSrc ? (
         <>
           <video
@@ -20,8 +20,8 @@ export function Background({ videoSrc }: { videoSrc?: string }) {
         </>
       ) : (
         <>
-          <div className="animate-float-slow absolute -left-24 top-10 size-72 rounded-full bg-emerald-200/50 blur-3xl" />
-          <div className="animate-float-slow absolute -right-24 bottom-10 size-80 rounded-full bg-sky-200/50 blur-3xl [animation-delay:-4s]" />
+          <div className="animate-float-slow absolute -left-24 top-10 size-72 rounded-full bg-sage/40 blur-3xl" />
+          <div className="animate-float-slow absolute -right-24 bottom-10 size-80 rounded-full bg-moss/20 blur-3xl [animation-delay:-4s]" />
         </>
       )}
     </div>
