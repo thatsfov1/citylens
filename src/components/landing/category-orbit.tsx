@@ -154,7 +154,7 @@ function CategoryBubble({
             </span>
           )}
         </span>
-        <span className="text-sm font-semibold text-bark">{label}</span>
+        <span className="text-sm font-semibold text-cream [text-shadow:0_1px_8px_rgba(0,0,0,0.6)]">{label}</span>
       </button>
 
       {open && (
