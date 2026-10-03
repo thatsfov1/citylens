@@ -11,11 +11,12 @@ import { placeIconId, registerPlaceIcons } from "@/lib/map/place-icons";
 import { KRAKOW_BOUNDS, boundaryFeature, outsideMaskFeature } from "@/lib/h3/mask";
 import { calculatePersonalScore } from "@/lib/scoring/personal-score";
 import { percentileRanks } from "@/lib/scoring/percentile";
-import { BAND_COLORS, BAND_LABELS, NO_DATA_BAND, NO_DATA_COLOR, bandOf, bandZones, districtLayers, topZone } from "@/lib/map/zones";
+import { BAND_COLORS, BAND_LABELS, bandOf, districtLayers, topZone } from "@/lib/map/zones";
+import { heatDataUrl, type HeatInput } from "@/lib/map/heat-field";
 import { CATEGORIES, type Category, type CategoryWeights, type HexData, type MapMode, type PlacesResponse } from "@/types";
 
 const SOURCE = "hexes";
-const ZONES_SOURCE = "zones";
+const HEAT_SOURCE = "heat";
 const DIMMED_OPACITY = 0.6;
 const TOP_SOURCE = "top-zone";
 const DISTRICT_LINE_SOURCE = "district-outlines";
@@ -44,31 +45,18 @@ const KEEP_VISIBLE_LAYERS = [
 // Worker files are copied to /public/maplibre by scripts/copy-maplibre-worker.mjs.
 maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
-// Five match bands (quintiles of the percentile rank within the city, for the selected
-// mode): red → orange → yellow → light green → green. Same-band neighbours are dissolved
-// into one zone, so borders appear only where the band changes. Weaker match ≠ worse place.
-const ZONE_ALPHA = 0.62;
-const hexToRgba = (hex: string, a: number) => {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
-};
-const BAND_FILLS = BAND_COLORS.map((c) => hexToRgba(c, ZONE_ALPHA));
-const NO_DATA_FILL = hexToRgba(NO_DATA_COLOR, 0.45);
-
+// Match colour = percentile rank within the city for the selected mode, rendered as a smooth
+// red → orange → yellow → light green → green gradient (see heat-field.ts). Weaker match ≠ worse place.
 export const LEGEND_GRADIENT = `linear-gradient(to right, ${BAND_COLORS.map(
-  (c, i) => `${c} ${i * 20}%, ${c} ${(i + 1) * 20}%`,
+  (c, i) => `${c} ${i * 20 + 10}%`,
 ).join(", ")})`;
 
-const pctProp = (mode: MapMode) => `pct_${mode}`;
+const [[W, S], [E, N]] = KRAKOW_BOUNDS;
+const HEAT_BOUNDS = { west: W, south: S, east: E, north: N };
+const HEAT_COORDS: [[number, number], [number, number], [number, number], [number, number]] = [[W, N], [E, N], [E, S], [W, S]];
+const heatUrl = (field: HeatInput) => heatDataUrl(field, HEAT_BOUNDS, boundaryFeature.geometry.coordinates[0]);
 
-const zoneColorExpression = [
-  "match",
-  ["get", "band"],
-  ...BAND_FILLS.slice(0, -1).flatMap((c, i) => [i, c]),
-  NO_DATA_BAND,
-  NO_DATA_FILL,
-  BAND_FILLS[BAND_FILLS.length - 1],
-] as unknown as maplibregl.ExpressionSpecification;
+const pctProp = (mode: MapMode) => `pct_${mode}`;
 
 // Minimal, monochrome basemap (Uber-like): flat grey land, pale water, white roads, no clutter.
 const HIDDEN_LAYERS = new Set([
@@ -171,7 +159,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
   );
   const greenGeoJson = pinCategories.has("greenery") && places ? places.green : EMPTY;
 
-  const { geojson, zones, tops } = useMemo(() => {
+  const { geojson, fields, tops } = useMemo(() => {
     const personal = hexes.map((h) => calculatePersonalScore(h.scores, weights));
     const pct: Record<string, number[]> = { forYou: percentileRanks(personal) };
     for (const c of CATEGORIES) {
@@ -186,24 +174,19 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     // Below the user's minimum safety level (unknown ≠ unsafe: cells without data are never filtered out).
     const belowMin = hexes.map((h) => minSafety > 0 && h.safety != null && h.safety < minSafety);
     const cells = hexes.map((h) => h.h3Index);
-    const zones = Object.fromEntries(
-      Object.entries(pct).map(([m, v]) => [
+    const fields = Object.fromEntries(
+      Object.keys(pct).map((m) => [
         m,
-        bandZones(
+        {
           cells,
-          v.map((p, i) =>
-            // Nothing nearby in a category ≠ weak match: shown as "no data".
-            m === "safety"
-              ? hexes[i].safety == null
-                ? NO_DATA_BAND
-                : bandOf(p)
-              : m !== "forYou" && hexes[i].scores[m as Category] === 0
-                ? NO_DATA_BAND
-                : bandOf(p),
+          values: pct[m],
+          // Nothing nearby in a category ≠ weak match: shown as "no data".
+          noData: hexes.map((h) =>
+            m === "safety" ? h.safety == null : m !== "forYou" && h.scores[m as Category] === 0,
           ),
-        ),
+        },
       ]),
-    ) as Record<MapMode, GeoJSON.FeatureCollection>;
+    ) as Record<MapMode, HeatInput>;
     const tops = Object.fromEntries(
       // "Strongest areas" skips cells below the minimum safety level (except in the Safety view itself).
       Object.entries(pct).map(([m, v]) => [m, topZone(cells, m === "safety" ? v : v.map((p, i) => (belowMin[i] ? -1 : p)))]),
@@ -226,20 +209,20 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         geometry: { type: "Polygon", coordinates: [cellPolygon(h3Index)] },
       })),
     };
-    return { geojson, zones, tops };
+    return { geojson, fields, tops };
   }, [hexes, weights, minSafety]);
 
   const districts = useMemo(() => districtLayers(hexes), [hexes]);
 
   // Latest values for the one-time map setup (updated before it runs).
-  const initial = useRef({ geojson, zones, tops, mode, selected, districts });
+  const initial = useRef({ geojson, fields, tops, mode, selected, districts });
   useEffect(() => {
     onSelectRef.current = onSelect;
     onHoverPlaceRef.current = onHoverPlace;
     modeRef.current = mode;
     showTopRef.current = showTop;
     showDistrictsRef.current = showDistricts;
-    initial.current = { geojson, zones, tops, mode, selected, districts };
+    initial.current = { geojson, fields, tops, mode, selected, districts };
   });
 
   useEffect(() => {
@@ -318,7 +301,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     });
 
     map.on("load", () => {
-      const { geojson, zones, tops, mode, selected, districts } = initial.current;
+      const { geojson, fields, tops, mode, selected, districts } = initial.current;
 
       softenBasemap(map);
 
@@ -348,16 +331,16 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         },
       });
 
-      map.addSource(ZONES_SOURCE, { type: "geojson", data: zones[mode] });
+      map.addSource(HEAT_SOURCE, { type: "image", url: heatUrl(fields[mode]), coordinates: HEAT_COORDS });
       map.addLayer({
-        id: "zone-fill",
-        type: "fill",
-        source: ZONES_SOURCE,
+        id: "heat-raster",
+        type: "raster",
+        source: HEAT_SOURCE,
         paint: {
-          "fill-color": zoneColorExpression,
-          "fill-antialias": false,
-          "fill-opacity": selected ? DIMMED_OPACITY : 1,
-          "fill-opacity-transition": { duration: 250 },
+          "raster-resampling": "linear",
+          "raster-fade-duration": 0,
+          "raster-opacity": selected ? DIMMED_OPACITY : 1,
+          "raster-opacity-transition": { duration: 250 },
         },
       });
 
@@ -563,10 +546,10 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
     (map.getSource(SOURCE) as maplibregl.GeoJSONSource).setData(geojson);
-    (map.getSource(ZONES_SOURCE) as maplibregl.GeoJSONSource).setData(zones[mode]);
+    (map.getSource(HEAT_SOURCE) as maplibregl.ImageSource).updateImage({ url: heatUrl(fields[mode]) });
     (map.getSource(TOP_SOURCE) as maplibregl.GeoJSONSource).setData(tops[mode]);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mode handled by the effect below
-  }, [geojson, zones, tops]);
+  }, [geojson, fields, tops]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -575,14 +558,14 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     (map.getSource(DISTRICT_LABEL_SOURCE) as maplibregl.GeoJSONSource).setData(districts.labels);
   }, [districts]);
 
-  // Mode switch → swap the dissolved zones.
+  // Mode switch → re-render the heat field.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
-    (map.getSource(ZONES_SOURCE) as maplibregl.GeoJSONSource).setData(zones[mode]);
+    (map.getSource(HEAT_SOURCE) as maplibregl.ImageSource).updateImage({ url: heatUrl(fields[mode]) });
     (map.getSource(TOP_SOURCE) as maplibregl.GeoJSONSource).setData(tops[mode]);
     map.setLayoutProperty("below-min", "visibility", mode === "safety" ? "none" : "visible");
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- zones handled by the effect above
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fields handled by the effect above
   }, [mode]);
 
   useEffect(() => {
@@ -591,8 +574,8 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     const filter: maplibregl.FilterSpecification = ["==", ["get", "h3Index"], selected ?? ""];
     map.setFilter("hex-selected", filter);
     map.setFilter("hex-selected-glow", filter);
-    // Dim the other zones while an area is selected.
-    map.setPaintProperty("zone-fill", "fill-opacity", selected ? DIMMED_OPACITY : 1);
+    // Dim the heat field while an area is selected.
+    map.setPaintProperty("heat-raster", "raster-opacity", selected ? DIMMED_OPACITY : 1);
   }, [selected]);
 
   // Selecting a hexagon flies in; deselecting flies back to where the user was.

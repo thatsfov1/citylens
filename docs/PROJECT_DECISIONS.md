@@ -231,3 +231,7 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
 ## District overlay
 
 - District borders and names are drawn by us from `hex_scores.district` (`districtLayers` in `src/lib/map/zones.ts`): a dissolved, hex-aligned outline per district plus a bold, haloed label above the colour zones. Basemap `place` labels are hidden so they no longer clash with the hexagons. Hexes without a district get no border/label.
+
+## Gradient heatmap
+
+- The map colouring is a smooth raster, not banded zones: `heatPixels` (`src/lib/map/heat-field.ts`) blends each hex's percentile with its neighbours (Gaussian, σ 0.4 km), maps it through the red→green ramp and clips it to the Kraków outline; shown as a MapLibre `image` source (`heat-raster`). No-data hexes stay grey and are not blended into coloured neighbours. Hexes remain the interaction unit (invisible `hex-fill` hit target, tooltips, selection). `bandOf`/`BAND_LABELS` are still used for labels.
