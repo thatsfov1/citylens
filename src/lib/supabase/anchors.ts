@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { createClient } from "./server";
-import { pickCandidate } from "../data/anchors";
+import { cleanPlaceQuery, pickCandidate } from "../data/anchors";
 import { geocodeInKrakow } from "../data/nominatim";
 import type { Anchor } from "../scoring/anchor";
 
@@ -10,7 +10,8 @@ const row = z.object({ name: z.string(), kind: z.string(), lat: z.number(), lng:
  * Resolves a place name the user typed to coordinates: our own POI table first (offline-safe), then a bounded
  * Nominatim lookup for streets and addresses. Null when nothing matches.
  */
-export async function resolveAnchor(query: string, radiusM: number): Promise<Anchor | null> {
+export async function resolveAnchor(rawQuery: string, radiusM: number): Promise<Anchor | null> {
+  const query = cleanPlaceQuery(rawQuery);
   const poi = await resolveFromPois(query, radiusM);
   if (poi) return poi;
   const hit = await geocodeInKrakow(query);

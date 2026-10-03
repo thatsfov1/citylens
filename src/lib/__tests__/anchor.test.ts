@@ -44,3 +44,11 @@ test("parses a Nominatim hit and rejects junk", () => {
   assert.equal(parseNominatim([]), null);
   assert.equal(parseNominatim({ error: "x" }), null);
 });
+
+test("generic words are stripped from a place query", async () => {
+  const { cleanPlaceQuery } = await import("../data/anchors");
+  assert.equal(cleanPlaceQuery("Czyzyny district"), "Czyzyny");
+  assert.equal(cleanPlaceQuery("dzielnica Czyżyny"), "Czyżyny");
+  assert.equal(cleanPlaceQuery("okolice AGH"), "AGH");
+  assert.equal(cleanPlaceQuery("district"), "district");
+});

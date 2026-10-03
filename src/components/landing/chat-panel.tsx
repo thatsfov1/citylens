@@ -44,7 +44,10 @@ export function ChatPanel({ onImportance }: Props) {
       });
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as ChatResult;
-      setMessages([...next, { role: "assistant", text: data.reply }]);
+      const missing = data.notFound?.length
+        ? ` Nie znalazłem miejsca: ${data.notFound.map((q) => `„${q}”`).join(", ")}. Podaj dokładniejszy adres lub nazwę.`
+        : "";
+      setMessages([...next, { role: "assistant", text: data.reply + missing }]);
       if (data.importance) onImportance(data.importance, data.stages, data.anchor, data.rent, data.work);
     } catch {
       setError("Asystent jest chwilowo niedostępny. Spróbuj ponownie za chwilę.");

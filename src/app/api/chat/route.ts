@@ -43,7 +43,11 @@ export async function POST(request: Request) {
           maxMin: workplace?.maxMin ?? DEFAULT_COMMUTE_MIN,
         }
       : null;
-    return Response.json({ ...output, anchor, rent: budgetToFilter(budget), work } satisfies ChatResult);
+    const notFound = [
+      ...(nearPlace && !anchor ? [nearPlace.query] : []),
+      ...(workplace && !place ? [workplace.query] : []),
+    ];
+    return Response.json({ ...output, anchor, rent: budgetToFilter(budget), work, notFound } satisfies ChatResult);
   } catch (err) {
     console.error("chat failed:", err instanceof Error ? err.message : err);
     return Response.json({ error: "The assistant is unavailable right now." }, { status: 503 });

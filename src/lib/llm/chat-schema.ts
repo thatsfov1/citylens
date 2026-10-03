@@ -62,6 +62,8 @@ export type ChatResult = Omit<ChatOutput, "nearPlace" | "budget" | "workplace"> 
   anchor: Anchor | null;
   rent: RentFilter | null;
   work: Workplace | null;
+  /** Places the user named that we could not find, as they wrote them (so the chat can say so). */
+  notFound: string[];
 };
 
 /** JSON schema handed to Gemini for structured output. */

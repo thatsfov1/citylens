@@ -22,3 +22,12 @@ export function pickCandidate(query: string, candidates: AnchorCandidate[]): Anc
   });
   return sorted[0] ?? null;
 }
+
+// Words that describe the kind of place, not its name ("Czyzyny district", "dzielnica Czyżyny", "okolice AGH").
+const GENERIC_WORDS = /\b(district|dzielnicy?|dzielnica|osiedle|osiedlu|okolic[ea]|okolicy|area|near|neighbou?rhood)\b/gi;
+
+/** The name to look up: generic words removed; the original when nothing else would be left. */
+export function cleanPlaceQuery(query: string): string {
+  const cleaned = query.replace(GENERIC_WORDS, " ").replace(/\s+/g, " ").trim();
+  return cleaned.length >= 2 ? cleaned : query.trim();
+}

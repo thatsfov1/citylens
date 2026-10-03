@@ -40,10 +40,10 @@ export function Landing({ initial }: { initial?: Importance }) {
           />
           <Link
             href="/"
-            className="absolute left-6 top-6 z-10 text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)] sm:left-10 sm:top-10 lg:left-12 lg:top-12"
+            aria-label="CityLens"
+            className="absolute inset-x-0 bottom-0 z-10 flex w-full justify-between text-[clamp(2.5rem,14vw,10rem)] font-bold leading-[0.78] tracking-[-0.06em] text-white"
           >
-            <span className="block text-5xl font-light leading-none tracking-[-0.07em] sm:text-6xl lg:text-7xl">citylens</span>
-            <span className="mt-3 block text-sm font-light tracking-wide sm:text-base">Kraków widziany po Twojemu</span>
+            {"citylens".split("").map((letter, index) => <span key={index}>{letter}</span>)}
           </Link>
         </section>
 
