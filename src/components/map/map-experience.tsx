@@ -20,6 +20,7 @@ import type { HexSource, HexDetails } from "@/lib/supabase/hex-scores";
 import {
   EDUCATION_STAGES,
   EDUCATION_STAGE_LABELS,
+  type Category,
   type EducationStage,
   type HexData,
   type MapMode,
@@ -125,14 +126,23 @@ export function MapExperience({
   const [detail, setDetail] = useState<{ hex: string | null; view: PanelView | null }>({ hex: null, view: null });
   const view = detail.hex === selected ? detail.view : null;
   const setView = (v: PanelView | null) => setDetail({ hex: selected, view: v });
-  // Pins: the open category, else the active mode (or the top preferences).
-  const pinCategories = useMemo(
-    () =>
-      view && view !== "safety" && view !== "air" && view !== "works"
-        ? new Set([view])
-        : defaultPinCategories(mode === "safety" ? "forYou" : mode, weights),
-    [view, mode, weights],
+  // Pins: the active mode (or top preferences), adjustable per category. Overrides are tied to the
+  // (mode, hexagon) they were made in, so they reset on change. An open category detail always adds its pins.
+  const pinKey = `${mode}|${selected}`;
+  const [pinOverride, setPinOverride] = useState<{ key: string; cats: Set<Category> } | null>(null);
+  const basePins = useMemo(
+    () => (pinOverride?.key === pinKey ? pinOverride.cats : defaultPinCategories(mode === "safety" ? "forYou" : mode, weights)),
+    [pinOverride, pinKey, mode, weights],
   );
+  const pinCategories = useMemo(() => {
+    if (!view || view === "safety" || view === "air" || view === "works") return basePins;
+    return new Set<Category>([...basePins, view]);
+  }, [basePins, view]);
+  const togglePin = (c: Category) => {
+    const next = new Set(pinCategories);
+    if (!next.delete(c)) next.add(c);
+    setPinOverride({ key: pinKey, cats: next });
+  };
   const worksCount = useMemo(() => summarizeWorks(works, new Date()).warnings.length, [works]);
   // Education pins follow the selected life stages; a school of unknown level counts for both school stages.
   const placesView = useMemo(
@@ -194,6 +204,8 @@ export function MapExperience({
           onClose={() => setSelected(null)}
           view={view}
           onView={setView}
+          pins={pinCategories}
+          onTogglePin={togglePin}
           worksCount={worksCount}
           worksSlot={<WorksWarnings works={works} />}
           controlsFor={(c) => (c === "education" && hasStages ? <StageFilter value={stages} onToggle={toggleStage} inline /> : null)}

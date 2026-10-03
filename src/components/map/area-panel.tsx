@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { ArrowLeft, Check, ChevronRight, Info, MapPin, ShieldCheck, TriangleAlert, Wind, X } from "lucide-react";
+import { GREEN_COLOR, PLACE_COLORS } from "@/lib/map/places";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
 import { AIR_CAVEAT, EDUCATION_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describeAirLevel, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
 import type { HexSource } from "@/lib/supabase/hex-scores";
@@ -15,6 +16,8 @@ import {
   type HexIndicators,
 } from "@/types";
 import { cn } from "@/lib/utils";
+
+const PIN_COLORS: Record<Category, string> = { ...PLACE_COLORS, greenery: GREEN_COLOR };
 
 const LEVEL_STYLE: Record<MatchLevel, string> = {
   strong: "text-emerald-700",
@@ -43,6 +46,9 @@ type Props = {
   /** Current detail view; null = overview. */
   view: PanelView | null;
   onView: (v: PanelView | null) => void;
+  /** Categories whose pins are shown on the map, and the toggle for one of them. */
+  pins?: ReadonlySet<Category>;
+  onTogglePin?: (c: Category) => void;
   /** Real places behind one category's score (pins on the map follow the open category). */
   placesFor?: (c: Category) => ReactNode;
   /** Extra controls shown in a category's detail (e.g. the education stage filter). */
@@ -53,7 +59,7 @@ type Props = {
   worksSlot?: ReactNode;
 };
 
-export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, placesFor, controlsFor, worksCount = 0, worksSlot }: Props) {
+export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksCount = 0, worksSlot }: Props) {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
   // Bars are relative to the largest weight, so the top priority fills the bar.
   const maxWeight = Math.max(...CATEGORIES.map((c) => weights[c]), 0.0001);
@@ -158,12 +164,28 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
         </button>
       </div>
 
-      <ul className="mt-5 space-y-1">
+      <p className="mt-5 text-[11px] text-muted-foreground">Dots toggle pins on the map; tap a row for details.</p>
+      <ul className="mt-1.5 space-y-1">
         {byWeight.map((c) => (
-          <li key={c}>
+          <li key={c} className="flex items-center gap-1">
+            {pins && onTogglePin && (
+              <button
+                type="button"
+                aria-pressed={pins.has(c)}
+                aria-label={`${pins.has(c) ? "Hide" : "Show"} ${CATEGORY_LABELS[c]} pins on the map`}
+                title={pins.has(c) ? "Hide pins on the map" : "Show pins on the map"}
+                onClick={() => onTogglePin(c)}
+                className={cn(
+                  "grid size-6 shrink-0 place-items-center rounded-full border transition-colors",
+                  pins.has(c) ? "border-slate-800 bg-slate-800" : "border-border bg-white hover:bg-muted",
+                )}
+              >
+                <span className="size-2.5 rounded-full" style={{ background: PIN_COLORS[c] }} />
+              </button>
+            )}
             <button
               onClick={() => onView(c)}
-              className="group w-full rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted/70"
+              className="group min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted/70"
             >
               <span className="flex items-center justify-between">
                 <span className="flex items-center gap-1">
