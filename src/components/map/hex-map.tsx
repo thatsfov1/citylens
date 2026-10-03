@@ -124,31 +124,65 @@ type Props = {
   /** Minimum safety level (0 = off): hexes below it are dimmed outside the Safety view. */
   minSafety: number;
   /** Safety / air values of the selected hexagon (null = no data); shown as badges on its border. */
-  badges?: { safety: number | null; air: number | null };
-  onBadge?: (kind: "safety" | "air") => void;
+  badges?: HexBadges;
+  onBadge?: (kind: BadgeKind) => void;
 };
 
 const BADGE_MIN_ZOOM = 12.5;
 
+export type BadgeKind = "safety" | "air" | "works" | "compare";
+export type HexBadges = {
+  safety: number | null;
+  air: number | null;
+  /** Construction / renovation works nearby (badge only when > 0). */
+  works: number;
+  compare: { added: boolean; full: boolean };
+};
+
 const BADGE_ICONS = {
   safety:
     '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  works:
+    '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
   air: '<path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/>',
 } as const;
 
-function badgeElement(kind: "safety" | "air", value: number, onClick: () => void): HTMLElement {
+const BADGE_BASE =
+  "flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold tabular-nums shadow-lg";
+
+function badgeElement(
+  icon: keyof typeof BADGE_ICONS,
+  label: string | number | null,
+  title: string,
+  onClick: () => void,
+  tone = "border-border/70 bg-white text-slate-900 hover:bg-slate-50",
+): HTMLElement {
   const el = document.createElement("button");
   el.type = "button";
-  el.title = kind === "safety" ? "Safety indicators: click for details" : "Air quality: click for details";
-  el.className =
-    "flex items-center gap-1 rounded-full border border-border/70 bg-white px-2 py-1 text-xs font-semibold tabular-nums text-slate-900 shadow-lg hover:bg-slate-50";
-  el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${BADGE_ICONS[kind]}</svg>`;
-  el.append(String(value));
+  el.title = title;
+  el.setAttribute("aria-label", title);
+  el.className = `${BADGE_BASE} ${tone}`;
+  el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${BADGE_ICONS[icon]}</svg>`;
+  if (label !== null) el.append(String(label));
   el.addEventListener("click", (e) => {
     e.stopPropagation();
     onClick();
   });
   return el;
+}
+
+/** The hexagon corner closest to a compass direction (degrees, 0 = east, counter-clockwise). */
+function cornerAt(selected: string, degrees: number): [number, number] {
+  const [clat, clng] = cellToLatLng(selected);
+  const k = Math.cos((clat * Math.PI) / 180);
+  const want = (degrees * Math.PI) / 180;
+  const diff = ([lat, lng]: [number, number]) => {
+    const a = Math.atan2(lat - clat, (lng - clng) * k);
+    return Math.abs(Math.atan2(Math.sin(a - want), Math.cos(a - want)));
+  };
+  return cellToBoundary(selected).reduce((best, v) => (diff(v) < diff(best) ? v : best)) as [number, number];
 }
 
 export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, badges, onBadge }: Props) {
@@ -595,22 +629,39 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
   }, [onBadge]);
   const safetyBadge = badges?.safety ?? null;
   const airBadge = badges?.air ?? null;
+  const worksBadge = badges?.works ?? 0;
+  const compareAdded = badges?.compare.added ?? false;
+  const compareFull = badges?.compare.full ?? false;
+  const hasBadges = badges !== undefined;
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !selected || (safetyBadge === null && airBadge === null)) return;
-    const [west, east] = cellToBoundary(selected)
-      .sort((a, b) => b[0] - a[0])
-      .slice(0, 2)
-      .sort((a, b) => a[1] - b[1]);
+    if (!map || !selected || !hasBadges) return;
     const markers: maplibregl.Marker[] = [];
-    const add = (kind: "safety" | "air", value: number | null, corner: number[]) => {
-      if (value === null) return;
-      const el = badgeElement(kind, value, () => onBadgeRef.current?.(kind));
-      markers.push(new maplibregl.Marker({ element: el }).setLngLat([corner[1], corner[0]]).addTo(map));
+    const place = (el: HTMLElement, degrees: number) => {
+      const [lat, lng] = cornerAt(selected, degrees);
+      markers.push(new maplibregl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map));
     };
-    add("safety", safetyBadge, west);
-    add("air", airBadge, east);
-    // At city zoom a hexagon is tiny and the two badges would overlap, so show them once zoomed in.
+    const open = (kind: BadgeKind) => () => onBadgeRef.current?.(kind);
+    if (safetyBadge !== null) place(badgeElement("safety", safetyBadge, "Safety indicators: click for details", open("safety")), 150);
+    if (airBadge !== null) place(badgeElement("air", airBadge, "Air quality: click for details", open("air")), 30);
+    if (worksBadge > 0) {
+      const title = `${worksBadge} ${worksBadge === 1 ? "work" : "works"} nearby: click for details`;
+      place(badgeElement("works", worksBadge, title, open("works"), "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"), 210);
+    }
+    const compareTitle = compareAdded ? "Remove from comparison" : compareFull ? "Comparison full (3 areas)" : "Add to comparison";
+    place(
+      badgeElement(
+        compareAdded ? "check" : "plus",
+        null,
+        compareTitle,
+        open("compare"),
+        compareAdded
+          ? "border-slate-800 bg-slate-800 text-white hover:bg-slate-700"
+          : `border-border/70 bg-white text-slate-900 hover:bg-slate-50 ${compareFull ? "opacity-60" : ""}`,
+      ),
+      330,
+    );
+    // At city zoom a hexagon is tiny and the badges would overlap, so show them once zoomed in.
     const sync = () => markers.forEach((m) => (m.getElement().style.display = map.getZoom() >= BADGE_MIN_ZOOM ? "" : "none"));
     sync();
     map.on("zoom", sync);
@@ -618,7 +669,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       map.off("zoom", sync);
       markers.forEach((m) => m.remove());
     };
-  }, [selected, safetyBadge, airBadge]);
+  }, [selected, hasBadges, safetyBadge, airBadge, worksBadge, compareAdded, compareFull]);
 
   // Selecting a hexagon flies in; deselecting flies back to where the user was.
   useEffect(() => {

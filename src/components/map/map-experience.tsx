@@ -203,7 +203,7 @@ export function MapExperience({
   }, [first, hex, view, selected, details, weights, stages, placesView]);
 
   // Info window opened from a safety / air badge on the hexagon; tied to the hexagon like the panel detail.
-  const [badgeInfo, setBadgeInfo] = useState<{ hex: string | null; kind: "safety" | "air" | null }>({ hex: null, kind: null });
+  const [badgeInfo, setBadgeInfo] = useState<{ hex: string | null; kind: "safety" | "air" | "works" | null }>({ hex: null, kind: null });
   const openBadge = badgeInfo.hex === selected ? badgeInfo.kind : null;
 
   const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
@@ -223,8 +223,17 @@ export function MapExperience({
         onHoverPlace={setHoveredPlace}
         focusPlace={focusPlace}
         minSafety={minSafety}
-        badges={hex ? { safety: hex.safety ?? null, air: hex.air ?? null } : undefined}
-        onBadge={(kind) => setBadgeInfo({ hex: selected, kind })}
+        badges={
+          hex
+            ? {
+                safety: hex.safety ?? null,
+                air: hex.air ?? null,
+                works: worksCount,
+                compare: { added: compared.includes(hex.h3Index), full: compared.length >= MAX_COMPARED },
+              }
+            : undefined
+        }
+        onBadge={(kind) => (kind === "compare" ? toggleCompared() : setBadgeInfo({ hex: selected, kind }))}
       />
 
       {openBadge && hex && (
@@ -238,6 +247,8 @@ export function MapExperience({
           </button>
           {openBadge === "safety" ? (
             <SafetySection safety={hex.safety ?? null} minSafety={minSafety} indicators={details?.indicators ?? null} />
+          ) : openBadge === "works" ? (
+            <WorksWarnings works={works} />
           ) : (
             hex.air != null && <AirSection air={hex.air} indicators={details?.indicators ?? null} />
           )}
@@ -287,12 +298,10 @@ export function MapExperience({
           sensitivity={sensitivity}
           stages={stages}
           onClose={() => setSelected(null)}
-          compare={selected ? { added: compared.includes(selected), full: compared.length >= MAX_COMPARED, onToggle: toggleCompared } : undefined}
           view={view}
           onView={setView}
           pins={pinCategories}
           onTogglePin={togglePin}
-          worksCount={worksCount}
           worksSlot={<WorksWarnings works={works} />}
           controlsFor={(c) => (c === "education" && hasStages ? <StageFilter value={stages} onToggle={toggleStage} inline /> : null)}
           placesFor={(c) =>

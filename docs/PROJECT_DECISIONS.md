@@ -384,3 +384,8 @@ changes a score.
 - The comparison is its own floating window left of the side panel (stays open while browsing areas and detail views; stacked under the top bar on mobile).
 - Row order and summary: rows are sorted by weight × spread between the areas (what actually decides the comparison), then by weight; zero-weight rows are dimmed. A one-line summary
   names the stronger match and the category adding most to its lead (weight × lead over the others' average), or says "about equally" when match scores are within 3 points. Deterministic, no LLM.
+
+## Hexagon badges (safety, air, works, compare)
+- The selected hexagon carries badges on its corners (MapLibre markers in `hex-map.tsx`, shown from zoom 12.5 so they don't overlap at city zoom): safety and air with their score, works with a count
+  (only if > 0), and a +/✓ compare button. Native tooltips on hover. Safety, air and works open a floating info window (same `SafetySection` / `AirSection` / `WorksWarnings` content);
+  the compare badge adds/removes the area (max 3). They replace the chip row and the "Add to comparison" button that used to be in the side panel.

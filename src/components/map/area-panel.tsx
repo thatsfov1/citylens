@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowLeft, Check, ChevronRight, Info, MapPin, ShieldCheck, TriangleAlert, Wind, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Info, MapPin, ShieldCheck, Wind, X } from "lucide-react";
 import { GREEN_COLOR, PLACE_COLORS } from "@/lib/map/places";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
 import { AIR_CAVEAT, EDUCATION_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describeAirLevel, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
@@ -55,17 +55,13 @@ type Props = {
   placesFor?: (c: Category) => ReactNode;
   /** Extra controls shown in a category's detail (e.g. the education stage filter). */
   controlsFor?: (c: Category) => ReactNode;
-  /** Number of construction / renovation warnings near the area. */
-  worksCount?: number;
   /** Full construction / renovation warnings, each with its source. */
   worksSlot?: ReactNode;
   /** Does the match survive nudging one priority? Null = not computed. */
   sensitivity?: Sensitivity | null;
-  /** Add / remove this area from the side-by-side comparison. */
-  compare?: { added: boolean; full: boolean; onToggle: () => void };
 };
 
-export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksCount = 0, worksSlot, sensitivity, compare }: Props) {
+export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksSlot, sensitivity }: Props) {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
   // Bars are relative to the largest weight, so the top priority fills the bar.
   const maxWeight = Math.max(...CATEGORIES.map((c) => weights[c]), 0.0001);
@@ -109,7 +105,6 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
 
   const facts = indicators ? describeAll(indicators, stages) : undefined;
   const ex = explainMatch(scores, weights, facts);
-  const hasSafety = safety !== null || minSafety > 0;
 
   if (view) {
     const back = (
@@ -213,46 +208,6 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
           </li>
         ))}
       </ul>
-
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {worksCount > 0 && (
-          <button
-            onClick={() => onView("works")}
-            className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
-          >
-            <TriangleAlert className="size-3.5" />
-            {worksCount} {worksCount === 1 ? "work" : "works"} nearby
-          </button>
-        )}
-        {hasSafety && (
-          <button
-            onClick={() => onView("safety")}
-            className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium hover:bg-muted"
-          >
-            <ShieldCheck className="size-3.5" />
-            Safety {safety === null ? "n/a" : safety}
-          </button>
-        )}
-        {air !== null && (
-          <button
-            onClick={() => onView("air")}
-            className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium hover:bg-muted"
-          >
-            <Wind className="size-3.5" />
-            Air {air}
-          </button>
-        )}
-      </div>
-
-      {compare && (
-        <button
-          onClick={compare.onToggle}
-          disabled={!compare.added && compare.full}
-          className="mt-4 w-full rounded-full border border-border px-3 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
-        >
-          {compare.added ? "Remove from comparison" : compare.full ? "Comparison full (3 areas)" : "Add to comparison"}
-        </button>
-      )}
 
       <h3 className="mt-6 text-sm font-semibold">Why it matches you</h3>
       <ul className="mt-2 space-y-1.5">
