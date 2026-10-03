@@ -13,6 +13,7 @@ import { CATEGORIES, type CategoryWeights, type HexData, type MapMode } from "@/
 
 const SOURCE = "hexes";
 const ZONES_SOURCE = "zones";
+const DIMMED_OPACITY = 0.6;
 
 // Once zoomed in by more than this (zoom levels) beyond the "whole city fits" view,
 // the recenter button appears.
@@ -198,7 +199,12 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
         id: "zone-fill",
         type: "fill",
         source: ZONES_SOURCE,
-        paint: { "fill-color": zoneColorExpression, "fill-antialias": false },
+        paint: {
+          "fill-color": zoneColorExpression,
+          "fill-antialias": false,
+          "fill-opacity": selected ? DIMMED_OPACITY : 1,
+          "fill-opacity-transition": { duration: 250 },
+        },
       });
       map.addLayer({
         id: "zone-line",
@@ -222,6 +228,14 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
         source: SOURCE,
         filter: ["==", ["get", "h3Index"], ""],
         paint: { "line-color": "#0f172a", "line-width": 1.5, "line-opacity": 0.55 },
+      });
+      map.addLayer({
+        id: "hex-selected-glow",
+        type: "line",
+        source: SOURCE,
+        filter: ["==", ["get", "h3Index"], selected ?? ""],
+        layout: { "line-join": "round" },
+        paint: { "line-color": "#ffffff", "line-width": 8, "line-opacity": 0.9, "line-blur": 3 },
       });
       map.addLayer({
         id: "hex-selected",
@@ -280,7 +294,11 @@ export function HexMap({ hexes, weights, mode, selected, onSelect }: Props) {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
-    map.setFilter("hex-selected", ["==", ["get", "h3Index"], selected ?? ""]);
+    const filter: maplibregl.FilterSpecification = ["==", ["get", "h3Index"], selected ?? ""];
+    map.setFilter("hex-selected", filter);
+    map.setFilter("hex-selected-glow", filter);
+    // Dim the other zones while an area is selected.
+    map.setPaintProperty("zone-fill", "fill-opacity", selected ? DIMMED_OPACITY : 1);
   }, [selected]);
 
   // MapLibre forces position:relative on its container, so size it via a wrapper.
