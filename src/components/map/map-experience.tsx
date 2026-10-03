@@ -18,6 +18,7 @@ import { summarizeWorks } from "@/lib/data/works";
 import { fetchCached } from "@/lib/map/hex-cache";
 import { defaultPinCategories } from "@/lib/map/places";
 import { NO_DATA_COLOR } from "@/lib/map/zones";
+import { computeSensitivity } from "@/lib/scoring/sensitivity";
 import { MIN_SAFETY_LEVELS, importanceToQuery, type Importance } from "@/lib/scoring/preferences";
 import { stagesToParam, withEducationStages } from "@/lib/scoring/education";
 import { normalizeWeights } from "@/lib/scoring/weights";
@@ -77,6 +78,10 @@ export function MapExperience({
   const showStageFilter = hasStages && (mode === "education" || (mode === "forYou" && importance.education > 0));
   const [selected, setSelected] = useState<string | null>(null);
   const weights = useMemo(() => normalizeWeights(importance), [importance]);
+  const sensitivity = useMemo(
+    () => (selected ? computeSensitivity(viewHexes, selected, importance) : null),
+    [viewHexes, selected, importance],
+  );
   const hex = useMemo(
     () => (selected ? (viewHexes.find((h) => h.h3Index === selected) ?? null) : null),
     [viewHexes, selected],
@@ -244,6 +249,7 @@ export function MapExperience({
           indicators={details?.indicators ?? null}
           source={source}
           weights={weights}
+          sensitivity={sensitivity}
           stages={stages}
           onClose={() => setSelected(null)}
           view={view}

@@ -5,7 +5,9 @@ import { ArrowLeft, Check, ChevronRight, Info, MapPin, ShieldCheck, TriangleAler
 import { GREEN_COLOR, PLACE_COLORS } from "@/lib/map/places";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
 import { AIR_CAVEAT, EDUCATION_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describeAirLevel, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
+import type { Sensitivity } from "@/lib/scoring/sensitivity";
 import type { HexSource } from "@/lib/supabase/hex-scores";
+import { SensitivitySection } from "./sensitivity-section";
 import {
   CATEGORIES,
   CATEGORY_LABELS,
@@ -57,9 +59,11 @@ type Props = {
   worksCount?: number;
   /** Full construction / renovation warnings, each with its source. */
   worksSlot?: ReactNode;
+  /** Does the match survive nudging one priority? Null = not computed. */
+  sensitivity?: Sensitivity | null;
 };
 
-export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksCount = 0, worksSlot }: Props) {
+export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, district, indicators, source, weights, stages, onClose, view, onView, pins, onTogglePin, placesFor, controlsFor, worksCount = 0, worksSlot, sensitivity }: Props) {
   const byWeight = [...CATEGORIES].sort((a, b) => weights[b] - weights[a]);
   // Bars are relative to the largest weight, so the top priority fills the bar.
   const maxWeight = Math.max(...CATEGORIES.map((c) => weights[c]), 0.0001);
@@ -261,6 +265,7 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
           </ul>
         </>
       )}
+      {sensitivity && <SensitivitySection sensitivity={sensitivity} />}
       <p className="mt-5 text-[11px] text-muted-foreground">
         {source === "supabase"
           ? "Scores are calculated from OpenStreetMap data within about 1 km of the area’s centre. Tap a category for details."

@@ -365,3 +365,9 @@ changes a score.
   yields one, and one real contributing place (`topContributor`: nearest place of the highest-weighted category, or the largest park). It appears
   only once the area's indicators have loaded, so it never shows generic text. Copy: "one of the stronger matches", never "best".
 - "Compare another area" walks the ranked list (wraps); dismissing the card (×) ends it. No side-by-side comparison yet.
+
+## Preference sensitivity ("How stable is this match?")
+- Overview-panel card (`sensitivity-section.tsx`) fed by `computeSensitivity` (`src/lib/scoring/sensitivity.ts`, tested). It nudges each category's
+  importance ±25 (clamped, no-op nudges skipped), recomputes every hexagon's personal score and percentile band (same bands as the map colours) and
+  reports whether the selected area changes band. Stable = same band under all nudges; otherwise it lists "if X matters more/less → <band>".
+- Deterministic, client-side, from stored scores only (no LLM, no API). Ignores the safety filter, like the map colouring. Returns null when all importances are 0.
