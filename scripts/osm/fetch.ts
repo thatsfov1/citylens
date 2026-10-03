@@ -17,6 +17,7 @@ const QUERIES: Record<string, string> = {
   nwr["tourism"~"^(museum|gallery|attraction|viewpoint)$"](${BBOX});
   nwr["historic"~"^(castle|monument|manor|fort)$"](${BBOX});
   nwr["amenity"~"^(theatre|cinema|arts_centre|library|community_centre|music_venue|concert_hall|nightclub)$"](${BBOX});
+  nwr["amenity"~"^(kindergarten|childcare|school|university|college)$"](${BBOX});
   nwr["shop"](${BBOX});
   node["highway"="bus_stop"](${BBOX});
   node["railway"~"^(tram_stop|station|halt)$"](${BBOX});

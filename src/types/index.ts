@@ -4,9 +4,22 @@ export const CATEGORIES = [
   "greenery",
   "shopping",
   "transport",
+  "education",
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];
+
+/** Life stages inside the education category; the user picks which ones matter. */
+export const EDUCATION_STAGES = ["kindergarten", "primary", "secondary", "university"] as const;
+export type EducationStage = (typeof EDUCATION_STAGES)[number];
+export type EducationStageScores = Record<EducationStage, number>;
+
+export const EDUCATION_STAGE_LABELS: Record<EducationStage, string> = {
+  kindergarten: "Kindergarten",
+  primary: "Primary school",
+  secondary: "Secondary school",
+  university: "University",
+};
 
 export type CategoryScores = Record<Category, number>;
 export type CategoryWeights = Record<Category, number>;
@@ -17,6 +30,11 @@ export type { CellIndicators as HexIndicators } from "../lib/data/score-hex";
 export type HexData = {
   h3Index: string;
   scores: CategoryScores;
+  /**
+   * Access score (0–100) per education stage. `scores.education` is their mean; the client recomputes it for the
+   * stages the user selected (src/lib/scoring/education.ts). Absent for mock data.
+   */
+  educationStages?: EducationStageScores;
   /** OSM district containing the cell centre; absent for mock data. */
   district?: string | null;
   /**
@@ -39,6 +57,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   greenery: "Greenery",
   shopping: "Shopping",
   transport: "Transport",
+  education: "Education",
 };
 
 /** An OSM place behind a score, shown as a pin when a hexagon is opened. */

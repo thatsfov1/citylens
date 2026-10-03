@@ -42,3 +42,17 @@ describe("circleRing", () => {
     for (const p of ring) assert.ok(Math.abs(haversine(center, p) - 500) < 5);
   });
 });
+
+describe("selectPlaces: education", () => {
+  it("each kind keeps its own cap and its stage's reach", () => {
+    const pois = [
+      ...Array.from({ length: 9 }, (_, i) => at(i, "education", "kindergarten", 0.0005 * (i + 1))), // 55 m … 500 m
+      at(50, "education", "kindergarten", 0.012), // ~1.3 km: beyond the 1 km kindergarten reach
+      at(51, "education", "university", 0.015), // ~1.7 km: within the 2 km university reach
+    ];
+    const edu = selectPlaces(center, pois).filter((p) => p.category === "education");
+    assert.equal(edu.filter((p) => p.kind === "kindergarten").length, 5);
+    assert.equal(edu.some((p) => p.id === 50), false);
+    assert.equal(edu.some((p) => p.id === 51), true);
+  });
+});
