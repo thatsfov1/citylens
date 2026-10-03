@@ -81,8 +81,8 @@ const SIZE = 48; // logical px; rasterised at 2x
 function badgeSvg(color: string, glyph: string): string {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE * 2}" height="${SIZE * 2}" viewBox="0 0 ${SIZE} ${SIZE}">` +
-    `<circle cx="24" cy="24" r="21.5" fill="${color}" stroke="#fff" stroke-width="3"/>` +
-    `<g transform="translate(12 12)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>` +
+    `<circle cx="24" cy="24" r="21.5" fill="#fff" stroke="${color}" stroke-width="3"/>` +
+    `<g transform="translate(12 12)" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>` +
     `</svg>`
   );
 }
