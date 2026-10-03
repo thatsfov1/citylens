@@ -416,20 +416,31 @@ changes a score.
 ## Rent budget
 
 - A **filter, not a score term** (like safety and "near a place"): the user sets a monthly rent range and a flat size
-  (1 / 2 / 3+ rooms); hexes whose district's typical rent is outside the range are greyed out and left out of
+  (1 / 2 / 3+ rooms); the map fades toward grey where few of the district's offers fit, and those districts are left out of
   "Strongest areas". Weights and stored scores are untouched. Logic and tests: `src/lib/scoring/rent.ts`,
-  `src/lib/__tests__/rent.test.ts`. UI: `src/components/map/rent-filter.tsx` (in the Filters window; a rent card in the area panel).
-- **Data:** `src/lib/data/rent-data.json` is a one-off snapshot of Otodom rental *asking prices* (1,639 listings, 2026-10-03):
-  per district and flat size, `n / p25 / median / p75`. Built by `scripts/rent/build.ts` (45 result pages, 2 s apart, no
-  per-listing requests; raw rows in `data/rent/listings.json`). Re-run it to refresh; `FETCH=0` re-aggregates only.
-  Buckets with fewer than 5 listings are left out (e.g. Wzgórza Krzesławickie has none). Asking prices run above signed rents.
-- **Granularity is the district** (`hex_scores.district`); hexes inherit it. There is no per-hexagon rent and no table in
-  Supabase: the file is bundled and the join happens client-side.
-- "In budget" = the district's **median** lies in the range. A handle at the end of the slider (1 500 / 7 000+) means no
-  limit on that side; the full range means no filter. Districts with no estimate are **unknown**: a light shade, never
-  treated as in or out of budget.
-- URL: `?rent=min-max&rooms=n` (omitted when the full range). The chat LLM may copy a stated budget into `budget {min, max, rooms}`;
-  `POST /api/chat` validates and snaps it (`budgetToFilter`) and returns `rent`; the landing page appends it to the map URL.
-  The model never suggests a budget.
-- Limits: median of asking prices per district, not per street; listing mix (new builds, furnished) is not controlled for;
+  `src/lib/__tests__/rent.test.ts`. UI: `src/components/map/rent-filter.tsx` (Filters window; a rent card in the area panel).
+- **Data:** `src/lib/data/rent-data.json` is a one-off snapshot of Otodom rental *asking prices* (about 1,600 listings,
+  2026-10-03), built by `scripts/rent/build.ts` (45 result pages, 2 s apart, no per-listing requests; raw rows in
+  `data/rent/listings.json`; `FETCH=0` re-aggregates only). Per district and flat size it keeps `n / p25 / median / p75`,
+  the typical **czynsz** (`fee`) and every offer as `[base rent, czynsz | null]`. Buckets with fewer than 5 listings are
+  left out (e.g. Wzgórza Krzesławickie has none). Asking prices run above signed rents.
+- **Fit = share of a district's offers inside the range** (not the median: all 2-room medians lie between 2 400 and
+  3 350, so the first version greyed nothing for ordinary budgets). The map overlay fades from full grey at 0% to none at
+  50% (`FULL_SHARE`); below 20% (`OUT_SHARE`) a district counts as outside the budget (skipped by "Strongest areas" and
+  the first-match pick). A handle at the end of the slider (1 500 / 7 000+) means no limit on that side; the full range
+  means no filter. Districts with no estimate are **unknown**: a light shade, never in or out.
+- **Czynsz (building fee):** ads show the base rent; the czynsz administracyjny is a separate field (stated in about 94% of
+  ads, median about 520 / 700 / 900 zł for 1 / 2 / 3+ rooms). The filter has a switch "Budget includes czynsz (estimated)",
+  **on by default**: each offer costs base rent plus its czynsz, or the district's typical one when the ad does not state it.
+  The UI warns that ads usually show base rent only and that utilities (media) are often extra again; the area card shows
+  base + czynsz = about a month. Otodom filters on base rent, so the "See current offers" link lowers the price limits by
+  the typical czynsz when the switch is on.
+- **Granularity is the district** (`hex_scores.district`); hexes inherit it. No Supabase table: the file is bundled and the
+  join happens client-side. The slider value is deferred (`useDeferredValue`) so dragging stays smooth.
+- URL: `?rent=min-max&rooms=n` (omitted when the full range), plus `czynsz=0` when the switch is off. The chat LLM may copy a
+  stated budget into `budget {min, max, rooms}`; `POST /api/chat` validates and snaps it (`budgetToFilter`, czynsz counted)
+  and returns `rent`; the landing page appends it to the map URL. The model never suggests a budget.
+- Source links: the area card and the filter link to Otodom.pl with the district, flat size and price range applied
+  (`otodomUrl`, `otodomDistrictSlug`).
+- Limits: asking prices per district, not per street; listing mix (new builds, furnished) is not controlled for;
   "Adjust preferences" does not carry the budget back to the landing page.

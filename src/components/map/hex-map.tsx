@@ -1,5 +1,6 @@
 "use client";
 
+import { FULL_SHARE } from "@/lib/scoring/rent";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -127,6 +128,8 @@ type Props = {
   outside?: ReadonlySet<string>;
   /** Hexes whose district rent is outside the user's budget: greyed out like the safety filter (not in the Safety view). */
   overBudget?: ReadonlySet<string>;
+  /** Share (0..1) of a hex's district offers inside the rent budget; the map fades toward grey as it falls. */
+  rentShare?: ReadonlyMap<string, number>;
   /** Hexes with no rent estimate while a budget is active: shaded lightly. */
   rentUnknown?: ReadonlySet<string>;
   /** Safety / air values of the selected hexagon (null = no data); shown as badges on its border. */
@@ -193,7 +196,7 @@ function cornerAt(selected: string, degrees: number): [number, number] {
   return cellToBoundary(selected).reduce((best, v) => (diff(v) < diff(best) ? v : best)) as [number, number];
 }
 
-export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentUnknown, badges, compared, onBadge }: Props) {
+export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentShare, rentUnknown, badges, compared, onBadge }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -240,7 +243,9 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     withSafety.forEach((i, k) => (safetyPct[i] = safetyRanks[k]));
     pct.safety = safetyPct;
     // Below the user's minimum safety level (unknown ≠ unsafe: cells without data are never filtered out).
-    const belowMin = hexes.map((h) => (minSafety > 0 && h.safety != null && h.safety < minSafety) || !!outside?.has(h.h3Index) || !!overBudget?.has(h.h3Index));
+    const belowMin = hexes.map((h) => (minSafety > 0 && h.safety != null && h.safety < minSafety) || !!outside?.has(h.h3Index));
+    // "Strongest areas" also skips districts where few offers fit the rent budget.
+    const excluded = hexes.map((h, i) => belowMin[i] || !!overBudget?.has(h.h3Index));
     const cells = hexes.map((h) => h.h3Index);
     const fields = Object.fromEntries(
       Object.keys(pct).map((m) => [
@@ -257,7 +262,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     ) as Record<MapMode, HeatInput>;
     const tops = Object.fromEntries(
       // "Strongest areas" skips cells below the minimum safety level (except in the Safety view itself).
-      Object.entries(pct).map(([m, v]) => [m, topZone(cells, m === "safety" ? v : v.map((p, i) => (belowMin[i] ? -1 : p)))]),
+      Object.entries(pct).map(([m, v]) => [m, topZone(cells, m === "safety" ? v : v.map((p, i) => (excluded[i] ? -1 : p)))]),
     ) as Record<MapMode, GeoJSON.FeatureCollection>;
     const geojson: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
@@ -271,6 +276,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
           belowMin: belowMin[i] ? 1 : 0,
           outside: outside?.has(hexes[i].h3Index) ? 1 : 0,
           overBudget: overBudget?.has(hexes[i].h3Index) ? 1 : 0,
+          rentShare: rentShare?.get(hexes[i].h3Index) ?? -1,
           rentUnknown: rentUnknown?.has(hexes[i].h3Index) ? 1 : 0,
           personal: personal[i],
           ...Object.fromEntries(
@@ -281,7 +287,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
       })),
     };
     return { geojson, fields, tops };
-  }, [hexes, weights, minSafety, outside, overBudget, rentUnknown]);
+  }, [hexes, weights, minSafety, outside, overBudget, rentShare, rentUnknown]);
 
   const districts = useMemo(() => districtLayers(hexes), [hexes]);
 
@@ -438,6 +444,19 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         filter: ["==", ["get", "belowMin"], 1],
         layout: { visibility: mode === "safety" ? "none" : "visible" },
         paint: { "fill-color": "#475569", "fill-opacity": 0.62, "fill-antialias": false },
+      });
+      // Rent budget: fades toward grey as fewer of the district's offers fit (full grey with none, clear at half or more).
+      map.addLayer({
+        id: "rent-fade",
+        type: "fill",
+        source: SOURCE,
+        filter: ["all", [">=", ["get", "rentShare"], 0], ["<", ["get", "rentShare"], FULL_SHARE]],
+        layout: { visibility: mode === "safety" ? "none" : "visible" },
+        paint: {
+          "fill-color": "#475569",
+          "fill-opacity": ["*", 0.62, ["-", 1, ["/", ["get", "rentShare"], FULL_SHARE]]],
+          "fill-antialias": false,
+        },
       });
       // Rent budget active but no estimate for the district: unknown, not out of budget, so only a light shade.
       map.addLayer({
@@ -598,8 +617,10 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
         district: (props.district as string) || "Kraków",
         label:
           m !== "safety" && props.belowMin === 1
-            ? `${label} · ${props.outside === 1 ? "outside your chosen radius" : props.overBudget === 1 ? "outside your rent budget" : "below your minimum safety"}`
-            : label,
+            ? `${label} · ${props.outside === 1 ? "outside your chosen radius" : "below your minimum safety"}`
+            : m !== "safety" && props.overBudget === 1
+              ? `${label} · few offers within your rent budget`
+              : label,
         value: noSafety ? "" : `${Math.round(value as number)}`,
       });
     });
@@ -641,6 +662,7 @@ export function HexMap({ hexes, weights, mode, selected, onSelect, places, pinCa
     (map.getSource(TOP_SOURCE) as maplibregl.GeoJSONSource).setData(tops[mode]);
     map.setLayoutProperty("below-min", "visibility", mode === "safety" ? "none" : "visible");
     map.setLayoutProperty("rent-unknown", "visibility", mode === "safety" ? "none" : "visible");
+    map.setLayoutProperty("rent-fade", "visibility", mode === "safety" ? "none" : "visible");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fields handled by the effect above
   }, [mode]);
 

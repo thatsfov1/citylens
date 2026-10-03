@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, GraduationCap, Hexagon, MapPin, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 import { AirSection, AreaPanel, SafetySection, type PanelView } from "./area-panel";
@@ -26,7 +26,7 @@ import { MIN_SAFETY_LEVELS, importanceToQuery, type Importance } from "@/lib/sco
 import { stagesToParam, withEducationStages } from "@/lib/scoring/education";
 import { formatRadius, hexesOutsideAnchor, type Anchor } from "@/lib/scoring/anchor";
 import { normalizeWeights } from "@/lib/scoring/weights";
-import { DEFAULT_ROOMS, RENT_MAX, RENT_MIN, classifyHexes, rentFor, rentFit, rentToQuery, type RentFilter as RentBudget } from "@/lib/scoring/rent";
+import { DEFAULT_ROOMS, RENT_MAX, RENT_MIN, classifyHexes, rentToQuery, summarizeRent, type RentFilter as RentBudget } from "@/lib/scoring/rent";
 import type { HexSource, HexDetails } from "@/lib/supabase/hex-scores";
 import {
   EDUCATION_STAGES,
@@ -74,20 +74,20 @@ export function MapExperience({
   };
   // Rent budget: districts whose typical rent is outside the range are greyed out; unknown ones are shaded lightly.
   const hasRent = useMemo(() => hexes.some((h) => h.district), [hexes]);
-  const [rent, setRent] = useState<RentBudget>(initialRent ?? { min: RENT_MIN, max: RENT_MAX, rooms: DEFAULT_ROOMS });
+  const [rent, setRent] = useState<RentBudget>(initialRent ?? { min: RENT_MIN, max: RENT_MAX, rooms: DEFAULT_ROOMS, fees: true });
   const rentActive = hasRent && isRentActive(rent);
   const changeRent = (v: RentBudget) => {
     setRent(v);
     const url = new URL(window.location.href);
+    for (const k of ["rent", "rooms", "czynsz"]) url.searchParams.delete(k);
     if (isRentActive(v)) {
       for (const [k, val] of new URLSearchParams(rentToQuery(v))) url.searchParams.set(k, val);
-    } else {
-      url.searchParams.delete("rent");
-      url.searchParams.delete("rooms");
     }
     window.history.replaceState(null, "", url);
   };
-  const rentSets = useMemo(() => (rentActive ? classifyHexes(hexes, rent) : null), [hexes, rent, rentActive]);
+  // Deferred so dragging the slider stays smooth while the map rebuilds.
+  const deferredRent = useDeferredValue(rent);
+  const rentSets = useMemo(() => (rentActive ? classifyHexes(hexes, deferredRent) : null), [hexes, deferredRent, rentActive]);
   // Education has four life stages; the score shown is the mean of the selected ones (recomputed client-side).
   const hasStages = useMemo(() => hexes.some((h) => h.educationStages), [hexes]);
   const [stages, setStages] = useState<EducationStage[]>(initialStages);
@@ -296,6 +296,7 @@ export function MapExperience({
         minSafety={minSafety}
         outside={outside}
         overBudget={rentSets?.over}
+        rentShare={rentSets?.share}
         rentUnknown={rentSets?.unknown}
         compared={compared}
         badges={
@@ -407,10 +408,7 @@ export function MapExperience({
           sensitivity={sensitivity}
           rent={
             rentActive && hex
-              ? (() => {
-                  const stats = rentFor(hex.district, rent.rooms);
-                  return { stats, rooms: rent.rooms, fit: rentFit(stats, rent), filter: rent };
-                })()
+              ? { ...summarizeRent(hex.district, rent), filter: rent }
               : null
           }
           stages={stages}
@@ -534,8 +532,8 @@ function Legend({ mode, minSafety, rentActive }: { mode: MapMode; minSafety: num
       {mode !== "safety" && rentActive && (
         <>
           <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <span className="size-2.5 rounded-sm bg-slate-600/60" />
-            Outside your rent budget
+            <span className="h-2.5 w-4 rounded-sm" style={{ background: "linear-gradient(90deg, rgba(71,85,105,0.62), rgba(71,85,105,0))" }} />
+            Fewer offers within your rent budget
           </div>
           <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
             <span className="size-2.5 rounded-sm bg-slate-600/20" />

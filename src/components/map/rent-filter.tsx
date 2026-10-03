@@ -1,6 +1,6 @@
 "use client";
 
-import { Banknote, ExternalLink } from "lucide-react";
+import { Banknote, ExternalLink, Info } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import {
   RENT_MAX,
@@ -8,20 +8,20 @@ import {
   RENT_MIN,
   RENT_STEP,
   ROOMS_OPTIONS,
+  cityRent,
   formatRentRange,
   formatZl,
   otodomUrl,
   type RentFilter as Filter,
-  type RentFit,
-  type RentStats,
-  type Rooms,
+  type RentSummary,
 } from "@/lib/scoring/rent";
 
 export const isRentActive = (f: Filter) => f.min > RENT_MIN || f.max < RENT_MAX;
 
-/** Monthly rent budget: two handles (the ends mean "no limit") and the flat size the district prices refer to. */
+/** Monthly rent budget: two handles (the ends mean "no limit"), the flat size, and whether czynsz counts. */
 export function RentFilter({ value, onChange, inline = false }: { value: Filter; onChange: (v: Filter) => void; inline?: boolean }) {
   const active = isRentActive(value);
+  const fee = cityRent(value.rooms)?.fee ?? null;
   return (
     <div className={inline ? "" : "border-b border-border/70 px-5 py-3"}>
       <div className="flex items-center justify-between gap-2">
@@ -72,10 +72,35 @@ export function RentFilter({ value, onChange, inline = false }: { value: Filter;
           </button>
         ))}
       </div>
+
+      <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl bg-muted/60 p-2.5">
+        <input
+          type="checkbox"
+          checked={value.fees}
+          onChange={(e) => onChange({ ...value, fees: e.target.checked })}
+          className="mt-0.5 size-4 shrink-0 accent-emerald-600"
+        />
+        <span className="text-xs leading-snug">
+          <span className="font-medium text-slate-900">Budget includes czynsz (estimated)</span>
+          <span className="mt-0.5 block text-[11px] text-muted-foreground">
+            {value.fees ? "Each offer is counted as base rent plus its czynsz." : "Only the base rent shown in the ad is compared with your budget."}
+          </span>
+        </span>
+      </label>
+
+      <div className="mt-2 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-[11px] leading-snug text-amber-900">
+        <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+        <p>
+          Ads usually show the <b>base rent only</b>. The building fee (<b>czynsz administracyjny</b>) is added on top
+          {fee ? `, typically about ${formatZl(fee)} for this flat size` : ""}, and utilities (media, internet) are
+          often extra again. Check what an offer includes before you rely on the price.
+        </p>
+      </div>
+
       <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
         {active
-          ? "Districts whose typical rent is outside the range are greyed out and left out of “Strongest areas”. Districts with too few listings stay lightly shaded."
-          : "Optional: grey out districts whose typical asking rent is outside your budget."}{" "}
+          ? "The map fades where few of a district's offers fit, and those districts are left out of “Strongest areas”. Districts with too few listings stay lightly shaded."
+          : "Optional: fade out districts where few offers fit your budget."}{" "}
         Asking prices from {RENT_META.listings.toLocaleString("en")} listings on Otodom.pl (snapshot {RENT_META.snapshot}), per district.
       </p>
       <a
@@ -91,9 +116,17 @@ export function RentFilter({ value, onChange, inline = false }: { value: Filter;
   );
 }
 
-/** The typical rent of the selected area for the chosen flat size, with how it fits the budget. */
-export function RentSection({ stats, rooms, fit, district, filter }: { stats: RentStats | null; rooms: Rooms; fit: RentFit; district: string | null; filter: Filter }) {
-  const size = ROOMS_OPTIONS.find((r) => r.value === rooms)?.label ?? "";
+const FIT_BADGE = {
+  in: { text: "Most offers fit", style: "bg-emerald-50 text-emerald-700" },
+  some: { text: "Some offers fit", style: "bg-amber-50 text-amber-700" },
+  out: { text: "Few offers fit", style: "bg-slate-100 text-slate-600" },
+} as const;
+
+/** The selected area's typical rent for the chosen flat size: base + czynsz, and how many offers fit the budget. */
+export function RentSection({ stats, fee, share, within, fit, filter, district }: RentSummary & { filter: Filter; district: string | null }) {
+  const size = ROOMS_OPTIONS.find((r) => r.value === filter.rooms)?.label ?? "";
+  const badge = fit === "unknown" ? null : FIT_BADGE[fit];
+  const place = district ?? "this district";
   return (
     <div className="mt-5 rounded-2xl border border-border/70 p-4">
       <div className="flex items-center justify-between gap-3">
@@ -101,28 +134,41 @@ export function RentSection({ stats, rooms, fit, district, filter }: { stats: Re
           <Banknote className="size-4" />
           Typical rent · {size}
         </div>
-        {fit !== "unknown" && (
-          <span
-            className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-              fit === "in" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
-            }`}
-          >
-            {fit === "in" ? "Within budget" : "Outside budget"}
-          </span>
-        )}
+        {badge && <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${badge.style}`}>{badge.text}</span>}
       </div>
       {stats ? (
         <>
-          <div className="mt-2 text-2xl font-semibold tabular-nums">{formatZl(stats.median)}</div>
-          <div className="text-xs text-muted-foreground">
-            Middle half of offers: {formatZl(stats.p25)} – {formatZl(stats.p75)} / month
+          <dl className="mt-2 space-y-0.5 text-sm">
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Base rent (median)</dt>
+              <dd className="font-medium tabular-nums">{formatZl(stats.median)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Czynsz (typical, extra)</dt>
+              <dd className="font-medium tabular-nums">{fee ? `+ ${formatZl(fee)}` : "unknown"}</dd>
+            </div>
+            {fee > 0 && (
+              <div className="flex justify-between border-t border-border/70 pt-1 text-base font-semibold">
+                <dt>About a month</dt>
+                <dd className="tabular-nums">{formatZl(stats.median + fee)}</dd>
+              </div>
+            )}
+          </dl>
+          <div className="mt-1 text-xs text-muted-foreground">
+            Middle half of base rents: {formatZl(stats.p25)} – {formatZl(stats.p75)}
           </div>
+          {share !== null && (
+            <div className="mt-2 text-sm">
+              <b>{within}</b> of {stats.n} offers fit your budget{filter.fees ? " (czynsz included)" : " (base rent only)"}.
+            </div>
+          )}
           <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
-            Asking prices in {district ?? "this district"} from {stats.n} listings on Otodom.pl ({RENT_META.snapshot}){stats.n < 15 ? ", few offers, treat as rough" : ""}. An estimate for the whole district, not for this hexagon.
+            Asking prices in {place} from {stats.n} listings on Otodom.pl ({RENT_META.snapshot}){stats.n < 15 ? ", few offers, treat as rough" : ""}.
+            An estimate for the whole district, not for this hexagon. Utilities (media, internet) are usually extra.
           </p>
         </>
       ) : (
-        <p className="mt-2 text-sm text-muted-foreground">Too few listings for {size.toLowerCase()} flats in {district ?? "this district"} to estimate.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Too few listings for {size.toLowerCase()} flats in {place} to estimate.</p>
       )}
       <a
         href={otodomUrl(filter, district)}
@@ -133,6 +179,9 @@ export function RentSection({ stats, rooms, fit, district, filter }: { stats: Re
         See current offers{district ? ` in ${district}` : ""} on Otodom
         <ExternalLink className="size-3" aria-hidden />
       </a>
+      {filter.fees && isRentActive(filter) && (
+        <p className="mt-1 text-[11px] leading-snug text-muted-foreground">Otodom filters base rent, so the price limits there are lowered by the typical czynsz.</p>
+      )}
     </div>
   );
 }
