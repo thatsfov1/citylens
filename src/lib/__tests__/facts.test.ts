@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { describeAll, describeCategory, describeSafety } from "../scoring/facts";
+import { describeAll, describeCategory, describeNightlife, describeSafety, describeSafetyParts } from "../scoring/facts";
 import { explainMatch } from "../scoring/explain";
 import type { HexIndicators } from "../../types";
 
@@ -66,5 +66,29 @@ test("safety facts list each indicator with its numbers, and nothing when there 
   const facts = describeSafety(withSafety);
   assert.equal(facts.length, 2);
   assert.match(facts[0], /41.2 reported crimes per 1,000 residents in police area Komisariat V \(2025\); city: 52/);
-  assert.match(facts[1], /38 of 40 mapped street segments within 700 m are tagged as lit/);
+  assert.match(facts[1], /38 of 40 tagged street segments are lit/);
+});
+
+test("safety is explained indicator by indicator, with scores, shares and context", () => {
+  const withEnv: HexIndicators = {
+    ...ind,
+    safety: {
+      lighting: { segments: 40, lit: 38, litShare: 0.93 },
+      cctv: { cameras: 1 },
+      emergency: { police: 640, fire: null, hospital: 1850 },
+      nightlife: { venues: 6 },
+      parts: { lighting: 80, cctv: 40, emergency: 60 },
+    },
+  };
+  const parts = describeSafetyParts(withEnv);
+  assert.deepEqual(parts.map((p) => p.key), ["lighting", "cctv", "emergency"]);
+  assert.deepEqual(parts.map((p) => p.score), [80, 40, 60]);
+  assert.equal(parts.reduce((s, p) => s + (p.sharePct ?? 0), 0), 100);
+  assert.equal(parts[1].fact, "1 mapped camera within 500 m");
+  assert.equal(parts[2].fact, "Nearest: police 640 m, hospital or clinic 1.9 km");
+  assert.equal(describeNightlife(withEnv), "6 bars, pubs and clubs within 300 m");
+  assert.equal(describeNightlife({ ...ind, safety: { nightlife: { venues: 0 } } }), "No bars, pubs or clubs within 300 m");
+  assert.equal(describeNightlife(ind), null);
+  const none: HexIndicators = { ...ind, safety: { emergency: { police: null, fire: null, hospital: null } } };
+  assert.equal(describeSafetyParts(none)[0].fact, "No police, fire station or hospital within 3.0 km");
 });

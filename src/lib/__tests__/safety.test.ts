@@ -2,12 +2,18 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   MIN_LIGHTING_SEGMENTS,
+  cctvRaw,
   cityLitShare,
   combineSafety,
   crimeIndicator,
+  emergencyRaw,
+  hasStreets,
+  partShares,
   rankScores,
+  scoreFeatures,
   scoreLighting,
   type CrimeFile,
+  type FeaturesFile,
   type LightingFile,
 } from "../data/safety";
 
@@ -64,6 +70,53 @@ test("combineSafety renormalises over available indicators", () => {
   assert.equal(combineSafety({}), null);
   assert.equal(combineSafety({ lighting: 80 }), 80);
   assert.equal(combineSafety({ crime: 50 }), 50);
-  // crime 0.6, lighting 0.4
-  assert.equal(combineSafety({ crime: 100, lighting: 0 }), 60);
+  // crime 0.4, lighting 0.5 → 100 * 0.4 / 0.9
+  assert.equal(combineSafety({ crime: 100, lighting: 0 }), 44);
+  assert.equal(combineSafety({ lighting: 50, cctv: 50, emergency: 50 }), 50);
+});
+
+const features = (pts: [number, number, string][]): FeaturesFile => {
+  const kinds = ["police", "fire_station", "hospital", "cctv", "nightlife"] as const;
+  return { source: "test", fetched: "2026-10-03", kinds: [...kinds], points: pts.map(([lng, lat, k]) => [lng, lat, kinds.indexOf(k as (typeof kinds)[number])]) };
+};
+
+test("street features are counted within their own radii", () => {
+  const f = features([
+    [...near(300), "cctv"],
+    [...near(450), "cctv"],
+    [...near(700), "cctv"], // outside 500 m
+    [...near(100), "nightlife"],
+    [...near(250), "nightlife"],
+    [...near(400), "nightlife"], // outside 300 m
+    [...near(1200), "police"],
+    [...near(2000), "police"], // farther police is ignored: nearest wins
+    [...near(2500), "hospital"],
+    [...near(4000), "fire_station"], // beyond 3 km
+  ] as [number, number, string][]);
+  const r = scoreFeatures(center, f);
+  assert.deepEqual(r.cctv, { cameras: 2 });
+  assert.deepEqual(r.nightlife, { venues: 2 });
+  assert.equal(r.emergency.police! > 1100 && r.emergency.police! < 1300, true);
+  assert.equal(r.emergency.fire, null);
+  assert.equal(r.emergency.hospital! > 2400 && r.emergency.hospital! < 2600, true);
+});
+
+test("raw values: more cameras and closer services score higher", () => {
+  assert.ok(cctvRaw({ cameras: 3 }) > cctvRaw({ cameras: 0 }));
+  assert.ok(emergencyRaw({ police: 300, fire: null, hospital: null }) > emergencyRaw({ police: 2500, fire: null, hospital: null }));
+  assert.equal(emergencyRaw({ police: null, fire: null, hospital: null }), 0);
+});
+
+test("open land (no lighting data, no camera) has no safety data", () => {
+  assert.equal(hasStreets({ cctv: { cameras: 0 } }), false);
+  assert.equal(hasStreets({ cctv: { cameras: 1 } }), true);
+  assert.equal(hasStreets({ lighting: { segments: 9, lit: 9, litShare: 0.9 } }), true);
+  assert.equal(hasStreets({}), false);
+});
+
+test("indicator shares add up to 100% over the indicators present", () => {
+  const shares = partShares({ lighting: 80, cctv: 20, emergency: 50 });
+  assert.equal(Math.round(100 * (shares.lighting! + shares.cctv! + shares.emergency!)), 100);
+  assert.ok(shares.lighting! > shares.cctv!);
+  assert.deepEqual(partShares({}), {});
 });

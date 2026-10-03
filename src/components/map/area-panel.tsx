@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { Check, ChevronRight, Info, MapPin, ShieldCheck, X } from "lucide-react";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
-import { describeAll, describeSafety } from "@/lib/scoring/facts";
+import { SAFETY_NOT_INCLUDED, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
 import type { HexSource } from "@/lib/supabase/hex-scores";
 import {
   CATEGORIES,
@@ -174,7 +174,8 @@ function SafetySection({
   minSafety: number;
   indicators: HexIndicators | null;
 }) {
-  const facts = indicators ? describeSafety(indicators) : [];
+  const parts = indicators ? describeSafetyParts(indicators) : [];
+  const nightlife = indicators ? describeNightlife(indicators) : null;
   const below = safety !== null && minSafety > 0 && safety < minSafety;
   return (
     <div className="mt-6 rounded-2xl border border-border/70 p-3.5">
@@ -183,7 +184,7 @@ function SafetySection({
           <ShieldCheck className="size-4 text-slate-700" />
           Safety indicators
         </span>
-        <span className="font-semibold tabular-nums">{safety === null ? "no data" : safety}</span>
+        <span className="font-semibold tabular-nums">{safety === null ? "no data" : `${safety}/100`}</span>
       </div>
       {safety !== null && (
         <div className="mt-1.5 h-1.5 rounded-full bg-muted">
@@ -201,14 +202,62 @@ function SafetySection({
           Too few mapped streets nearby to say anything. This area is not filtered out.
         </p>
       )}
-      {facts.map((f) => (
-        <p key={f} className="mt-1.5 text-xs leading-snug text-muted-foreground">
-          {f}
-        </p>
-      ))}
-      <p className="mt-2 text-[11px] text-muted-foreground">
-        Relative to the rest of Kraków. An indicator of the surroundings, not a verdict on the area.
-      </p>
+
+      {parts.length > 0 && (
+        <>
+          <p className="mt-2.5 text-[11px] leading-snug text-muted-foreground">
+            Each indicator is compared with the other built-up areas of Kraków (0 = lowest, 100 = highest) and the
+            results are combined by the shares below.
+          </p>
+          <ul className="mt-2 space-y-2.5">
+            {parts.map((p) => (
+              <li key={p.key} className="text-xs">
+                <div className="flex justify-between gap-2">
+                  <span className="font-medium text-slate-800">
+                    {p.label}
+                    {p.sharePct !== null && (
+                      <span className="ml-1.5 font-normal text-muted-foreground">counts {p.sharePct}%</span>
+                    )}
+                  </span>
+                  <span className="font-semibold tabular-nums">{p.score ?? "–"}</span>
+                </div>
+                {p.score !== null && (
+                  <div className="mt-1 h-1 rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-slate-700" style={{ width: `${p.score}%` }} />
+                  </div>
+                )}
+                <p className="mt-1 leading-snug text-muted-foreground">{p.fact}</p>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {nightlife && (
+        <div className="mt-3 rounded-xl bg-muted/60 px-2.5 py-2 text-xs">
+          <div className="font-medium text-slate-800">After dark (context, not scored)</div>
+          <p className="mt-0.5 leading-snug text-muted-foreground">
+            {nightlife}. Nightlife can mean livelier streets late in the evening, and also more noise, so it is shown
+            but kept out of the score.
+          </p>
+        </div>
+      )}
+
+      {parts.length > 0 && (
+        <details className="group mt-3 text-xs">
+          <summary className="cursor-pointer select-none font-medium text-slate-800 marker:text-slate-400">
+            How is this measured?
+          </summary>
+          <ul className="mt-2 space-y-2 text-muted-foreground">
+            {parts.map((p) => (
+              <li key={p.key} className="leading-snug">
+                <span className="font-medium text-slate-700">{p.label}.</span> {p.how}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <p className="mt-3 text-[11px] leading-snug text-muted-foreground">{SAFETY_NOT_INCLUDED}</p>
     </div>
   );
 }

@@ -44,6 +44,76 @@ export function scoreLighting(center: LngLat, file: LightingFile, cityShare: num
   return { segments, lit, litShare: (lit + SMOOTHING * cityShare) / (segments + SMOOTHING) };
 }
 
+// ---- Street environment features (OpenStreetMap points) --------------------------------------------------
+
+// Road-safety data (crossings, traffic calming, major roads, accidents) is deliberately NOT used: the question
+// users ask is about being out at night and about crime, not about traffic.
+export const SAFETY_FEATURE_KINDS = ["police", "fire_station", "hospital", "cctv", "nightlife"] as const;
+export type SafetyFeatureKind = (typeof SAFETY_FEATURE_KINDS)[number];
+
+/** data/safety/features.json: [lng, lat, index into `kinds`]. */
+export type FeaturesFile = {
+  source: string;
+  fetched: string;
+  kinds: SafetyFeatureKind[];
+  points: [lng: number, lat: number, kind: number][];
+};
+
+export type CctvIndicator = { cameras: number };
+/** Distance in metres to the nearest service within EMERGENCY_REACH_M; null when none that close. */
+export type EmergencyIndicator = { police: number | null; fire: number | null; hospital: number | null };
+/** Context only, NOT part of the score: bars, pubs and nightclubs nearby. */
+export type NightlifeIndicator = { venues: number };
+
+export const CCTV_RADIUS_M = 500;
+export const EMERGENCY_REACH_M = 3000;
+export const NIGHTLIFE_RADIUS_M = 300;
+
+export type NearFeatures = { cctv: CctvIndicator; emergency: EmergencyIndicator; nightlife: NightlifeIndicator };
+
+const MAX_REACH = Math.max(EMERGENCY_REACH_M, CCTV_RADIUS_M, NIGHTLIFE_RADIUS_M);
+
+export function scoreFeatures(center: LngLat, file: FeaturesFile): NearFeatures {
+  const dLat = MAX_REACH / 110574;
+  const dLng = MAX_REACH / (111320 * Math.cos((center[1] * Math.PI) / 180));
+  const near: NearFeatures = {
+    cctv: { cameras: 0 },
+    emergency: { police: null, fire: null, hospital: null },
+    nightlife: { venues: 0 },
+  };
+  const nearest = (cur: number | null, d: number) => (cur === null || d < cur ? Math.round(d) : cur);
+  for (const [lng, lat, k] of file.points) {
+    if (Math.abs(lat - center[1]) > dLat || Math.abs(lng - center[0]) > dLng) continue;
+    const d = haversine(center, [lng, lat]);
+    switch (file.kinds[k]) {
+      case "cctv":
+        if (d <= CCTV_RADIUS_M) near.cctv.cameras++;
+        break;
+      case "nightlife":
+        if (d <= NIGHTLIFE_RADIUS_M) near.nightlife.venues++;
+        break;
+      case "police":
+        if (d <= EMERGENCY_REACH_M) near.emergency.police = nearest(near.emergency.police, d);
+        break;
+      case "fire_station":
+        if (d <= EMERGENCY_REACH_M) near.emergency.fire = nearest(near.emergency.fire, d);
+        break;
+      case "hospital":
+        if (d <= EMERGENCY_REACH_M) near.emergency.hospital = nearest(near.emergency.hospital, d);
+        break;
+    }
+  }
+  return near;
+}
+
+/** Raw values used for ranking cells against each other (higher = more in favour of safety). */
+export const cctvRaw = (c: CctvIndicator) => c.cameras;
+/** 0–1: closer police / fire / hospital score higher (police 0.4, fire 0.3, hospital 0.3). */
+export function emergencyRaw(e: EmergencyIndicator): number {
+  const prox = (d: number | null) => (d === null ? 0 : Math.max(0, 1 - d / EMERGENCY_REACH_M));
+  return 0.4 * prox(e.police) + 0.3 * prox(e.fire) + 0.3 * prox(e.hospital);
+}
+
 // ---- Official crime statistics (optional dataset) --------------------------------------------------------
 
 /**
@@ -84,13 +154,39 @@ export function crimeIndicator(district: string | null, file: CrimeFile): CrimeI
 
 // ---- Combination -----------------------------------------------------------------------------------------
 
+export const SAFETY_PARTS = ["crime", "lighting", "cctv", "emergency"] as const;
+export type SafetyPart = (typeof SAFETY_PARTS)[number];
+
 export type SafetyIndicators = {
   lighting?: LightingIndicator;
+  cctv?: CctvIndicator;
+  emergency?: EmergencyIndicator;
+  /** Context shown to the user; not part of the score. */
+  nightlife?: NightlifeIndicator;
   crime?: CrimeIndicator;
+  /** Score (0–100, higher = more in favour) of each indicator that fed the combined safety score. */
+  parts?: Partial<Record<SafetyPart, number>>;
 };
 
 /** Weights of the indicators; renormalised over the ones that have data for a cell. */
-export const SAFETY_WEIGHTS = { crime: 0.6, lighting: 0.4 } as const;
+export const SAFETY_WEIGHTS: Record<SafetyPart, number> = {
+  crime: 0.4, // only when a real dataset is provided (data/safety/crime.json)
+  lighting: 0.5,
+  cctv: 0.25,
+  emergency: 0.25,
+};
+
+/** Share (0–1) each present indicator contributes to the combined score. */
+export function partShares(parts: Partial<Record<SafetyPart, number>>): Partial<Record<SafetyPart, number>> {
+  const present = SAFETY_PARTS.filter((k) => parts[k] !== undefined);
+  const total = present.reduce((s, k) => s + SAFETY_WEIGHTS[k], 0);
+  return Object.fromEntries(present.map((k) => [k, SAFETY_WEIGHTS[k] / total]));
+}
+
+/** A cell is built-up (so safety indicators mean something) if it has lighting data or a mapped camera nearby. */
+export function hasStreets(ind: SafetyIndicators): boolean {
+  return ind.lighting !== undefined || (ind.cctv?.cameras ?? 0) > 0;
+}
 
 /** Percentile rank (0–100) of each value; ties share a rank. Higher value → higher rank. */
 export function rankScores(values: number[]): number[] {
@@ -107,10 +203,10 @@ export function rankScores(values: number[]): number[] {
  * Combines per-indicator scores (already 0–100, higher = better) into one cell score, or null when the cell
  * has no safety data at all.
  */
-export function combineSafety(parts: { crime?: number; lighting?: number }): number | null {
+export function combineSafety(parts: Partial<Record<SafetyPart, number>>): number | null {
   let sum = 0;
   let weight = 0;
-  for (const k of ["crime", "lighting"] as const) {
+  for (const k of SAFETY_PARTS) {
     const v = parts[k];
     if (v === undefined) continue;
     sum += v * SAFETY_WEIGHTS[k];
