@@ -7,10 +7,13 @@ import { AreaPanel } from "./area-panel";
 import { HexMap, LEGEND_GRADIENT } from "./hex-map";
 import { OsmAttribution } from "@/components/osm-attribution";
 import { ModeSelector } from "./mode-selector";
+import { PlacesList } from "./places-list";
+import { defaultPinCategories } from "@/lib/map/places";
+import { NO_DATA_COLOR } from "@/lib/map/zones";
 import { importanceToQuery, type Importance } from "@/lib/scoring/preferences";
 import { normalizeWeights } from "@/lib/scoring/weights";
 import type { HexSource, HexDetails } from "@/lib/supabase/hex-scores";
-import type { HexData, MapMode } from "@/types";
+import type { Category, HexData, MapMode, PlacesResponse } from "@/types";
 
 export function MapExperience({
   hexes,
@@ -44,9 +47,51 @@ export function MapExperience({
     };
   }, [selected, source]);
 
+  // Places (pins) behind the selected hexagon. Failure just means the text-only panel.
+  const [places, setPlaces] = useState<PlacesResponse | null>(null);
+  useEffect(() => {
+    if (!selected || source !== "supabase") return;
+    const ctrl = new AbortController();
+    fetch(`/api/hexes/${selected}/places`, { signal: ctrl.signal })
+      .then((r) => (r.ok ? (r.json() as Promise<PlacesResponse>) : null))
+      .then((d) => setPlaces(d))
+      .catch(() => {});
+    return () => {
+      ctrl.abort();
+      setPlaces(null);
+    };
+  }, [selected, source]);
+
+  // Which categories are pinned: the active mode (or top preferences), adjustable with chips.
+  // Overrides are tied to the (mode, hexagon) they were made in, so they reset on change.
+  const pinKey = `${mode}|${selected}`;
+  const [pinOverride, setPinOverride] = useState<{ key: string; cats: Set<Category> } | null>(null);
+  const pinCategories = useMemo(
+    () => (pinOverride?.key === pinKey ? pinOverride.cats : defaultPinCategories(mode, weights)),
+    [pinOverride, pinKey, mode, weights],
+  );
+  const togglePin = (c: Category) => {
+    const next = new Set(pinCategories);
+    if (!next.delete(c)) next.add(c);
+    setPinOverride({ key: pinKey, cats: next });
+  };
+  const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
+  const [focusPlace, setFocusPlace] = useState<{ id: number; n: number } | null>(null);
+
   return (
     <div className="relative flex-1 overflow-hidden">
-      <HexMap hexes={hexes} weights={weights} mode={mode} selected={selected} onSelect={setSelected} />
+      <HexMap
+        hexes={hexes}
+        weights={weights}
+        mode={mode}
+        selected={selected}
+        onSelect={setSelected}
+        places={places}
+        pinCategories={pinCategories}
+        hoveredPlace={hoveredPlace}
+        onHoverPlace={setHoveredPlace}
+        focusPlace={focusPlace}
+      />
 
       <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center gap-3 p-3 sm:flex-row sm:items-start sm:justify-between sm:p-4">
         <Link
@@ -70,6 +115,18 @@ export function MapExperience({
           source={source}
           weights={weights}
           onClose={() => setSelected(null)}
+          placesSlot={
+            places && (
+              <PlacesList
+                places={places}
+                active={pinCategories}
+                onToggle={togglePin}
+                hovered={hoveredPlace}
+                onHover={setHoveredPlace}
+                onFocus={(id) => setFocusPlace((f) => ({ id, n: (f?.n ?? 0) + 1 }))}
+              />
+            )
+          }
         />
       </aside>
 
@@ -87,10 +144,16 @@ function Legend({ mode }: { mode: MapMode }) {
       <div className="h-2 w-40 rounded-full" style={{ background: LEGEND_GRADIENT }} />
       <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
         <span>{mode === "forYou" ? "Weaker match" : "Low"}</span>
-        <span>{mode === "forYou" ? "Strong match" : "High"}</span>
+        <span>{mode === "forYou" ? "Stronger match" : "High"}</span>
       </div>
+      {mode !== "forYou" && (
+        <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <span className="size-2.5 rounded-sm" style={{ background: NO_DATA_COLOR }} />
+          Nothing nearby (no data)
+        </div>
+      )}
       <div className="mt-1 text-[10px] text-muted-foreground">
-        Relative to the rest of Kraków · untinted = average
+        Five bands, relative to the rest of Kraków
       </div>
       <OsmAttribution className="pointer-events-auto mt-1" />
     </div>

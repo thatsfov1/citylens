@@ -134,12 +134,48 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   normalised to weights for the weighted sum. Defaults: sport 50, culture 10, greenery 70,
   shopping 20, transport 50. Preferences travel in the URL query string.
 - Copy rule (AGENTS.md §3): "match for you", never "best/worst neighbourhood".
-- Colours: diverging percentile scale; the map is veiled outside Kraków's boundary (airports stay visible).
+- Colours: 5 percentile bands (red → orange → yellow → light green → green, `src/lib/map/zones.ts`). Same-band neighbouring hexes are dissolved into one zone (`cellsToMultiPolygon`), so borders only appear where the band changes; the per-hex layer is an invisible hit target. In category modes a hex scoring 0 is grey "nothing nearby" (`NO_DATA_BAND`), not a weak match. Extras: hover tooltip, dimmed non-selected zones, "Strongest areas" toggle (top 10% outline), softened basemap. The map is veiled outside Kraków's boundary (airports stay visible).
 - **Map view lock** (`src/components/map/hex-map.tsx`): the minimum zoom is the zoom at which the whole
   city fits beside the 380 px side panel (mobile: full width). At that view panning is disabled; zooming
   in enables panning, with the centre clamped to the city bbox (`KRAKOW_BOUNDS` in `src/lib/h3/mask.ts`).
   A "Center map" button appears once zoomed in by > 0.35 levels and flies back to the fit view.
   Do **not** use MapLibre `maxBounds` for this: it forces the bbox to cover the viewport and over-zooms.
+
+### Hexagon drill-down: places on the map
+
+- Clicking a hex flies the camera in (zoom ≥ 14.2, padded for the side panel), draws dashed 500 m / 1 km
+  rings and pins the real OSM places behind the scores; deselecting flies back. The full-city map has no icons.
+- **Tables `pois` and `green_areas`** (migration `…000300_places.sql`, RLS read-only like `hex_scores`).
+  `pois` = one row per classified OSM point (category, kind, name, lat, lng). `green_areas` = park/forest
+  outlines ≥ 0.5 ha as simplified GeoJSON + bbox columns. Filled by `scripts/osm/export-places.ts`
+  → `supabase/seed-places.sql` (run it with `OSM_DIR=data/osm/full`; the committed seed is built from the
+  small sample and is only good for development).
+- `GET /api/hexes/[h3Index]/places` → `PlacesResponse` (`src/types`). Selection logic is `selectPlaces`
+  in `src/lib/data/places.ts`: within each category's reach (culture 2 km, others 1 km), nearest 10 per
+  category; transport = up to 8 rail/tram + 6 bus stops. Failure ⇒ the panel just stays text-only.
+- Pins: default categories = active map mode, or the two top-weighted in "For You"; chips in the panel toggle
+  the rest. Greenery is shown as park outlines, not points. Pins are MapLibre circle/symbol layers (no sprites).
+- **Camera gotcha:** the view-lock in `sync()` (see "Map view lock") calls `jumpTo()` while the map is at the
+  minimum zoom, which cancels any running `flyTo`. `hex-map.tsx` therefore sets `flyingRef` before our own
+  `flyTo` and `sync()` skips the lock/clamp until `moveend`. Any new programmatic camera move from the
+  fit-to-city view needs the same flag.
+- **Why a new table instead of more `indicators`:** pins need every place's coordinates; storing them in
+  `hex_scores.indicators` would duplicate the same POI across neighbouring hexes. Selection (reach, caps)
+  happens at request time in `selectPlaces`, so the caps can change without recomputing anything.
+- Only the sample was used to build the UI; the pin/list/fly-in behaviour has not been verified against the
+  full-city data yet.
+
+### TODO for the colleague with the full OSM extracts (`data/osm/full/`)
+
+1. `git pull`, then apply the migration `supabase/migrations/20261003000300_places.sql` if the live DB lacks it
+   (it is already applied to the shared Supabase project).
+2. `OSM_DIR=data/osm/full npx tsx scripts/osm/export-places.ts` → regenerates `supabase/seed-places.sql`
+   (all POIs + green areas ≥ 0.5 ha). Commit it only if its size is reasonable; otherwise load it and keep it out of git.
+3. Load it into Supabase with write access (Supabase MCP / SQL editor / service role). The file starts with
+   `truncate … restart identity`, so it replaces the demo rows; the inserts are chunked (500 POIs / 50 green areas per statement).
+4. Check `GET /api/hexes/<id>/places` for a central and an outer hex (expect pins in range, parks present).
+5. Spot-check on the map: fly-in, rings, pins per mode, park outlines, list hover/click. Tune `CAP`/`BUS_CAP` in
+   `src/lib/data/places.ts` and the 0.5 ha green threshold in the export script if it feels crowded or sparse.
 
 ## 7. Code layout & ownership
 
@@ -164,6 +200,7 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
 - `/map` reads Supabase directly on the server instead of via `/api/hexes` (see §3).
 - Culture is still the weakest category (OSM coverage); it is now much denser after the tag and radius expansion.
 - `supabase/seed.sql` in the repo can be newer than the live Supabase table: after recomputing, the table must be reloaded by someone with write access.
+- The live `pois`/`green_areas` tables currently hold only a tiny hand-made demo slice (28 POIs, one made-up park outline) — reload with the full `seed-places.sql`.
 - Do not run `compute.ts` on the sample, and don't commit the full extracts.
 - Next.js here has breaking changes vs older versions: read `node_modules/next/dist/docs/` before
   writing framework code (see `AGENTS.md`).

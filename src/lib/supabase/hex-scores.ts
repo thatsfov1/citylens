@@ -1,8 +1,11 @@
 import { z } from "zod";
-import { isValidCell } from "h3-js";
+import { cellToLatLng, isValidCell } from "h3-js";
 import { createClient } from "./server";
 import { getHexData } from "../mock-data/hexes";
-import type { HexData, HexIndicators } from "../../types";
+import { MAX_RADIUS_M } from "../data/score-hex";
+import { MAX_REACH_M, bboxAround, selectPlaces } from "../data/places";
+import type { LngLat } from "../data/geo";
+import type { HexData, HexIndicators, PlacesResponse } from "../../types";
 
 const score = z.number().min(0).max(100);
 const rowSchema = z.object({
@@ -90,6 +93,61 @@ export async function loadHexDetails(h3Index: string): Promise<HexDetails | null
     return { h3Index, district: data.district ?? null, indicators: parsed.success ? parsed.data : null };
   } catch (err) {
     console.warn("hex details unavailable:", err);
+    return null;
+  }
+}
+
+const poiRow = z.object({
+  id: z.number(),
+  category: z.enum(["sport", "culture", "shopping", "transport"]),
+  kind: z.string(),
+  name: z.string().nullable(),
+  lat: z.number(),
+  lng: z.number(),
+});
+const greenRow = z.object({ name: z.string().nullable(), area_ha: z.coerce.number(), geometry: z.any() });
+const GREEN_LIMIT = 30;
+
+/** Places (pins) and green-area outlines around one cell; null if unknown or unavailable. */
+export async function loadPlaces(h3Index: string): Promise<PlacesResponse | null> {
+  if (!isValidCell(h3Index)) return null;
+  try {
+    const [lat, lng] = cellToLatLng(h3Index);
+    const center: LngLat = [lng, lat];
+    const supabase = await createClient();
+
+    const far = bboxAround(center, MAX_REACH_M);
+    const near = bboxAround(center, MAX_RADIUS_M);
+    const [poisRes, greenRes] = await Promise.all([
+      supabase
+        .from("pois")
+        .select("id,category,kind,name,lat,lng")
+        .gte("lat", far.minLat).lte("lat", far.maxLat)
+        .gte("lng", far.minLng).lte("lng", far.maxLng)
+        .limit(5000),
+      supabase
+        .from("green_areas")
+        .select("name,area_ha,geometry")
+        .lte("min_lat", near.maxLat).gte("max_lat", near.minLat)
+        .lte("min_lng", near.maxLng).gte("max_lng", near.minLng)
+        .order("area_ha", { ascending: false })
+        .limit(GREEN_LIMIT),
+    ]);
+    if (poisRes.error) throw poisRes.error;
+    if (greenRes.error) throw greenRes.error;
+
+    const places = selectPlaces(center, z.array(poiRow).parse(poisRes.data));
+    const green: GeoJSON.FeatureCollection = {
+      type: "FeatureCollection",
+      features: z.array(greenRow).parse(greenRes.data).map((g) => ({
+        type: "Feature",
+        properties: { name: g.name, areaHa: g.area_ha },
+        geometry: g.geometry,
+      })),
+    };
+    return { places, green };
+  } catch (err) {
+    console.warn("places unavailable:", err);
     return null;
   }
 }

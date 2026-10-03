@@ -30,3 +30,23 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   shopping: "Shopping",
   transport: "Transport",
 };
+
+/** An OSM place behind a score, shown as a pin when a hexagon is opened. */
+export type PlaceCategory = Exclude<Category, "greenery">;
+
+export type Place = {
+  id: number;
+  category: PlaceCategory;
+  kind: string;
+  name: string | null;
+  lng: number;
+  lat: number;
+  /** Metres from the hexagon centre. */
+  distanceM: number;
+};
+
+export type PlacesResponse = {
+  places: Place[];
+  /** Park / forest outlines near the hexagon (properties: name, areaHa). */
+  green: GeoJSON.FeatureCollection;
+};
