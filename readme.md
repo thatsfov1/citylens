@@ -7,7 +7,7 @@
 An explainable, personalized city-discovery experience built for the **HackYeah 2026 edition**.
 Describe what matters to you, explore a data-backed suitability map, compare areas, and understand why each place matches your priorities.
 
-[![GitHub stars](https://img.shields.io/github/stars/thatsfov1/winhackyeah?style=for-the-badge&logo=github&color=181717)](https://github.com/thatsfov1/winhackyeah/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/thatsfov1/citylens?style=for-the-badge&logo=github&color=181717)](https://github.com/thatsfov1/citylens/stargazers)
 [![HackYeah 2026](https://img.shields.io/badge/HackYeah-2026-4EA36F?style=for-the-badge)](https://hackyeah.pl/)
 
 [![Next.js](https://img.shields.io/badge/Next.js_16-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
@@ -196,7 +196,7 @@ Source dates, licenses, links, and caveats are centralized in `src/lib/sources.t
 ## Repository structure
 
 ```text
-winhackyeah/
+citylens/
 ├── src/
 │   ├── app/
 │   │   ├── api/                 # Chat, hex, place, works, and commute endpoints
@@ -245,8 +245,8 @@ winhackyeah/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/thatsfov1/winhackyeah.git
-cd winhackyeah
+git clone https://github.com/thatsfov1/citylens.git
+cd citylens
 ```
 
 ### 2. Install dependencies
@@ -464,6 +464,6 @@ Built for **HackYeah 2026** in Kraków.
 
 **Yevhenii Kulikovskyi · Daniel Skwarczek**
 
-[View source](https://github.com/thatsfov1/winhackyeah) · [Open the pitch deck](presentation/citylens-pitch.pdf)
+[View source](https://github.com/thatsfov1/citylens) · [Open the pitch deck](presentation/citylens-pitch.pdf)
 
 </div>
