@@ -429,6 +429,16 @@ export function HexMap({ showDistricts = false, recenterSignal = 0, tilt = false
         },
       });
 
+      // District borders + names above the colours.
+      map.addSource(DISTRICT_LINE_SOURCE, { type: "geojson", data: districts.outlines });
+      map.addLayer({
+        id: "district-line",
+        type: "line",
+        source: DISTRICT_LINE_SOURCE,
+        layout: { "line-join": "round", visibility: showDistrictsRef.current ? "visible" : "none" },
+        paint: { "line-color": "#334155", "line-width": 1.2, "line-opacity": 0.4 },
+      });
+
       // 3D buildings (hidden in the default top-down view). Above the heat raster so they are not painted over.
       map.addLayer(
         {
@@ -447,16 +457,6 @@ export function HexMap({ showDistricts = false, recenterSignal = 0, tilt = false
         },
         "district-line",
       );
-
-      // District borders + names above the colours.
-      map.addSource(DISTRICT_LINE_SOURCE, { type: "geojson", data: districts.outlines });
-      map.addLayer({
-        id: "district-line",
-        type: "line",
-        source: DISTRICT_LINE_SOURCE,
-        layout: { "line-join": "round", visibility: showDistrictsRef.current ? "visible" : "none" },
-        paint: { "line-color": "#334155", "line-width": 1.2, "line-opacity": 0.4 },
-      });
       map.addSource(DISTRICT_LABEL_SOURCE, { type: "geojson", data: districts.labels });
       map.addLayer({
         id: "district-label",
