@@ -102,3 +102,6 @@ export type WorkNearby = {
   /** Metres from the hexagon centre to the closest part of the works. */
   distanceM: number;
 };
+
+/** Properties of one feature in the map-wide works layer (`GET /api/works`): a work without its distance. */
+export type WorkFeatureProps = Omit<WorkNearby, "id" | "distanceM"> & { id: string };

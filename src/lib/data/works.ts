@@ -68,17 +68,19 @@ export type WorkWarning = {
   sourceName: string;
   sourceUrl: string;
   publishedAt: string | null;
+  /** How firm the timing is, so official dates and vague wording look different. */
+  certainty: Certainty;
 };
 
 /** True while the works are still relevant: planned/permits always, ongoing until their stated end date. */
-export function isCurrent(w: WorkNearby, today: Date): boolean {
+export function isCurrent(w: Pick<WorkNearby, "status" | "dateTo">, today: Date): boolean {
   if (w.status === "ongoing" && w.dateTo) return parse(w.dateTo) >= toUtcDay(today);
   return true;
 }
 
 export function describeWork(w: WorkNearby, today: Date): WorkWarning {
   const dist = distanceLabel(w.distanceM);
-  const base = { id: w.id, title: w.title, sourceName: w.sourceName, sourceUrl: w.sourceUrl, publishedAt: w.publishedAt };
+  const base = { id: w.id, title: w.title, sourceName: w.sourceName, sourceUrl: w.sourceUrl, publishedAt: w.publishedAt, certainty: certainty(w) };
 
   if (w.status === "decision") {
     const when = w.dateFrom ? `wydane ${fmtMonth(w.dateFrom)}` : "wydane";
@@ -155,4 +157,77 @@ export function groupWorks(works: WorkNearby[], today: Date): WorksGroups {
     planned: planned.map((w) => describeWork(w, today)),
     permits: summarizeWorks(works, today, 0).permits,
   };
+}
+
+// ---- Timeline (informational: never feeds the match score) ----------------------------------------------------
+
+/** Years offered on the timeline slider after "Dziś". */
+export const TIMELINE_YEARS = [2027, 2028, 2029, 2030] as const;
+
+export type WorkTime = Pick<WorkNearby, "status" | "dateFrom" | "dateTo" | "whenLabel">;
+
+/**
+ * permit      = a permit was issued, no works schedule is published (its date is the permit date, not the works)
+ * approximate = the source gave vague timing ("around mid-2027"); the date we store is only an anchor
+ * dated       = the source stated at least one date
+ * none        = the source stated no timing at all
+ */
+export type Certainty = "permit" | "approximate" | "dated" | "none";
+
+export function certainty(w: WorkTime): Certainty {
+  if (w.status === "decision") return "permit";
+  if (w.whenLabel) return "approximate";
+  if (w.dateFrom || w.dateTo) return "dated";
+  return "none";
+}
+
+export const CERTAINTY_LABEL: Record<Certainty, string> = {
+  permit: "pozwolenie, brak harmonogramu",
+  approximate: "termin orientacyjny",
+  dated: "termin ze źródła",
+  none: "brak terminu w źródle",
+};
+
+/**
+ * active  = the stated dates cover that year (a planned item with only a start date counts in its start year only)
+ * outside = the stated dates rule that year out (not started yet, or already finished)
+ * unknown = we cannot tell: no dates, or it started earlier and no end is stated
+ * permit  = permits carry no schedule, so they are never placed on a year
+ */
+export type YearPlacement = "active" | "outside" | "unknown" | "permit";
+
+const yearOf = (iso: string) => Number(iso.slice(0, 4));
+
+export function placeAtYear(w: WorkTime, year: number): YearPlacement {
+  if (w.status === "decision") return "permit";
+  const from = w.dateFrom ? yearOf(w.dateFrom) : null;
+  const to = w.dateTo ? yearOf(w.dateTo) : null;
+  if (from === null && to === null) return "unknown";
+  if (to !== null) return (from === null || from <= year) && year <= to ? "active" : "outside";
+  // Only a start is stated: it is certain in that year, ruled out before it, and open-ended after it.
+  return year === from ? "active" : year < from! ? "outside" : "unknown";
+}
+
+export type YearView<T> = { active: T[]; unknown: T[]; permits: T[] };
+
+/** Splits works for the selected year; `null` = "Dziś": everything still relevant today, as before. Pure and deterministic. */
+export function worksAtYear<T extends WorkTime & Pick<WorkNearby, "dateTo">>(items: T[], year: number | null, today: Date): YearView<T> {
+  const view: YearView<T> = { active: [], unknown: [], permits: [] };
+  for (const w of items) {
+    if (w.status === "decision") view.permits.push(w);
+    else if (year === null) {
+      if (isCurrent(w, today)) view.active.push(w);
+    } else {
+      const p = placeAtYear(w, year);
+      if (p === "active") view.active.push(w);
+      else if (p === "unknown") view.unknown.push(w);
+    }
+  }
+  return view;
+}
+
+/** Year selected on the slider from the URL; anything but a listed year means "Dziś". */
+export function parseYear(raw: string | null | undefined): number | null {
+  const n = Number(raw);
+  return (TIMELINE_YEARS as readonly number[]).includes(n) ? n : null;
 }

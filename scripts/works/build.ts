@@ -8,11 +8,15 @@
 //   - every location resolves to coordinates inside Kraków (city geocoder, or an official ZTP stop by name).
 // Nothing is guessed: a record that fails any check aborts the build.
 //
+// It also writes src/lib/data/works-map.json (the same records as GeoJSON, no evidence text) for the map-wide
+// timeline layer served by GET /api/works — so the layer never depends on a live database call.
+//
 // Usage: npx tsx scripts/works/build.ts   (refresh inputs first: snapshot.ts, fetch-msip.ts)
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { norm, verifyEvidence } from "../../src/lib/data/works-verify";
 
 const OUT_FILE = process.env.OUT_FILE ?? "supabase/seed-works.sql";
+const MAP_FILE = process.env.MAP_FILE ?? "src/lib/data/works-map.json";
 const GEOCODER = "https://msip.um.krakow.pl/arcgis/rest/services/epl/Lokalizator_Krakow/GeocodeServer/findAddressCandidates";
 const CACHE_FILE = "data/works/geocode-cache.json";
 const KRAKOW_BBOX = { w: 19.79, e: 20.22, s: 49.95, n: 50.13 };
@@ -79,11 +83,17 @@ async function main() {
   );
 
   const rows: string[] = [];
+  const features: GeoJSON.Feature[] = [];
   for (const r of curated) {
     verify(r, snapshots);
     const pts = await Promise.all(r.locations.map(resolve));
     const g = pts.length === 1 ? { type: "Point", coordinates: pts[0] } : { type: "LineString", coordinates: pts };
     const src = sources[r.snapshot];
+    features.push({
+      type: "Feature",
+      properties: { id: r.id, title: r.title, kind: r.kind, status: r.status, dateFrom: r.dateFrom, dateTo: r.dateTo, whenLabel: r.whenLabel, sourceName: src.name, sourceUrl: src.url, publishedAt: r.publishedAt },
+      geometry: round(g) as GeoJSON.Geometry,
+    });
     rows.push(
       `(${q(r.id)},${q(r.title)},${q(r.kind)},${q(r.status)},${q(r.dateFrom)},${q(r.dateTo)},${q(r.whenLabel)},${q(r.source)},${q(src.name)},${q(src.url)},${q(r.publishedAt)},${q(norm(r.evidence.join(" … ")))},${geom(g)})`,
     );
@@ -105,6 +115,8 @@ async function main() {
     });
     for (const [ref, e] of byRef) {
       const g = e.geometries.length === 1 ? e.geometries[0] : { type: "GeometryCollection", geometries: e.geometries };
+      const props = { id: `msip:${ref}`, title: "Pozwolenie na wycinkę drzew przy inwestycji", kind: "other", status: "decision", dateFrom: e.issued, dateTo: null, whenLabel: null, sourceName: "Miasto Kraków (MSIP): decyzje o wycince drzew związane z inwestycjami", sourceUrl: `${file.service}/0`, publishedAt: e.issued };
+      e.geometries.forEach((geometry) => features.push({ type: "Feature", properties: props, geometry: round(geometry) as GeoJSON.Geometry }));
       rows.push(
         `(${q(`msip:${ref}`)},'Tree-removal permit issued for an investment','other','decision',${q(e.issued)},null,null,'msip','City of Kraków GIS (MSIP): tree-removal decisions linked to investments',${q(`${file.service}/0`)},${q(e.issued)},${q(`Decision ${ref}`)},${geom(g)})`,
       );
@@ -119,6 +131,7 @@ async function main() {
     ),
   ].join("\n");
   writeFileSync(OUT_FILE, sql + "\n");
+  writeFileSync(MAP_FILE, JSON.stringify({ type: "FeatureCollection", features }) + "\n");
   console.log(`wrote ${OUT_FILE}: ${curated.length} curated works + ${permits} permits`);
 }
 

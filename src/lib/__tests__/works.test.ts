@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { describeWork, durationLabel, groupWorks, relativeStart, summarizeWorks } from "../data/works";
+import { certainty, describeWork, durationLabel, groupWorks, parseYear, placeAtYear, relativeStart, summarizeWorks, worksAtYear } from "../data/works";
 import type { WorkNearby } from "../../types";
 
 const today = new Date(2026, 9, 3); // 3 Oct 2026
@@ -70,5 +70,72 @@ describe("groupWorks", () => {
     assert.deepEqual(g.planned.map((x) => x.id), [5, 4, 6]);
     assert.equal(g.permits?.count, 2);
     assert.equal(g.permits?.nearestM, 120);
+  });
+});
+
+describe("timeline", () => {
+  const t = (o: Partial<WorkNearby>) => w({ status: "planned", ...o });
+
+  it("certainty separates permits, vague wording, stated dates and nothing", () => {
+    assert.equal(certainty(t({ status: "decision", dateFrom: "2025-01-01" })), "permit");
+    assert.equal(certainty(t({ dateFrom: "2027-07-01", whenLabel: "mid-2027" })), "approximate");
+    assert.equal(certainty(t({ dateFrom: "2027-07-01" })), "dated");
+    assert.equal(certainty(t({})), "none");
+  });
+
+  it("a range is active in every year it covers, inclusive, and outside otherwise", () => {
+    const r = t({ status: "ongoing", dateFrom: "2026-07-06", dateTo: "2028-03-13" });
+    assert.equal(placeAtYear(r, 2027), "active");
+    assert.equal(placeAtYear(r, 2028), "active");
+    assert.equal(placeAtYear(r, 2029), "outside");
+    assert.equal(placeAtYear(t({ dateTo: "2028-03-13" }), 2027), "active"); // started earlier, only the end is stated
+  });
+
+  it("a start-only item is certain in its start year and never extended afterwards", () => {
+    const r = t({ dateFrom: "2027-07-01" });
+    assert.equal(placeAtYear(r, 2026), "outside");
+    assert.equal(placeAtYear(r, 2027), "active");
+    assert.equal(placeAtYear(r, 2029), "unknown");
+  });
+
+  it("undated items and permits are never placed on a year", () => {
+    assert.equal(placeAtYear(t({}), 2028), "unknown");
+    assert.equal(placeAtYear(t({ status: "decision", dateFrom: "2028-01-01" }), 2028), "permit");
+  });
+
+  it("worksAtYear: Dziś keeps everything current, a year filters, permits stay apart", () => {
+    const items = [
+      t({ id: 1, status: "ongoing", dateFrom: "2026-01-16", dateTo: "2027-12-31" }),
+      t({ id: 2, dateFrom: "2029-01-01" }),
+      t({ id: 3 }),
+      t({ id: 4, status: "ongoing", dateTo: "2026-01-01" }), // finished before today
+      t({ id: 5, status: "decision" }),
+    ];
+    const now = worksAtYear(items, null, today);
+    assert.deepEqual(now.active.map((x) => x.id), [1, 2, 3]);
+    assert.deepEqual(now.permits.map((x) => x.id), [5]);
+    const y = worksAtYear(items, 2029, today);
+    assert.deepEqual(y.active.map((x) => x.id), [2]);
+    assert.deepEqual(y.unknown.map((x) => x.id), [3]);
+  });
+
+  it("parseYear only accepts the slider's years", () => {
+    assert.equal(parseYear("2028"), 2028);
+    assert.equal(parseYear("2031"), null);
+    assert.equal(parseYear(null), null);
+    assert.equal(parseYear("abc"), null);
+  });
+});
+
+describe("works map layer", () => {
+  it("the built GeoJSON validates and every feature cites a source", async () => {
+    const { loadWorksMap } = await import("../data/works-map");
+    const fc = loadWorksMap();
+    assert.ok(fc.features.length >= 12);
+    for (const f of fc.features) {
+      assert.match(f.properties.sourceUrl, /^https?:\/\//);
+      assert.ok(f.geometry.type);
+    }
+    assert.ok(fc.features.some((f) => f.properties.status === "decision"));
   });
 });
