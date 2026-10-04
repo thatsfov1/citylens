@@ -14,6 +14,7 @@ import type { EducationStage } from "@/types";
 import { ChatPanel } from "./chat-panel";
 import { SavedMapLink } from "./saved-map-link";
 import { HeroStage } from "./hero-stage";
+import { Highlighter } from "@/components/ui/highlighter";
 
 export function Landing({ initial }: { initial?: Importance }) {
   const router = useRouter();
@@ -34,8 +35,9 @@ export function Landing({ initial }: { initial?: Importance }) {
             <SavedMapLink />
           </div>
           <div className="w-full max-w-xl">
-            <h1 className="mb-8 text-3xl font-semibold leading-tight tracking-[-0.02em] text-[#1b221d] sm:text-4xl">
-              Znajdź część Krakowa, która pasuje do Ciebie.
+            <h1 className="mb-8 text-4xl font-extrabold leading-[1.08] tracking-[-0.03em] text-[#1b221d] sm:text-5xl">
+              Znajdź część Krakowa, która pasuje do{" "}
+              <Highlighter action="highlight" color="#86EFAC">Ciebie</Highlighter>
             </h1>
             <ChatPanel
               onImportance={(i, nextStages, nextAnchor, nextRent, nextWork, nextCar) => {
