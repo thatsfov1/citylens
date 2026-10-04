@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, type CSSProperties, type PointerEvent } from "react";
+import { useCallback, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { CATEGORIES } from "@/types";
 import { CATEGORY_PL, CATEGORY_STYLE } from "./landing-copy";
 import { HexField } from "./hex-field";
 import { KrakowMap } from "./krakow-shape";
+import { SnakeGame } from "./snake-game";
 
 const delayStyle = (s: number) => ({ "--d": `${s}s` }) as CSSProperties;
 
@@ -14,6 +15,8 @@ const LETTERS = "citylens".split("");
 /** Left half: Kraków outline with the city video inside, interactive hexagon field, category ticker and the big wordmark. */
 export function HeroStage() {
   const ref = useRef<HTMLElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const stopPlaying = useCallback(() => setPlaying(false), []);
 
   function onMove(e: PointerEvent<HTMLElement>) {
     if (e.pointerType !== "mouse" || !ref.current) return;
@@ -57,6 +60,20 @@ export function HeroStage() {
           )}
         </div>
       </div>
+
+      {playing ? (
+        <SnakeGame onClose={stopPlaying} />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setPlaying(true)}
+          className="lm-in group absolute right-4 top-14 z-10 flex h-9 items-center gap-2 rounded-full border border-white/30 bg-ink/50 px-4 font-mono text-[11px] uppercase tracking-[0.2em] text-mist outline-none backdrop-blur transition hover:border-mint hover:text-mint focus-visible:ring-2 focus-visible:ring-mint"
+          style={delayStyle(1.6)}
+        >
+          <span aria-hidden className="transition-transform duration-300 group-hover:translate-x-0.5">▶</span>
+          Zagraj
+        </button>
+      )}
 
       <Link
         href="/"
