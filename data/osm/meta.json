@@ -1,0 +1,1 @@
+{ "fetched": "2026-10-03", "note": "taken from the modification time of data/osm/full/*.json; scripts/osm/fetch.ts overwrites this with the real fetch date" }
