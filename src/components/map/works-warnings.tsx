@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { plPlural } from "@/lib/format/pl";
 import { ExternalLink, TriangleAlert } from "lucide-react";
-import { fmtDay, groupWorks, type WorkWarning } from "@/lib/data/works";
+import { CERTAINTY_LABEL, describeWork, fmtDay, groupWorks, worksAtYear, type WorkWarning } from "@/lib/data/works";
 import type { WorkNearby } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -13,9 +13,22 @@ const LABEL_STYLE: Record<string, string> = {
 };
 
 /** Time view of works within ~1 km: under way, planned, and permits without a schedule. Each with its official source. Renders nothing if none. */
-export function WorksWarnings({ works }: { works: WorkNearby[] }) {
-  const groups = useMemo(() => groupWorks(works, new Date()), [works]);
-  if (groups.ongoing.length === 0 && groups.planned.length === 0) return null;
+export function WorksWarnings({ works, year = null }: { works: WorkNearby[]; year?: number | null }) {
+  const groups = useMemo(() => {
+    const today = new Date();
+    const base = groupWorks(works, today);
+    if (year === null) return { ...base, unknown: [] as WorkWarning[] };
+    // Timeline year: only what the stated dates place in that year; the rest is listed apart, never guessed.
+    const v = worksAtYear(works, year, today);
+    const byDistance = (a: WorkNearby, b: WorkNearby) => a.distanceM - b.distanceM;
+    return {
+      ongoing: v.active.sort(byDistance).map((w) => describeWork(w, today)),
+      planned: [] as WorkWarning[],
+      permits: base.permits,
+      unknown: v.unknown.sort(byDistance).map((w) => describeWork(w, today)),
+    };
+  }, [works, year]);
+  if (groups.ongoing.length === 0 && groups.planned.length === 0 && groups.unknown.length === 0) return null;
 
   return (
     <section className="mt-5 rounded-2xl border border-amber-300/70 bg-amber-50/70 p-3.5">
@@ -23,8 +36,9 @@ export function WorksWarnings({ works }: { works: WorkNearby[] }) {
         <TriangleAlert className="size-4" />
         Co zmienia się w okolicy
       </h3>
-      <Group title="Trwają teraz" items={groups.ongoing} />
+      <Group title={year === null ? "Trwają teraz" : `Zgodnie ze źródłami w ${year} r.`} items={groups.ongoing} />
       <Group title="Planowane" items={groups.planned} />
+      <Group title="Termin nieznany" items={groups.unknown} />
       {groups.permits && (
         <div className="mt-3.5">
           <h4 className="text-[11px] font-semibold uppercase tracking-wider text-amber-900/80">Wydano pozwolenie, brak harmonogramu</h4>
@@ -57,6 +71,7 @@ function Group({ title, items }: { title: string; items: WorkWarning[] }) {
               <span className="font-medium text-slate-900">{w.title}</span>
             </div>
             <p className="mt-1 text-slate-700">{w.text}</p>
+            <p className="mt-0.5 text-[10px] uppercase tracking-wide text-amber-900/70">{CERTAINTY_LABEL[w.certainty]}</p>
             <SourceLink name={w.sourceName} url={w.sourceUrl} asOf={w.publishedAt} />
           </li>
         ))}

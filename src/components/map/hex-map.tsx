@@ -1,5 +1,7 @@
 "use client";
 
+import { placement } from "@/lib/data/works";
+import type { WorksCollection } from "@/lib/data/works-map";
 import { PARKING_CAVEAT, PARKING_COLORS, type ParkingPin } from "@/lib/scoring/parking";
 import { FULL_SHARE } from "@/lib/scoring/rent";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -25,6 +27,7 @@ const DISTRICT_LINE_SOURCE = "district-outlines";
 const DISTRICT_LABEL_SOURCE = "district-labels";
 const PLACES_SOURCE = "places";
 const PARKING_SOURCE = "parking-pins";
+const WORKS_SOURCE = "works-layer";
 const PARKING_PIN_LAYERS = ["parking-lot", "parking-meter"];
 const GREEN_SOURCE = "place-green";
 const RING_SOURCE = "place-rings";
@@ -142,6 +145,8 @@ type Props = {
   badges?: HexBadges;
   /** Car parks, park and ride and meters around the open area (only while "I have a car" is on). */
   parkingPins?: readonly ParkingPin[] | null;
+  /** City plans & works for the timeline (null = layer off). Informational: never part of the scores. */
+  worksLayer?: { collection: WorksCollection; year: number | null } | null;
   /** Areas in the side-by-side comparison; they stay outlined even when not selected. */
   compared?: readonly string[];
   onBadge?: (kind: BadgeKind) => void;
@@ -204,10 +209,20 @@ function cornerAt(selected: string, degrees: number): [number, number] {
   return cellToBoundary(selected).reduce((best, v) => (diff(v) < diff(best) ? v : best)) as [number, number];
 }
 
-export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentShare, rentUnknown, badges, compared, onBadge, parkingPins = null }: Props) {
+function worksData(layer: Props["worksLayer"]): GeoJSON.FeatureCollection {
+  if (!layer) return EMPTY;
+  const today = new Date();
+  return {
+    type: "FeatureCollection",
+    features: layer.collection.features.map((f) => ({ ...f, properties: { ...f.properties, p: placement(f.properties, layer.year, today) } })),
+  };
+}
+
+export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentShare, rentUnknown, badges, compared, onBadge, parkingPins = null, worksLayer = null }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
+  const worksRef = useRef(worksLayer);
   const onSelectRef = useRef(onSelect);
   const fitRef = useRef<{ zoom: number; center: [number, number] } | null>(null);
   const [zoomedIn, setZoomedIn] = useState(false);
@@ -617,6 +632,32 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
         paint: { "text-color": "#0f172a", "text-halo-color": "#ffffff", "text-halo-width": 1.6 },
       });
       // Parking info for renters with a car: separate from the category pins, never part of the scores.
+      // Official plans / works for the timeline: colour by status, faded when the year is not certain.
+      map.addSource(WORKS_SOURCE, { type: "geojson", data: EMPTY });
+      const worksColor = ["match", ["get", "status"], "ongoing", "#f59e0b", "planned", "#0ea5e9", "#64748b"] as unknown as maplibregl.ExpressionSpecification;
+      const worksOpacity = ["case", ["==", ["get", "p"], "active"], 0.95, 0.35] as unknown as maplibregl.ExpressionSpecification;
+      map.addLayer({
+        id: "works-permit",
+        type: "fill",
+        source: WORKS_SOURCE,
+        filter: ["==", ["get", "p"], "permit"],
+        paint: { "fill-color": "#64748b", "fill-opacity": 0.22, "fill-outline-color": "#64748b" },
+      });
+      map.addLayer({
+        id: "works-line",
+        type: "line",
+        source: WORKS_SOURCE,
+        filter: ["all", ["==", ["geometry-type"], "LineString"], ["in", ["get", "p"], ["literal", ["active", "unknown"]]]],
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": worksColor, "line-width": 5, "line-opacity": worksOpacity },
+      });
+      map.addLayer({
+        id: "works-point",
+        type: "circle",
+        source: WORKS_SOURCE,
+        filter: ["all", ["==", ["geometry-type"], "Point"], ["in", ["get", "p"], ["literal", ["active", "unknown"]]]],
+        paint: { "circle-radius": 8, "circle-color": worksColor, "circle-opacity": worksOpacity, "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 },
+      });
       map.addSource(PARKING_SOURCE, { type: "geojson", data: EMPTY });
       map.addLayer({
         id: "parking-meter",
@@ -650,6 +691,7 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
         },
         paint: { "text-color": "#ffffff" },
       });
+      (map.getSource(WORKS_SOURCE) as maplibregl.GeoJSONSource).setData(worksData(worksRef.current));
       readyRef.current = true;
     });
 
@@ -913,6 +955,13 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
         : EMPTY,
     );
   }, [parkingPins]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    worksRef.current = worksLayer;
+    (map.getSource(WORKS_SOURCE) as maplibregl.GeoJSONSource).setData(worksData(worksLayer));
+  }, [worksLayer]);
 
   useEffect(() => {
     const map = mapRef.current;

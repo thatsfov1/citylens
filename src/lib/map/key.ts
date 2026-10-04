@@ -12,6 +12,8 @@ export type KeyContext = {
   workplace: boolean;
   /** At least one area is being compared. */
   comparing: boolean;
+  /** The city-plans timeline layer is switched on. */
+  timeline?: boolean;
 };
 
 export type KeySymbol =
@@ -36,10 +38,15 @@ export const KEY_GROUPS: { id: string; title: string; note?: string; when?: (ctx
   { id: "pins", title: "Miejsca wokół otwartego obszaru", when: (c) => c.areaOpen },
   { id: "parking", title: "Parking (masz samochód)", note: PARKING_CAVEAT, when: (c) => c.car },
   { id: "badges", title: "Na otwartym sześciokącie", when: (c) => c.areaOpen },
+  { id: "timeline", title: "Plany i prace (oś czasu)", note: "Tylko oficjalne ogłoszenia. Nie zmieniają wyniku dopasowania.", when: (c) => c.timeline === true },
   { id: "lines", title: "Linie i obrysy" },
 ];
 
 export const KEY_ENTRIES: KeyEntry[] = [
+  { id: "tl-ongoing", group: "timeline", symbol: { kind: "dot", color: "#f59e0b" }, label: "Trwają", meaning: "Prace w toku w wybranym roku, według podanych dat." },
+  { id: "tl-planned", group: "timeline", symbol: { kind: "dot", color: "#0ea5e9" }, label: "Planowane", meaning: "Ogłoszone plany przypadające na wybrany rok; termin bywa orientacyjny." },
+  { id: "tl-unknown", group: "timeline", symbol: { kind: "ring" }, label: "Termin nieznany", meaning: "Blade znaczniki: źródło nie podaje, czy prace potrwają do tego roku, albo nie podaje terminu." },
+  { id: "tl-permit", group: "timeline", symbol: { kind: "outline", color: "#64748b", dashed: true }, label: "Pozwolenie", meaning: "Wydano decyzję, ale nie opublikowano harmonogramu budowy." },
   {
     id: "places",
     group: "pins",

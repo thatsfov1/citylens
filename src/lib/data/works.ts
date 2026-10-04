@@ -210,18 +210,21 @@ export function placeAtYear(w: WorkTime, year: number): YearPlacement {
 
 export type YearView<T> = { active: T[]; unknown: T[]; permits: T[] };
 
-/** Splits works for the selected year; `null` = "Dziś": everything still relevant today, as before. Pure and deterministic. */
-export function worksAtYear<T extends WorkTime & Pick<WorkNearby, "dateTo">>(items: T[], year: number | null, today: Date): YearView<T> {
+/** Placement of one work for the selected year; `null` = "Dziś": anything still relevant today counts as active. */
+export function placement(w: WorkTime, year: number | null, today: Date): YearPlacement {
+  if (w.status === "decision") return "permit";
+  if (year === null) return isCurrent(w, today) ? "active" : "outside";
+  return placeAtYear(w, year);
+}
+
+/** Splits works for the selected year (see `placement`). Pure and deterministic. */
+export function worksAtYear<T extends WorkTime>(items: T[], year: number | null, today: Date): YearView<T> {
   const view: YearView<T> = { active: [], unknown: [], permits: [] };
   for (const w of items) {
-    if (w.status === "decision") view.permits.push(w);
-    else if (year === null) {
-      if (isCurrent(w, today)) view.active.push(w);
-    } else {
-      const p = placeAtYear(w, year);
-      if (p === "active") view.active.push(w);
-      else if (p === "unknown") view.unknown.push(w);
-    }
+    const p = placement(w, year, today);
+    if (p === "active") view.active.push(w);
+    else if (p === "unknown") view.unknown.push(w);
+    else if (p === "permit") view.permits.push(w);
   }
   return view;
 }

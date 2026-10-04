@@ -39,7 +39,9 @@ import { explainMatch } from "@/lib/scoring/explain";
 import { describeAll } from "@/lib/scoring/facts";
 import { MAX_COMPARED, compareAreas } from "@/lib/scoring/compare";
 import { strongestAreas, topContributor } from "@/lib/scoring/first-match";
-import { groupWorks } from "@/lib/data/works";
+import { groupWorks, worksAtYear } from "@/lib/data/works";
+import type { WorksCollection } from "@/lib/data/works-map";
+import { TimelineBar, type TimelineCounts } from "./timeline-bar";
 import { fetchCached } from "@/lib/map/hex-cache";
 import { defaultPinCategories } from "@/lib/map/places";
 import { NO_DATA_COLOR } from "@/lib/map/zones";
@@ -111,6 +113,7 @@ export function MapExperience({
   workplace = null,
   initialShare,
   initialCar = false,
+  initialYear = null,
 }: {
   hexes: HexData[];
   source: HexSource;
@@ -129,6 +132,8 @@ export function MapExperience({
   initialShare?: ShareState & { shared: boolean };
   /** "I have a car" (`?car=1`): shows parking information for renters. */
   initialCar?: boolean;
+  /** Year on the city-plans timeline (`?rok=`); null = timeline off / "Dziś". */
+  initialYear?: number | null;
 }) {
   const start = initialShare ?? { ...DEFAULT_SHARE, shared: false };
   // Safety is optional data: the view and the filter only appear when cells carry safety indicators.
@@ -349,6 +354,39 @@ export function MapExperience({
       setPlaces(null);
     };
   }, [selected, source]);
+
+  // City plans timeline: official works / plans / permits filtered by year. Informational, never part of the score.
+  const [timelineOn, setTimelineOn] = useState(initialYear !== null);
+  const [year, setYear] = useState<number | null>(initialYear);
+  const [worksMap, setWorksMap] = useState<WorksCollection | null>(null);
+  useEffect(() => {
+    if (!timelineOn || worksMap) return;
+    const ctrl = new AbortController();
+    fetchCached<WorksCollection>("/api/works", ctrl.signal)
+      .then((d) => setWorksMap(d ?? { type: "FeatureCollection", features: [] }))
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [timelineOn, worksMap]);
+  const changeYear = (y: number | null) => {
+    setYear(y);
+    const url = new URL(window.location.href);
+    if (y !== null) url.searchParams.set("rok", String(y));
+    else url.searchParams.delete("rok");
+    window.history.replaceState(null, "", url);
+  };
+  const toggleTimeline = () => {
+    if (timelineOn) changeYear(null);
+    setTimelineOn(!timelineOn);
+  };
+  const worksLayer = useMemo(() => (timelineOn && worksMap ? { collection: worksMap, year } : null), [timelineOn, worksMap, year]);
+  const timelineCounts = useMemo<TimelineCounts | null>(() => {
+    if (!worksMap) return null;
+    // A permit or a corridor can have several geometries; count each record once.
+    const byId = new Map(worksMap.features.map((f) => [f.properties.id, f.properties]));
+    const v = worksAtYear([...byId.values()], year, new Date());
+    return { active: v.active.length, unknown: v.unknown.length, permits: v.permits.length };
+  }, [worksMap, year]);
+  const panelYear = timelineOn ? year : null;
 
   // Construction / renovation works near the selected hexagon. Failure just means no warning block.
   const [works, setWorks] = useState<WorkNearby[]>([]);
@@ -589,6 +627,7 @@ export function MapExperience({
   return (
     <div className="relative flex-1 overflow-hidden">
       <HexMap
+        worksLayer={worksLayer}
         parkingPins={parkingPinList}
         commuteRoute={
           workplace && route
@@ -680,7 +719,7 @@ export function MapExperience({
               indicators={details?.indicators ?? null}
             />
           ) : openBadge === "works" ? (
-            <WorksWarnings works={works} />
+            <WorksWarnings works={works} year={panelYear} />
           ) : (
             hex.air != null && (
               <AirSection
@@ -806,7 +845,7 @@ export function MapExperience({
           onView={setView}
           pins={pinCategories}
           onTogglePin={togglePin}
-          worksSlot={<WorksWarnings works={works} />}
+          worksSlot={<WorksWarnings works={works} year={panelYear} />}
           parkingSlot={
             car ? (
               <ParkingCard
@@ -854,8 +893,10 @@ export function MapExperience({
           car,
           workplace: workplace !== null,
           comparing: compared.length > 0,
+          timeline: timelineOn,
         }}
       />
+      <TimelineBar on={timelineOn} onToggle={toggleTimeline} year={year} onYear={changeYear} counts={timelineCounts} />
     </div>
   );
 }

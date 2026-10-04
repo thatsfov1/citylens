@@ -4,6 +4,7 @@ import { importanceFromQuery, minSafetyFromQuery } from "@/lib/scoring/preferenc
 import { anchorFromQuery } from "@/lib/scoring/anchor";
 import { workplaceFromQuery } from "@/lib/scoring/commute";
 import { rentFromQuery } from "@/lib/scoring/rent";
+import { parseYear } from "@/lib/data/works";
 import { parseStages } from "@/lib/scoring/education";
 import { parseShareState, rentPhrase, topPreferences } from "@/lib/share/state";
 import type { Metadata } from "next";
@@ -35,6 +36,7 @@ export default async function MapPage({ searchParams }: PageProps<"/map">) {
         workplace={workplaceFromQuery(params.work)}
         initialShare={share}
         initialCar={params.car === "1"}
+        initialYear={parseYear(typeof params.rok === "string" ? params.rok : null)}
         initialStages={parseStages(typeof params.edu === "string" ? params.edu : null)}
       />
     </main>
