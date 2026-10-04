@@ -9,7 +9,7 @@ import { ArrowLeft, Briefcase, Bus, Check, ChevronRight, Footprints, Info, MapPi
 import type { TransitPlan } from "@/lib/data/transit";
 import { GREEN_COLOR, PLACE_COLORS } from "@/lib/map/places";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
-import { AIR_CAVEAT, EDUCATION_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describeAirLevel, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
+import { AIR_CAVEAT, AIR_CAVEAT_LIVE, EDUCATION_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describeAirLevel, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
 import type { Sensitivity } from "@/lib/scoring/sensitivity";
 import type { HexSource } from "@/lib/supabase/hex-scores";
 import { SensitivitySection } from "./sensitivity-section";
@@ -327,6 +327,7 @@ function CategoryDetail({
 export function AirSection({ air, indicators }: { air: number; indicators: HexIndicators | null }) {
   const facts = indicators ? describeAir(indicators) : [];
   const level = indicators ? describeAirLevel(indicators) : null;
+  const live = Boolean(indicators?.air?.windowHours);
   return (
     <div className="mt-4 rounded-2xl border border-border/70 p-3.5">
       <div className="flex items-center justify-between text-sm">
@@ -352,9 +353,9 @@ export function AirSection({ air, indicators }: { air: number; indicators: HexIn
             ))}
           </ul>
         )}
-        <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{AIR_CAVEAT}</p>
+        <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{live ? AIR_CAVEAT_LIVE : AIR_CAVEAT}</p>
       </details>
-      <SourceBadges topic="air" asOf={{ gios: indicators?.air?.asOf }} className="mt-2" />
+      <SourceBadges topic="air" asOf={{ gios: live ? "live" : indicators?.air?.asOf }} className="mt-2" />
     </div>
   );
 }

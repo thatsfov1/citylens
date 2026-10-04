@@ -1,6 +1,7 @@
 import { EDUCATION_STAGES, type Category, type EducationStage, type HexIndicators } from "../../types";
 import { dec, plCount } from "../format/pl";
 import { airLevel } from "../data/air";
+import { formatAsOf } from "../sources";
 import { CCTV_RADIUS_M, EMERGENCY_REACH_M, LIGHTING_RADIUS_M, NIGHTLIFE_RADIUS_M, partShares, type SafetyPart } from "../data/safety";
 
 // Turns stored OSM indicators into short, factual sentences. Deterministic; no LLM involved.
@@ -217,12 +218,19 @@ export function describeAir(ind: HexIndicators): string[] {
   const a = ind.air;
   if (!a) return [];
   const out: string[] = [];
+  if (a.windowHours) out.push(`Średnia z ostatnich ${a.windowHours} godzin${a.latest ? `, najnowszy odczyt: ${latestReading(a.latest)}` : ""}`);
   if (a.pm10 !== undefined) out.push(`PM10 ok. ${a.pm10} µg/m³`);
   if (a.pm25 !== undefined) out.push(`PM2.5 ok. ${a.pm25} µg/m³`);
   out.push(
     `Interpolowane z danych ${a.stations} stacji; najbliższa, ${a.nearest.name}, jest ${metres(a.nearest.distanceM)} stąd`,
   );
   return out;
+}
+
+/** "4 paź 2026, 03:00" from GIOŚ's "2026-10-04 03:00:00". */
+function latestReading(latest: string): string {
+  const m = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/.exec(latest);
+  return m ? `${formatAsOf(m[1])}, ${m[2]}` : latest;
 }
 
 const AIR_LEVEL_PL = { good: "dobra", normal: "umiarkowana", bad: "zła", "very bad": "bardzo zła" } as const;
@@ -236,6 +244,10 @@ export function describeAirLevel(ind: HexIndicators): string | null {
 /** What the air-quality figure can and cannot tell you. Shown in the panel. */
 export const AIR_CAVEAT =
   "To aktualna migawka (średnia z ostatnich kilku dni odczytów godzinowych), a nie średnia roczna, i oszacowanie pomiędzy kilkoma oficjalnymi stacjami, a nie pomiar w tym miejscu. Jakość powietrza mocno zmienia się z sezonem i pogodą. Źródło: GIOŚ.";
+
+/** The same caveat for live readings: a short window instead of a few days. */
+export const AIR_CAVEAT_LIVE =
+  "To średnia z ostatniej doby odczytów godzinowych pobranych na żywo, a nie średnia roczna, i oszacowanie pomiędzy kilkoma oficjalnymi stacjami, a nie pomiar w tym miejscu. Jakość powietrza mocno zmienia się z porą dnia, sezonem i pogodą. Źródło: GIOŚ.";
 
 /** Night-time context shown next to the safety level. Informational: not part of the score. */
 export function describeNightlife(ind: HexIndicators): string | null {

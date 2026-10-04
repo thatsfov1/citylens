@@ -164,6 +164,16 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   Refresh: `npx tsx scripts/air/build-air.ts`, then `scripts/air/compute.ts`. Copy: "air-quality indicators",
   "estimated between stations" — never "polluted area". Attribution: GIOŚ in the legend and panel caveat.
 
+- **Live air (on top of the stored snapshot).** `GET /api/air` reads the GIOŚ API at request time (`src/lib/data/gios.ts`, shared with
+  `scripts/air/build-air.ts`), takes the mean of the **newest 24 valid hourly values** per station (≥ 18 needed) and runs the same
+  interpolation and score as the stored data (`src/lib/data/air-live.ts`). Result is cached 30 min in the server process (snapshot fallbacks are
+  retried after 2 min) and sent with `Cache-Control` 5 min / s-maxage 15 min. If GIOŚ errors or takes > 6 s per request, the **committed
+  `data/air/stations.json` is served** with `source: "snapshot"` and the client changes nothing (the demo never depends on a live service).
+  The map (`useLiveAir`, `applyLiveAir`) swaps in live scores for the air mode and badge only when `source === "live"`, and the open area's
+  air facts use the live indicator (`windowHours`, `latest` are optional fields of `indicators.air`, also in the Zod schema). The panel then
+  says "Średnia z ostatnich 24 godzin, najnowszy odczyt: …", uses `AIR_CAVEAT_LIVE` and the source badge reads "na żywo". The database is not
+  written: stored `air_score` stays the 3-day snapshot, used for the first paint and as the fallback. Air still never enters the weighted score.
+
 ## 5. LLM (Gemini) decisions
 
 - Server-only (`src/lib/llm/gemini.ts`, `GEMINI_API_KEY`, optional `GEMINI_MODEL`). Key never

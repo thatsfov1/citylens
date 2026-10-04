@@ -64,6 +64,8 @@ import {
   type Importance,
 } from "@/lib/scoring/preferences";
 import { stagesToParam, withEducationStages } from "@/lib/scoring/education";
+import { applyLiveAir } from "@/lib/data/air-live";
+import { useLiveAir } from "./use-live-air";
 import {
   formatRadius,
   hexesOutsideAnchor,
@@ -115,7 +117,7 @@ import {
 } from "@/types";
 
 export function MapExperience({
-  hexes,
+  hexes: storedHexes,
   source,
   importance,
   initialMinSafety = 0,
@@ -148,6 +150,10 @@ export function MapExperience({
   initialYear?: number | null;
 }) {
   const start = initialShare ?? { ...DEFAULT_SHARE, shared: false };
+  // Air is the one layer that can be fresher than the database: once live readings arrive they replace the stored
+  // air score (a failed or slow request leaves the stored snapshot in place).
+  const liveAir = useLiveAir(source === "supabase" && storedHexes.some((h) => h.air != null));
+  const hexes = useMemo(() => applyLiveAir(storedHexes, liveAir), [storedHexes, liveAir]);
   // Safety is optional data: the view and the filter only appear when cells carry safety indicators.
   const hasSafety = useMemo(() => hexes.some((h) => h.safety != null), [hexes]);
   const [mode, setMode] = useState<MapMode>(
@@ -354,6 +360,12 @@ export function MapExperience({
       setDetails(null);
     };
   }, [selected, source]);
+  // The open area's air facts: the live reading when there is one, otherwise whatever the database stored.
+  const liveCell = selected && liveAir?.source === "live" ? liveAir.cells[selected] : undefined;
+  const airIndicators = useMemo(
+    () => (details?.indicators && liveCell ? { ...details.indicators, air: liveCell.air } : (details?.indicators ?? null)),
+    [liveCell, details],
+  );
 
   // Places (pins) behind the selected hexagon. Failure just means the text-only panel.
   const [places, setPlaces] = useState<PlacesResponse | null>(null);
@@ -818,7 +830,7 @@ export function MapExperience({
               hex.air != null && (
                 <AirSection
                   air={hex.air}
-                  indicators={details?.indicators ?? null}
+                  indicators={airIndicators}
                 />
               )
             )}
