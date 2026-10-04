@@ -38,7 +38,7 @@ export const SOURCES: Record<SourceId, Source> = {
     kind: "measured",
     license: "ODbL © współtwórcy OpenStreetMap",
     url: "https://www.openstreetmap.org/copyright",
-    asOf: null,
+    asOf: "2026-10-03",
   },
   gios: {
     id: "gios",

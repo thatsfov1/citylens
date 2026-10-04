@@ -512,8 +512,10 @@ changes a score.
   stored as the map's query string so it keeps working as parameters evolve. No accounts; if the browser blocks storage the
   UI says so. The landing page shows "Wróć do: <name>" for the latest one (`saved-map-link.tsx`).
 - **Link preview:** `generateMetadata` in `src/app/map/page.tsx` describes the weights and rent budget in the link.
-- Limits: saved maps live in one browser only; a long link (weights + near + compared areas) is a few hundred characters;
-  "Adjust preferences" still returns to the landing page with the weights only (not rent, compared areas or filters).
+- Limits: saved maps live in one browser only; a long link (weights + near + compared areas) is a few hundred characters.
+- **"Zmień preferencje" keeps the filters:** the map builds the landing link from its state (weights, `minSafety`, `edu`, rent, `car`, `near`, `work`;
+  `preferencesHref` in `map-experience.tsx`) and `src/app/page.tsx` parses them into `Landing`'s `initialFilters`. A new chat answer replaces them
+  (and clears `minSafety`, which the chat never sets). Compared areas, tab and open area are not carried back.
 
 
 ## Parking for renters with a car
@@ -558,7 +560,7 @@ changes a score.
 
 ## Source badges
 - One registry, `src/lib/sources.ts`: every data source (OSM, GIOŚ, ZTP GTFS, MSIP, ZDMK, krakow.pl, Otodom, OSRM, Nominatim) with what it provides, kind, licence, URL and `asOf`. `SOURCES_BY_TOPIC` says which sources stand behind each category/air/safety/rent/parking/commute. `SourceBadge`/`SourceBadges` (`src/components/map/source-badge.tsx`, Base UI popover) show chip + date + licence/link in the area panel, rent filter and parking card; the map legend lists all sources.
-- **`asOf` is only a date we stored.** `sources.test.ts` checks the registry against the data files (air `fetched`, GTFS `serviceDate`, rent `snapshot`). OSM has no recorded date yet -> badge says "data pobrania nieznana" until `scripts/osm/fetch.ts` has run once (it now writes `data/osm/meta.json`; then set `SOURCES.osm.asOf` — the test enforces they match). Air uses the live `indicators.air.asOf`.
+- **`asOf` is only a date we stored.** `sources.test.ts` checks the registry against the data files (air `fetched`, GTFS `serviceDate`, rent `snapshot`). OSM has no recorded date yet -> badge says "data pobrania nieznana" until `data/osm/meta.json` exists. It now holds 2026-10-03, taken from the modification time of `data/osm/full/*.json`; `fetch.ts` overwrites it with the real date, then update `SOURCES.osm.asOf` (the test enforces they match). Air uses the live `indicators.air.asOf`.
 - Works keep their per-item `SourceLink` (name + publication date + link) because their source/date is per record, not per dataset.
 
 ## Future-city timeline ("Plany miasta")
@@ -569,7 +571,7 @@ changes a score.
 
 ## Removed: "Najmocniejsze obszary" button
 - The map button that outlined the top 10% of cells (and its layer, `topZone`, legend entry) was **removed on request**. The separate first-match card (`strongestAreas` in `src/lib/scoring/first-match.ts`) stays.
-- **Interactive (follow-up):** the bar has "Pokaż listę (N)" — every work for the selected year (active, "termin nieznany", permits collapsed by count), each row with status pill, timing text (`describeTiming`, no distance), certainty label and, when selected, the source link. Clicking a row highlights it on the map and frames it (`workBounds`, `workFocus` in `hex-map.tsx`); clicking a work on the map selects its row and wins over the hexagon under it. Titles/`whenLabel` of curated works are still English (authored that way in `data/works/curated.json`).
+- **Interactive (follow-up):** the bar has "Pokaż listę (N)" — every work for the selected year (active, "termin nieznany", permits collapsed by count), each row with status pill, timing text (`describeTiming`, no distance), certainty label and, when selected, the source link. Clicking a row highlights it on the map and frames it (`workBounds`, `workFocus` in `hex-map.tsx`); clicking a work on the map selects its row and wins over the hexagon under it. Titles/`whenLabel` of curated works are Polish (translated in `data/works/curated.json`; the evidence quotes and the gate are unchanged). After editing them reload `supabase/seed-works.sql`, the panel reads titles from the DB.
 - Gotcha fixed: `HexMap` keeps the latest works layer in `worksRef` *before* the readiness check, otherwise data that arrives before the map is ready is lost; map fly-ins must set `flyingRef` or the view-lock `sync()` jumps back.
 
 
