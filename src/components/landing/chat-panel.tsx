@@ -12,19 +12,17 @@ import type { EducationStage } from "@/types";
 import { GREETING } from "./landing-copy";
 
 type Props = {
-  /** Hold the greeting until the page intro is over. */
-  enabled?: boolean;
   onImportance: (importance: Importance, stages: EducationStage[] | null, anchor: Anchor | null, rent: RentFilter | null, work: Workplace | null, car: boolean) => void;
 };
 
-export function ChatPanel({ onImportance, enabled = true }: Props) {
+export function ChatPanel({ onImportance }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debug, setDebug] = useState<ChatResult["debug"] | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const greeting = useTypewriter(GREETING, enabled);
+  const greeting = useTypewriter(GREETING);
 
   useEffect(() => {
     const el = listRef.current;
@@ -67,7 +65,7 @@ export function ChatPanel({ onImportance, enabled = true }: Props) {
       aria-label="Rozmowa z asystentem"
       className="w-full text-[#303731]"
     >
-      <div ref={listRef} className="max-h-[40vh] min-h-40 space-y-4 overflow-y-auto pr-1" aria-live="polite">
+      <div ref={listRef} className="max-h-[48vh] min-h-40 space-y-4 overflow-y-auto pr-1" aria-live="polite">
         <div className="flex items-end gap-2">
           <span className="flex size-8 shrink-0 items-center justify-center border border-stone-300 text-stone-500">
             <Bot className="size-4" aria-hidden />
@@ -176,12 +174,11 @@ function TypingDots() {
 }
 
 /** Types `text` character by character after a short "bot is typing" pause. Shows it at once with reduced motion. */
-function useTypewriter(text: string, enabled: boolean) {
+function useTypewriter(text: string) {
   const [count, setCount] = useState(0);
   const [started, setStarted] = useState(false);
 
   useEffect(() => {
-    if (!enabled) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let timer: ReturnType<typeof setTimeout>;
     const step = (n: number) => {
@@ -199,7 +196,7 @@ function useTypewriter(text: string, enabled: boolean) {
       reduce ? 0 : 1000,
     );
     return () => clearTimeout(timer);
-  }, [text, enabled]);
+  }, [text]);
 
   return { shown: text.slice(0, count), done: count >= text.length, thinking: !started };
 }

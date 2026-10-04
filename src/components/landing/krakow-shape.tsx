@@ -39,7 +39,7 @@ export function KrakowMap({ videoSrc = "/videos/krakow.mp4" }: { videoSrc?: stri
           aria-hidden="true"
           tabIndex={-1}
           disablePictureInPicture
-          className="lm-kenburns size-full object-cover motion-reduce:hidden"
+          className="size-full object-cover motion-reduce:hidden"
           src={videoSrc}
           autoPlay
           muted
@@ -47,12 +47,10 @@ export function KrakowMap({ videoSrc = "/videos/krakow.mp4" }: { videoSrc?: stri
           playsInline
           preload="metadata"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-mint/10 via-transparent to-ink/50" />
       </div>
 
       <svg viewBox={`0 0 ${KRAKOW_ASPECT} 1`} className="pointer-events-none absolute inset-0 size-full overflow-visible" aria-hidden>
-        <path d={OUTLINE} pathLength={1} fill="none" stroke="#5FE3A1" strokeWidth={0.02} strokeLinejoin="round" className="lm-outline-draw opacity-40 blur-[6px]" />
-        <path d={OUTLINE} pathLength={1} fill="none" stroke="#E9F1F4" strokeWidth={0.005} strokeLinejoin="round" className="lm-outline-draw" />
+        <path d={OUTLINE} fill="none" stroke="#E9F1F4" strokeOpacity={0.7} strokeWidth={0.004} strokeLinejoin="round" />
       </svg>
     </div>
   );
