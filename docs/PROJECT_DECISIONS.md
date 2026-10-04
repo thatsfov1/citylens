@@ -169,7 +169,7 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
 - Server-only (`src/lib/llm/gemini.ts`, `GEMINI_API_KEY`, optional `GEMINI_MODEL`). Key never
   reaches the client.
 - Narrow job: conversation → importance per category, each one of **0/25/50/75/100**,
-  validated with Zod (`chat-schema.ts`). Max 3 follow-up questions. The system prompt forbids naming
+  validated with Zod (`chat-schema.ts`). Max 4 follow-up questions; before returning importance it must have asked about (1) location, (2) category preferences, and (3) commute mode (public transport / bike / walk / car) when a workplace or study place was mentioned. The system prompt forbids naming
   places or claiming facts about Kraków.
 - Retries, then falls back to a lighter model; if unavailable, the **manual controls still work**.
 - The LLM never computes scores or explanations. Explanations come from stored indicators.
