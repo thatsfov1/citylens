@@ -76,12 +76,13 @@ export function ShareMenu({ getUrl, getQuery, summary }: Props) {
         onClick={toggle}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className={`flex items-center gap-1.5 rounded-full border py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur ${
+        aria-label="Udostępnij"
+        title="Udostępnij"
+        className={`flex size-10 items-center justify-center rounded-full border shadow-lg shadow-black/5 backdrop-blur ${
           open ? "border-emerald-700 bg-emerald-700 text-white" : "border-border/70 bg-white/90 hover:bg-white"
         }`}
       >
         <Share2 className="size-4" />
-        Udostępnij
       </button>
 
       {open && (
