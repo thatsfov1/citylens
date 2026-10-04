@@ -15,12 +15,46 @@ type Props = {
   onImportance: (importance: Importance, stages: EducationStage[] | null, anchor: Anchor | null, rent: RentFilter | null, work: Workplace | null, car: boolean) => void;
 };
 
+const SUGGESTIONS = [
+  {
+    label: "Blisko zieleni",
+    text: "Chcę mieszkać blisko parków i terenów zielonych.",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100",
+  },
+  {
+    label: "Dla rodziny",
+    text: "Szukam okolicy dla rodziny z dziećmi, blisko szkół i zieleni.",
+    className: "border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100",
+  },
+  {
+    label: "Dojazd do pracy",
+    text: "Chcę dojeżdżać do pracy w maksymalnie 30 minut komunikacją miejską.",
+    className: "border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100",
+  },
+  {
+    label: "Budżet na wynajem",
+    text: "Szukam mieszkania dwupokojowego do 3500 zł miesięcznie.",
+    className: "border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100",
+  },
+  {
+    label: "Aktywny styl życia",
+    text: "Lubię biegać i aktywnie spędzać czas.",
+    className: "border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100",
+  },
+  {
+    label: "Dobra komunikacja",
+    text: "Najważniejszy jest dla mnie dobry dostęp do tramwajów i autobusów.",
+    className: "border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-100",
+  },
+] as const;
+
 export function ChatPanel({ onImportance }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const greeting = useTypewriter(GREETING);
 
   useEffect(() => {
@@ -100,8 +134,34 @@ export function ChatPanel({ onImportance }: Props) {
           </p>
       )}
 
-      <form onSubmit={onSubmit} className="mt-5 flex gap-2 border-b border-stone-300 pb-2 focus-within:border-stone-700">
+      <div className="mt-5">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-stone-500">
+          Możesz zacząć od
+        </p>
+        <div
+          role="group"
+          aria-label="Sugestie wiadomości"
+          className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {SUGGESTIONS.map((suggestion) => (
+            <button
+              key={suggestion.label}
+              type="button"
+              onClick={() => {
+                setInput(suggestion.text);
+                inputRef.current?.focus();
+              }}
+              className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2 ${suggestion.className}`}
+            >
+              {suggestion.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <form onSubmit={onSubmit} className="mt-3 flex gap-2 border-b border-stone-300 pb-2 focus-within:border-stone-700">
         <input
+          ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           maxLength={500}
@@ -113,7 +173,7 @@ export function ChatPanel({ onImportance }: Props) {
           type="submit"
           disabled={pending || !input.trim()}
           aria-label="Wyślij"
-          className="flex size-11 shrink-0 items-center justify-center bg-[#252d27] text-white outline-none transition hover:bg-[#39443b] focus-visible:ring-2 focus-visible:ring-stone-500 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-400"
+          className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#252d27] text-white shadow-sm outline-none transition hover:bg-[#39443b] focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-400 disabled:shadow-none"
         >
           <Send className="size-5" aria-hidden />
         </button>
