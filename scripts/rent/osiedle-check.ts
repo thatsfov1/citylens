@@ -10,11 +10,23 @@ const PAGES = Number(process.env.PAGES ?? 45);
 const FILE = "data/rent/listings-osiedle.json";
 const ROOMS: Record<string, number> = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5, SIX: 6 };
 
-type Row = { id: number; district: string; area: string | null; street: string | null; rooms: number; price: number };
-type Loc = { name: string; locationLevel: string };
+type Row = {
+  id: number;
+  district: string;
+  area: string | null;
+  /** Otodom's path segment for the neighbourhood, e.g. "przedmiescie-warszawskie" (for links). */
+  slug: string | null;
+  street: string | null;
+  rooms: number;
+  price: number;
+  /** Czynsz administracyjny, listed separately from the headline rent. */
+  fee: number | null;
+};
+type Loc = { id?: string; name: string; locationLevel: string };
 type Item = {
   id: number;
   totalPrice?: { value: number; currency: string } | null;
+  rentPrice?: { value: number; currency: string } | null;
   roomsNumber?: string | null;
   location?: { address?: { street?: { name?: string } | null }; reverseGeocoding?: { locations?: Loc[] } };
 };
@@ -37,10 +49,14 @@ function toRow(i: Item): Row | null {
   const rooms = i.roomsNumber ? ROOMS[i.roomsNumber] : undefined;
   const price = i.totalPrice?.currency === "PLN" ? i.totalPrice.value : null;
   if (!district || !rooms || !price || price < 500 || price > 30000) return null;
+  const residential = levels.find((l) => l.locationLevel === "residential");
+  const fee = i.rentPrice?.currency === "PLN" && i.rentPrice.value > 0 && i.rentPrice.value <= 5000 ? i.rentPrice.value : null;
   return {
     id: i.id,
     district,
-    area: levels.find((l) => l.locationLevel === "residential")?.name ?? null,
+    area: residential?.name ?? null,
+    slug: residential?.id?.split("/").pop() ?? null,
+    fee,
     street: i.location?.address?.street?.name?.replace(/^ul\.\s*/i, "") ?? null,
     rooms,
     price,
