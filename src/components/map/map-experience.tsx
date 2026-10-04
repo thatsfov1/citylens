@@ -7,6 +7,8 @@ import {
   ArrowLeft,
   Briefcase,
   ChevronDown,
+  Eye,
+  EyeOff,
   Hexagon,
   Info,
   MapPin,
@@ -640,6 +642,7 @@ export function MapExperience({
     (car ? 1 : 0) +
     (hasStages && stages.length < EDUCATION_STAGES.length ? 1 : 0);
 
+  const [mapOnly, setMapOnly] = useState(false);
   const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
   const [focusPlace, setFocusPlace] = useState<{
     id: number;
@@ -649,6 +652,7 @@ export function MapExperience({
   return (
     <div className="relative flex-1 overflow-hidden">
       <HexMap
+        hideControls={mapOnly}
         worksLayer={worksLayer}
         selectedWork={selectedWork}
         workFocus={workFocus}
@@ -699,6 +703,18 @@ export function MapExperience({
         }
       />
 
+      {mapOnly && (
+        <button
+          type="button"
+          onClick={() => setMapOnly(false)}
+          className="absolute left-3 top-3 z-20 flex items-center gap-1.5 rounded-full border border-border/70 bg-white/95 py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg backdrop-blur hover:bg-white sm:left-4 sm:top-4"
+        >
+          <Eye className="size-4" />
+          Pokaż panele
+        </button>
+      )}
+
+      <div className={mapOnly ? "hidden" : "contents"}>
       {bannerOpen && (
         <SharedBanner
           compared={compared.length}
@@ -784,6 +800,14 @@ export function MapExperience({
             <Hexagon className="size-4 text-emerald-600" />
             Zmień preferencje
           </Link>
+          <button
+            type="button"
+            onClick={() => setMapOnly(true)}
+            className="flex items-center gap-1.5 rounded-full border border-border/70 bg-white/90 py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur hover:bg-white"
+          >
+            <EyeOff className="size-4" />
+            Sama mapa
+          </button>
           {hasFilters && (
             <button
               type="button"
@@ -922,6 +946,7 @@ export function MapExperience({
         }}
       />
       <TimelineBar on={timelineOn} onToggle={toggleTimeline} year={year} onYear={changeYear} counts={timeline?.counts ?? null} list={timeline?.list ?? null} selectedId={selectedWork} onSelect={(id) => pickWork(id, true)} />
+      </div>
     </div>
   );
 }

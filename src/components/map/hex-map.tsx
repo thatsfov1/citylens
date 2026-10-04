@@ -39,7 +39,8 @@ const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: 
 
 // Once zoomed in by more than this (zoom levels) beyond the "whole city fits" view,
 // the recenter button appears.
-const RECENTER_THRESHOLD = 0.35;
+const OLD_TOWN = { lat: 50.0617, lng: 19.9373 } as const;
+const OLD_TOWN_ZOOM = 14;
 const FIT_PADDING = 24;
 const SIDEBAR_WIDTH = 380;
 
@@ -119,6 +120,8 @@ function softenBasemap(map: maplibregl.Map) {
 type Tip = { x: number; y: number; district: string; label: string; value: string };
 
 type Props = {
+  /** Map-only mode: hides the floating map buttons. */
+  hideControls?: boolean;
   /** Path from the selected hexagon to the workplace, plus the workplace position for its pin. */
   commuteRoute?: { line: [number, number][]; dashed: boolean; work: [number, number] } | null;
   hexes: HexData[];
@@ -225,7 +228,7 @@ function worksData(layer: Props["worksLayer"]): GeoJSON.FeatureCollection {
   };
 }
 
-export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentShare, rentUnknown, badges, compared, onBadge, parkingPins = null, worksLayer = null, onWorkSelect, selectedWork = null, workFocus = null }: Props) {
+export function HexMap({ hideControls = false, commuteRoute = null, hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentShare, rentUnknown, badges, compared, onBadge, parkingPins = null, worksLayer = null, onWorkSelect, selectedWork = null, workFocus = null }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -234,7 +237,6 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
   const selectedWorkRef = useRef(selectedWork);
   const onSelectRef = useRef(onSelect);
   const fitRef = useRef<{ zoom: number; center: [number, number] } | null>(null);
-  const [zoomedIn, setZoomedIn] = useState(false);
   const [tip, setTip] = useState<Tip | null>(null);
   // Tooltip of a parking pin: hover on desktop, tap on touch screens.
   const [pinTip, setPinTip] = useState<{ x: number; y: number; label: string } | null>(null);
@@ -358,7 +360,6 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
       const fit = fitRef.current;
       if (!fit) return;
       const z = map.getZoom();
-      setZoomedIn(z > fit.zoom + RECENTER_THRESHOLD);
       if (flyingRef.current) return;
       const locked = z <= fit.zoom + 0.01;
       if (locked) {
@@ -1012,14 +1013,23 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
 
   // MapLibre forces position:relative on its container, so size it via a wrapper.
   const recenter = () => {
-    const fit = fitRef.current;
-    if (fit) mapRef.current?.flyTo({ center: fit.center, zoom: fit.zoom, duration: 700 });
+    const map = mapRef.current;
+    if (!map) return;
+    const right = window.innerWidth >= 640 ? SIDEBAR_WIDTH + FIT_PADDING : 0;
+    flyingRef.current = true;
+    map.flyTo({
+      center: [OLD_TOWN.lng, OLD_TOWN.lat],
+      zoom: OLD_TOWN_ZOOM,
+      padding: { top: 0, left: 0, right, bottom: 0 },
+      duration: 800,
+      essential: true,
+    });
   };
 
   return (
     <div className="absolute inset-0">
       <div ref={container} className="size-full" />
-      <div className="absolute right-3 top-28 z-10 flex flex-col items-end gap-2 sm:bottom-6 sm:left-1/2 sm:right-auto sm:top-auto sm:-translate-x-1/2 sm:flex-row">
+      <div className={`absolute right-3 top-28 z-10 flex flex-col items-end gap-2 sm:bottom-6 sm:left-1/2 sm:right-auto sm:top-auto sm:-translate-x-full sm:pr-1 ${hideControls ? "hidden" : ""}`}>
       <button
         type="button"
         onClick={() => setShowDistricts((v) => !v)}
@@ -1055,16 +1065,16 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
           </div>
         </div>
       )}
-      {zoomedIn && (
+      {
         <button
           type="button"
           onClick={recenter}
-          aria-label="Wyśrodkuj mapę na Krakowie"
+          aria-label="Wyśrodkuj mapę na Starym Mieście"
           className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 rounded-full border border-border/70 bg-white/95 px-4 py-2 text-sm font-medium shadow-lg backdrop-blur hover:bg-white sm:left-auto sm:right-[25rem] sm:translate-x-0"
         >
-          Wyśrodkuj mapę
+          Stare Miasto
         </button>
-      )}
+      }
     </div>
   );
 }
