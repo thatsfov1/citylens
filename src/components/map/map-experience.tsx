@@ -101,7 +101,7 @@ import {
   RENT_MIN,
   classifyHexes,
   rentToQuery,
-  summarizeRent,
+  summarizeRentFor,
   type RentFilter as RentBudget,
 } from "@/lib/scoring/rent";
 import type { HexSource, HexDetails } from "@/lib/supabase/hex-scores";
@@ -183,7 +183,7 @@ export function MapExperience({
   const changeRent = (v: RentBudget) => {
     setRent(v);
     const url = new URL(window.location.href);
-    for (const k of ["rent", "rooms", "czynsz"]) url.searchParams.delete(k);
+    for (const k of ["rent", "rooms", "czynsz", "rl"]) url.searchParams.delete(k);
     if (isRentActive(v)) {
       for (const [k, val] of new URLSearchParams(rentToQuery(v)))
         url.searchParams.set(k, val);
@@ -913,7 +913,7 @@ export function MapExperience({
             sensitivity={sensitivity}
             rent={
               rentActive && hex
-                ? { ...summarizeRent(hex.district, rent), filter: rent }
+                ? { ...summarizeRentFor(hex, rent), filter: rent }
                 : null
             }
             commute={

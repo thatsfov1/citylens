@@ -607,3 +607,30 @@ changes a score.
   does not exist yet it retries without it (health is simply absent), so an early deploy no longer drops the app to mock data.
 - **Limits (shown in `HEALTH_CAVEAT`):** mapped places only: no opening hours, queues, quality, NFZ contracts or whether a practice takes new patients;
   OSM undercounts doctors' offices; the score compares areas with each other, it is not a verdict on a neighbourhood.
+
+## Rent at neighbourhood level: experiment (not built into the app)
+
+- **Question:** can asking rents be shown finer than the district (the shipped filter, see "Rent budget")? **Per hexagon: no. Per neighbourhood: yes, with limits.**
+- **Data is already there.** Otodom's result pages (same 45 pages as `scripts/rent/build.ts`, no per-listing requests) carry, for every listing, the neighbourhood
+  (`location.reverseGeocoding`, level `residential`, e.g. "Żabiniec", "Ruczaj") and the street (`location.address.street`, no house number). `scripts/rent/osiedle-check.ts`
+  re-scrapes them into `data/rent/listings-osiedle.json` (1,641 listings, 2026-10-04) and prints the report; it does **not** touch the shipped snapshot.
+- **Density:** 93 neighbourhoods; 62 have ≥ 5 listings and hold 96% of all listings (53 have ≥ 10, 92%). Per hexagon it does not work: ~3.6 listings per cell on average.
+- **Is it worth it?** Mostly the neighbourhood median is close to its district's: only 9 of 53 comparable neighbourhoods (2-room flats, ≥ 5 offers) differ by 10% or more.
+  But where they differ, the gap is large and the district median hides it: Dębniki (Ruczaj 2,700 / Ludwinów 3,750 / Dębniki 3,545 zł), Podgórze (Kabel 2,500 / Stare
+  Podgórze 3,300), Stare Miasto (Nowy Świat 4,100 / Piasek 3,200), Podgórze Duchackie (Wola Duchacka 2,875 / Kurdwanów 2,500).
+- **Placing neighbourhoods on the map is the hard part.** Otodom's neighbourhoods have no boundaries here and do not match OSM admin areas. Tested way: normalise the
+  street name, find OSM `highway` ways with that name (Geofabrik Małopolskie extract, points every 3rd node), keep the H3 cells inside the listing's own district. Result:
+  1,070 of 1,641 listings (65%) resolve; 192 have no street, 336 not found (mostly "gen./dr./prof./płk./bp." name prefixes and house numbers in the street field, fixable),
+  43 fall outside their district. A resolved listing touches a median of 2 cells (p90 4). **Only 212 of 461 cells get any listing, 95 get weight ≥ 3**, so a cell estimate would
+  have to fall back to the neighbourhood and then the district for the rest.
+- **Built (branch `feature/rent-osiedle`):** a "Dzielnica / Osiedle" switch in the rent filter. Default stays the district. At neighbourhood level a hexagon uses its
+  neighbourhood's offers when it has one and that neighbourhood has ≥ 5 offers for the chosen flat size; otherwise it keeps the district figure (the area card says so).
+  Never a per-cell median. `rentAreaFor` / `summarizeRentFor` in `src/lib/scoring/rent.ts`; URL `rl=osiedle` (left out at district level; `RentFilter.level` is optional so old links work).
+  Data: `src/lib/data/rent-osiedle.json` (35 KB, committed) built by `npx tsx scripts/rent/build-osiedle.ts` from `data/rent/listings-osiedle.json` (scrape: `scripts/rent/osiedle-check.ts`,
+  now also keeps czynsz and Otodom's neighbourhood slug) and OSM street names (`scripts/rent/streets-from-pbf.py` → `data/rent/full/streets.json`, gitignored).
+- **Street matching after tuning:** names are normalised (prefixes/titles such as "gen., dr, prof., płk., bp., św., ul., al." and house numbers dropped; a whole-word suffix
+  match covers "Słowackiego" vs "Juliusza Słowackiego"). **1,317 of 1,641 listings (80%) now resolve**; 190 have no street, 87 not found, 47 fall outside their district. A cell takes the neighbourhood that most
+  of its listings belong to (≥ 0.5 listing-equivalents). Result: **56 neighbourhoods have a table, 150 of 461 cells are assigned**; the rest (mostly outskirts with few ads) use the district.
+  A neighbourhood's czynsz is its own median when ≥ 3 ads state one, otherwise its district's. The Otodom link points at the neighbourhood path (`/<district>/<osiedle slug>`).
+- **Limits:** neighbourhoods are placed by where their listings' streets are, not by boundaries, so the edge between two neighbourhoods is approximate; asking prices, one snapshot (2026-10-04), the
+  neighbourhood scrape is separate from the district snapshot (2026-10-03), so the two levels can differ slightly in date and listing mix. "Adjust preferences" does not carry the level back to the landing page.
