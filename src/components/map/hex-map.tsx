@@ -999,7 +999,7 @@ export function HexMap({ showDistricts = false, recenterSignal = 0, commuteRoute
     map.setLayoutProperty("district-line", "visibility", showDistricts ? "visible" : "none");
   }, [showDistricts]);
 
-  // MapLibre forces position:relative on its container, so size it via a wrapper.
+  // Fly back to the whole-city view when the legend button asks for it.
   useEffect(() => {
     if (recenterSignal === 0) return;
     const map = mapRef.current;
@@ -1013,7 +1013,6 @@ export function HexMap({ showDistricts = false, recenterSignal = 0, commuteRoute
       duration: 800,
       essential: true,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- react to explicit requests only
   }, [recenterSignal]);
 
   return (
