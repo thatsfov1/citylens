@@ -122,7 +122,7 @@ export const SOURCES: Record<SourceId, Source> = {
   },
 };
 
-export type SourceTopic = Category | "air" | "safety" | "works" | "parking" | "rent" | "commute";
+export type SourceTopic = Category | "air" | "health" | "safety" | "works" | "parking" | "rent" | "commute";
 
 /** Which sources stand behind each topic shown in the panel. */
 export const SOURCES_BY_TOPIC: Record<SourceTopic, readonly SourceId[]> = {
@@ -133,6 +133,7 @@ export const SOURCES_BY_TOPIC: Record<SourceTopic, readonly SourceId[]> = {
   education: ["osm"],
   transport: ["osm", "gtfs"],
   air: ["gios"],
+  health: ["osm"],
   safety: ["osm"],
   works: ["zdmk", "krakow", "msip"],
   parking: ["osm", "msip", "zdmk"],

@@ -3,6 +3,7 @@ import { EDUCATION_KIND_STAGES, type District, type GreenArea, type Poi, type Po
 import { EDUCATION_STAGES, type EducationStage } from "../../types";
 import type { AirIndicator } from "./air";
 import type { SafetyIndicators } from "./safety";
+import type { HealthIndicators } from "./health";
 
 // Deterministic, explainable per-cell scoring from OSM features.
 // Distance bands follow AGENTS.md §9: 0–250 m high, 250–500 medium, 500–1000 lower, >1000 ignored.
@@ -72,6 +73,8 @@ export type CellIndicators = Record<Exclude<PoiCategory, "education">, PoiIndica
   safety?: SafetyIndicators;
   /** Interpolated air quality (GIOŚ stations); absent when no station is within reach. */
   air?: AirIndicator;
+  /** Pharmacies, doctors, hospitals, post offices and banks nearby (OSM); absent in rows scored before it existed. */
+  health?: HealthIndicators;
 };
 
 export function scorePoiCategory(center: LngLat, pois: Poi[], scale = 1): PoiIndicators {

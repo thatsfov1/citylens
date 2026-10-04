@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import {
   AirSection,
+  HealthSection,
   AreaPanel,
   SafetySection,
   type PanelView,
@@ -636,7 +637,7 @@ export function MapExperience({
   // Info window opened from a safety / air badge on the hexagon; tied to the hexagon like the panel detail.
   const [badgeInfo, setBadgeInfo] = useState<{
     hex: string | null;
-    kind: "safety" | "air" | "works" | null;
+    kind: "safety" | "air" | "health" | "works" | null;
   }>({ hex: null, kind: null });
   const openBadge = badgeInfo.hex === selected ? badgeInfo.kind : null;
 
@@ -753,6 +754,7 @@ export function MapExperience({
             ? {
                 safety: hex.safety ?? null,
                 air: hex.air ?? null,
+                health: hex.health ?? null,
                 works: worksCount,
                 compare: {
                   added: compared.includes(hex.h3Index),
@@ -826,6 +828,13 @@ export function MapExperience({
               />
             ) : openBadge === "works" ? (
               <WorksWarnings works={works} year={panelYear} />
+            ) : openBadge === "health" ? (
+              hex.health != null && (
+                <HealthSection
+                  health={hex.health}
+                  indicators={details?.indicators ?? null}
+                />
+              )
             ) : (
               hex.air != null && (
                 <AirSection

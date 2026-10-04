@@ -588,3 +588,22 @@ changes a score.
   education and is near the bottom for greenery, although its centre scores well (Plac Centralny transport 98); the district is large and mostly open land, but
   sport and greenery there may be under-mapped in OSM. The air check is weak evidence (air is interpolated from 6 stations, so it is smooth by construction).
 - The thresholds are deliberately loose: this catches broken pipelines (wrong normalisation, a lost tag, a bad join), not small tuning differences.
+
+## Health and everyday services (information layer)
+
+- **Information only, like air and safety:** `hex_scores.health_score` (nullable, 0-100) + `indicators.health`, `HexData.health`. A badge on the open
+  hexagon (top corner, heart-pulse icon, opens a floating window with `HealthSection`) and a map-key entry. It never enters the weighted match score,
+  the LLM prompt or a map tab.
+- **What it counts** (`src/lib/data/health.ts`, OSM points in `data/health/features.json`, committed 25 KB): pharmacies (`amenity=pharmacy`), doctors and
+  clinics (`doctors|clinic`), hospitals, post offices, banks. Per kind: the usual distance bands (0-250 m ×1, 250-500 ×0.6, 500-1000 ×0.25); a hospital's
+  reach is 3 km (bands ×3). Each kind's raw value becomes a **percentile rank among all cells**, and the combined score is a weighted mean
+  (`HEALTH_WEIGHTS`: pharmacy 30%, doctor 30%, hospital 15%, post 15%, bank 10% - a judgement call, shown in the panel).
+- **Pipeline:** `scripts/health/build-features.ts` (Overpass, same mirrors as the safety script) -> `data/health/features.json`;
+  `scripts/health/compute.ts` -> `supabase/health_seed.sql` (updates existing rows only; does not need the full OSM extracts).
+  The committed file was built from the **Geofabrik Malopolskie extract of 2026-10-03** (pyosmium, same tags, nodes and ways, no relations) because the
+  Overpass mirrors were unreachable from the build machine: counts 339 pharmacies, 480 doctors/clinics, 26 hospitals, 153 post offices, 166 banks.
+  Re-running the Overpass script gives the same kinds, with relation centres added.
+- **Deploy order:** apply `20261004000100_health_score.sql` and then load `supabase/health_seed.sql` (compact: five numbers per kind, expanded to JSON in SQL; ~47 KB). **Both are applied to the live database** (checked: 461 cells, same checksum as the local file). `loadHexes` first selects `health_score`; if the column
+  does not exist yet it retries without it (health is simply absent), so an early deploy no longer drops the app to mock data.
+- **Limits (shown in `HEALTH_CAVEAT`):** mapped places only: no opening hours, queues, quality, NFZ contracts or whether a practice takes new patients;
+  OSM undercounts doctors' offices; the score compares areas with each other, it is not a verdict on a neighbourhood.

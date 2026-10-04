@@ -166,10 +166,12 @@ type Props = {
 
 const BADGE_MIN_ZOOM = 12.5;
 
-export type BadgeKind = "safety" | "air" | "works" | "compare";
+export type BadgeKind = "safety" | "air" | "health" | "works" | "compare";
 export type HexBadges = {
   safety: number | null;
   air: number | null;
+  /** Access to health and everyday services (pharmacies, doctors, post offices, banks). */
+  health: number | null;
   /** Construction / renovation works nearby (badge only when > 0). */
   works: number;
   compare: { added: boolean; full: boolean };
@@ -182,6 +184,8 @@ const BADGE_ICONS = {
     '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
   plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
   check: '<path d="M20 6 9 17l-5-5"/>',
+  health:
+    '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/>',
   air: '<path d="M12.8 19.6A2 2 0 1 0 14 16H2"/><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2"/><path d="M9.8 4.4A2 2 0 1 1 11 8H2"/>',
 } as const;
 
@@ -841,6 +845,7 @@ export function HexMap({ showDistricts = false, recenterSignal = 0, tilt = false
   }, [onBadge]);
   const safetyBadge = badges?.safety ?? null;
   const airBadge = badges?.air ?? null;
+  const healthBadge = badges?.health ?? null;
   const worksBadge = badges?.works ?? 0;
   const compareAdded = badges?.compare.added ?? false;
   const compareFull = badges?.compare.full ?? false;
@@ -857,6 +862,7 @@ export function HexMap({ showDistricts = false, recenterSignal = 0, tilt = false
     const open = (kind: BadgeKind) => () => onBadgeRef.current?.(kind);
     if (safetyBadge !== null) place(badgeElement("safety", safetyBadge, "Wskaźniki bezpieczeństwa: kliknij, aby zobaczyć szczegóły", open("safety")), 150);
     if (airBadge !== null) place(badgeElement("air", airBadge, "Jakość powietrza: kliknij, aby zobaczyć szczegóły", open("air")), 30);
+    if (healthBadge !== null) place(badgeElement("health", healthBadge, "Zdrowie i usługi: kliknij, aby zobaczyć szczegóły", open("health")), 90);
     if (worksBadge > 0) {
       const title = `Prace w pobliżu: ${worksBadge}. Kliknij, aby zobaczyć szczegóły`;
       place(badgeElement("works", worksBadge, title, open("works"), "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"), 210);
@@ -882,7 +888,7 @@ export function HexMap({ showDistricts = false, recenterSignal = 0, tilt = false
       map.off("zoom", sync);
       markers.forEach((m) => m.remove());
     };
-  }, [selected, hasBadges, safetyBadge, airBadge, worksBadge, compareAdded, compareFull]);
+  }, [selected, hasBadges, safetyBadge, airBadge, healthBadge, worksBadge, compareAdded, compareFull]);
 
   // Selecting a hexagon flies in; deselecting flies back to where the user was.
   useEffect(() => {
