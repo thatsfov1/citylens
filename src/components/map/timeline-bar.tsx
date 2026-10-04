@@ -108,23 +108,12 @@ export function TimelineBar({
         </ul>
       </div>
     );
-  if (!on) {
-    return (
-      <button
-        type="button"
-        onClick={onToggle}
-        className="absolute bottom-[4.5rem] left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border/70 bg-white/95 px-4 py-2 text-sm font-medium shadow-lg backdrop-blur hover:bg-white sm:bottom-6 sm:ml-1 sm:translate-x-0"
-      >
-        <CalendarRange className="size-4" aria-hidden />
-        Plany miasta
-      </button>
-    );
-  }
+  if (!on) return null;
   const stops: { label: string; value: number | null }[] = [{ label: "Dziś", value: null }, ...TIMELINE_YEARS.map((y) => ({ label: String(y), value: y }))];
   return (
     <section
       aria-label="Plany i prace w mieście"
-      className="absolute bottom-[4.5rem] left-1/2 z-[5] w-[min(26rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-2xl border border-border/70 bg-white/95 p-3 shadow-lg backdrop-blur sm:bottom-20"
+      className="absolute bottom-[4.5rem] left-1/2 z-[5] w-[min(26rem,calc(100%-1.5rem))] -translate-x-1/2 rounded-2xl border border-border/70 bg-white/95 p-3 shadow-lg backdrop-blur sm:bottom-6"
     >
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-1.5 text-sm font-semibold">
