@@ -30,7 +30,7 @@ export function Landing({ initial }: { initial?: Importance }) {
       <div className="relative z-10 mx-auto grid w-full max-w-[1600px] flex-1 lg:grid-cols-2">
         <HeroStage />
 
-        <section className="relative flex min-h-screen items-start justify-center px-5 py-6 sm:px-8 lg:h-screen lg:min-h-0 lg:px-10 lg:py-[clamp(1.5rem,4vh,3rem)]">
+        <section className="relative flex min-h-screen items-start justify-center px-5 pb-10 pt-6 sm:px-8 lg:h-screen lg:min-h-0 lg:px-10 lg:pt-[clamp(1.5rem,4vh,3rem)]">
           <div className="w-full max-w-xl">
             <div className="mb-3 flex h-8 items-start justify-end">
               <SavedMapLink />
@@ -66,10 +66,9 @@ export function Landing({ initial }: { initial?: Importance }) {
               <p className="mt-2 text-xs text-stone-500">Opisz, czego szukasz, aby zobaczyć mapę.</p>
             )}
           </div>
+          <OsmAttribution className="absolute bottom-3 right-5 text-right text-stone-400 sm:right-8 lg:right-10" />
         </section>
       </div>
-
-      <OsmAttribution className="relative z-10 px-5 pb-3 text-right text-stone-400 sm:px-8 lg:px-12" />
     </main>
   );
 }
