@@ -113,7 +113,7 @@ export function TimelineBar({
       <button
         type="button"
         onClick={onToggle}
-        className="absolute bottom-[4.5rem] left-1/2 z-[5] flex -translate-x-1/2 items-center gap-2 rounded-full border border-border/70 bg-white/95 px-4 py-2 text-sm font-medium shadow-lg backdrop-blur hover:bg-white sm:bottom-20"
+        className="absolute bottom-[4.5rem] left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border/70 bg-white/95 px-4 py-2 text-sm font-medium shadow-lg backdrop-blur hover:bg-white sm:bottom-6 sm:ml-1 sm:translate-x-0"
       >
         <CalendarRange className="size-4" aria-hidden />
         Plany miasta

@@ -7,6 +7,8 @@ import {
   ArrowLeft,
   Briefcase,
   ChevronDown,
+  Eye,
+  EyeOff,
   Hexagon,
   Info,
   MapPin,
@@ -39,10 +41,20 @@ import { explainMatch } from "@/lib/scoring/explain";
 import { describeAll } from "@/lib/scoring/facts";
 import { MAX_COMPARED, compareAreas } from "@/lib/scoring/compare";
 import { strongestAreas, topContributor } from "@/lib/scoring/first-match";
-import { certainty, describeTiming, groupWorks, worksAtYear } from "@/lib/data/works";
+import {
+  certainty,
+  describeTiming,
+  groupWorks,
+  worksAtYear,
+} from "@/lib/data/works";
 import { workBounds } from "@/lib/map/work-bounds";
 import type { WorksCollection } from "@/lib/data/works-map";
-import { TimelineBar, type TimelineCounts, type TimelineItem, type TimelineList } from "./timeline-bar";
+import {
+  TimelineBar,
+  type TimelineCounts,
+  type TimelineItem,
+  type TimelineList,
+} from "./timeline-bar";
 import { fetchCached } from "@/lib/map/hex-cache";
 import { defaultPinCategories } from "@/lib/map/places";
 import { NO_DATA_COLOR } from "@/lib/map/zones";
@@ -239,7 +251,9 @@ export function MapExperience({
   const commuteConflict = useMemo(() => {
     const dimmed = commuteFit?.outside.size ? commuteFit.outside : undefined;
     if (!anchorOutside || !dimmed) return false;
-    return hexes.every((h) => anchorOutside.has(h.h3Index) || dimmed.has(h.h3Index));
+    return hexes.every(
+      (h) => anchorOutside.has(h.h3Index) || dimmed.has(h.h3Index),
+    );
   }, [hexes, anchorOutside, commuteFit]);
   const outside = useMemo(() => {
     const dimmed = commuteFit?.outside.size ? commuteFit.outside : undefined;
@@ -364,7 +378,9 @@ export function MapExperience({
     if (!timelineOn || worksMap) return;
     const ctrl = new AbortController();
     fetchCached<WorksCollection>("/api/works", ctrl.signal)
-      .then((d) => setWorksMap(d ?? { type: "FeatureCollection", features: [] }))
+      .then((d) =>
+        setWorksMap(d ?? { type: "FeatureCollection", features: [] }),
+      )
       .catch(() => {});
     return () => ctrl.abort();
   }, [timelineOn, worksMap]);
@@ -382,27 +398,62 @@ export function MapExperience({
     }
     setTimelineOn(!timelineOn);
   };
-  const worksLayer = useMemo(() => (timelineOn && worksMap ? { collection: worksMap, year } : null), [timelineOn, worksMap, year]);
+  const worksLayer = useMemo(
+    () => (timelineOn && worksMap ? { collection: worksMap, year } : null),
+    [timelineOn, worksMap, year],
+  );
   // Each record once (a corridor or permit can have several geometries), split by the selected year.
-  const timeline = useMemo<{ counts: TimelineCounts; list: TimelineList } | null>(() => {
+  const timeline = useMemo<{
+    counts: TimelineCounts;
+    list: TimelineList;
+  } | null>(() => {
     if (!worksMap) return null;
     const today = new Date();
-    const byId = new Map(worksMap.features.map((f) => [f.properties.id, f.properties]));
+    const byId = new Map(
+      worksMap.features.map((f) => [f.properties.id, f.properties]),
+    );
     const v = worksAtYear([...byId.values()], year, today);
-    const item = (w: WorksCollection["features"][number]["properties"]): TimelineItem => {
+    const item = (
+      w: WorksCollection["features"][number]["properties"],
+    ): TimelineItem => {
       const t = describeTiming(w, today);
       const ref = w.id.startsWith("msip:") ? ` (${w.id.slice(5)})` : "";
-      return { id: w.id, title: `${w.title}${ref}`, label: t.label, text: t.text, certainty: certainty(w), sourceName: w.sourceName, sourceUrl: w.sourceUrl, publishedAt: w.publishedAt };
+      return {
+        id: w.id,
+        title: `${w.title}${ref}`,
+        label: t.label,
+        text: t.text,
+        certainty: certainty(w),
+        sourceName: w.sourceName,
+        sourceUrl: w.sourceUrl,
+        publishedAt: w.publishedAt,
+      };
     };
-    const byStart = (a: { dateFrom: string | null; title: string }, b: { dateFrom: string | null; title: string }) =>
-      (a.dateFrom ?? "9999").localeCompare(b.dateFrom ?? "9999") || a.title.localeCompare(b.title);
+    const byStart = (
+      a: { dateFrom: string | null; title: string },
+      b: { dateFrom: string | null; title: string },
+    ) =>
+      (a.dateFrom ?? "9999").localeCompare(b.dateFrom ?? "9999") ||
+      a.title.localeCompare(b.title);
     return {
-      counts: { active: v.active.length, unknown: v.unknown.length, permits: v.permits.length },
-      list: { active: v.active.sort(byStart).map(item), unknown: v.unknown.sort(byStart).map(item), permits: v.permits.sort(byStart).map(item) },
+      counts: {
+        active: v.active.length,
+        unknown: v.unknown.length,
+        permits: v.permits.length,
+      },
+      list: {
+        active: v.active.sort(byStart).map(item),
+        unknown: v.unknown.sort(byStart).map(item),
+        permits: v.permits.sort(byStart).map(item),
+      },
     };
   }, [worksMap, year]);
   const [selectedWork, setSelectedWork] = useState<string | null>(null);
-  const [workFocus, setWorkFocus] = useState<{ id: string; bbox: [number, number, number, number]; n: number } | null>(null);
+  const [workFocus, setWorkFocus] = useState<{
+    id: string;
+    bbox: [number, number, number, number];
+    n: number;
+  } | null>(null);
   const pickWork = (id: string | null, focus: boolean) => {
     setSelectedWork(id);
     const bbox = id && focus && worksMap ? workBounds(worksMap, id) : null;
@@ -640,6 +691,7 @@ export function MapExperience({
     (car ? 1 : 0) +
     (hasStages && stages.length < EDUCATION_STAGES.length ? 1 : 0);
 
+  const [mapOnly, setMapOnly] = useState(false);
   const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
   const [focusPlace, setFocusPlace] = useState<{
     id: number;
@@ -649,6 +701,7 @@ export function MapExperience({
   return (
     <div className="relative flex-1 overflow-hidden">
       <HexMap
+        hideControls={mapOnly}
         worksLayer={worksLayer}
         selectedWork={selectedWork}
         workFocus={workFocus}
@@ -699,229 +752,262 @@ export function MapExperience({
         }
       />
 
-      {bannerOpen && (
-        <SharedBanner
-          compared={compared.length}
-          hasArea={selected !== null}
-          adjustHref={`/?${importanceToQuery(importance)}`}
-          saved={bannerSaved}
-          onSave={saveSharedCopy}
-          onDismiss={() => setBannerOpen(false)}
-        />
+      {mapOnly && (
+        <button
+          type="button"
+          onClick={() => setMapOnly(false)}
+          className="absolute left-3 top-3 z-20 flex items-center gap-1.5 rounded-full border border-border/70 bg-white/95 py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg backdrop-blur hover:bg-white sm:left-4 sm:top-4"
+        >
+          <Eye className="size-4" />
+          Pokaż panele
+        </button>
       )}
 
-      {filtersOpen && hasFilters && (
-        <FiltersWindow
-          onClose={() => setFiltersOpen(false)}
-          onResetAll={resetFilters}
-          hasRent={hasRent}
-          rent={rent}
-          onRent={changeRent}
-          car={car}
-          onCar={changeCar}
-          hasSafety={hasSafety}
-          minSafety={minSafety}
-          onMinSafety={changeMinSafety}
-          showStages={showStageFilter}
-          stages={stages}
-          onToggleStage={toggleStage}
-        />
-      )}
-
-      {openBadge && hex && (
-        <section className="absolute inset-x-3 top-28 z-10 max-h-[40%] overflow-y-auto rounded-2xl border border-border/70 bg-white/95 px-4 pb-4 pt-3 shadow-2xl backdrop-blur sm:inset-x-auto sm:bottom-6 sm:right-[24rem] sm:top-auto sm:max-h-[60%] sm:w-[24rem]">
-          <button
-            onClick={() => setBadgeInfo({ hex: null, kind: null })}
-            aria-label="Zamknij"
-            className="absolute right-2 top-2 z-10 rounded-full p-1.5 text-muted-foreground hover:bg-muted"
-          >
-            <X className="size-4" />
-          </button>
-          {openBadge === "safety" ? (
-            <SafetySection
-              safety={hex.safety ?? null}
-              minSafety={minSafety}
-              indicators={details?.indicators ?? null}
-            />
-          ) : openBadge === "works" ? (
-            <WorksWarnings works={works} year={panelYear} />
-          ) : (
-            hex.air != null && (
-              <AirSection
-                air={hex.air}
-                indicators={details?.indicators ?? null}
-              />
-            )
-          )}
-        </section>
-      )}
-
-      <div className="pointer-events-none absolute left-3 top-32 z-[5] flex max-w-[calc(100%-1.5rem)] flex-col items-start gap-2 sm:left-4 sm:top-20 sm:max-w-[calc(100%-26rem)]">
-        {anchor && anchorOutside && (
-          <span className="flex items-center gap-1.5 rounded-full border border-border/70 bg-white/90 py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur">
-            <MapPin className="size-4 text-rose-600" />W pobliżu:{" "}
-            {anchor.name.split(",")[0]} · {formatRadius(anchor.radiusM)}
-          </span>
-        )}
-        {workplace && commuteFit && (
-          <span className="flex items-center gap-1.5 rounded-full border border-border/70 bg-white/90 py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur">
-            <Briefcase className="size-4 text-sky-600" />
-            {commuteFit.within > 0
-              ? `Praca: ${workplace.name.split(",")[0]} · ≤ ${workplace.maxMin} min ${MODE_LABELS[workplace.mode]}`
-              : `Brak obszaru w ${workplace.maxMin} min ${MODE_LABELS[workplace.mode]} · najbliższy ≈ ${commuteFit.nearestMin} min`}
-            {commuteConflict && " · dojazd nie zawęża mapy (miejsce pracy leży poza promieniem „W pobliżu”)"}
-          </span>
-        )}
-      </div>
-
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center gap-3 p-3 sm:flex-row sm:items-start sm:justify-between sm:p-4">
-        <div className="pointer-events-auto flex items-center gap-2">
-          <Link
-            href={`/?${importanceToQuery(importance)}`}
-            className="pointer-events-auto flex items-center gap-2 rounded-full border border-border/70 bg-white/90 py-1.5 pl-2.5 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur hover:bg-white"
-          >
-            <ArrowLeft className="size-4" />
-            <Hexagon className="size-4 text-emerald-600" />
-            Zmień preferencje
-          </Link>
-          {hasFilters && (
-            <button
-              type="button"
-              onClick={() => setFiltersOpen((v) => !v)}
-              aria-expanded={filtersOpen}
-              className={`flex items-center gap-1.5 rounded-full border py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur ${
-                filtersOpen
-                  ? "border-slate-800 bg-slate-800 text-white"
-                  : "border-border/70 bg-white/90 hover:bg-white"
-              }`}
-            >
-              <SlidersHorizontal className="size-4" />
-              Filtry{activeFilters > 0 ? ` · ${activeFilters}` : ""}
-            </button>
-          )}
-        </div>
-        <div className="pointer-events-auto max-w-full sm:absolute sm:left-1/2 sm:-translate-x-1/2">
-          <ModeSelector mode={mode} onChange={setMode} />
-        </div>
-        <ShareMenu
-          getUrl={() =>
-            buildShareUrl(window.location.origin, currentSearch(), shareState())
-          }
-          getQuery={() => savedQuery(currentSearch(), shareState())}
-          summary={shareSummary}
-        />
-      </div>
-
-      <aside className="absolute inset-x-0 bottom-0 max-h-[55%] overflow-y-auto rounded-t-3xl border border-border/70 bg-white/95 shadow-2xl backdrop-blur sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-16 sm:max-h-[calc(100%-5.5rem)] sm:w-[22rem] sm:rounded-3xl">
-        {firstMatch && first && hex && (
-          <FirstMatchCard
-            score={firstMatch.ex.score}
-            district={hex.district ?? null}
-            headline={firstMatch.ex.headline}
-            reason={firstMatch.ex.reasons[0]}
-            tradeoff={firstMatch.ex.considerations[0] ?? null}
-            contributor={firstMatch.contributor}
-            position={first.i + 1}
-            total={first.ids.length}
-            onCompare={compareAnother}
-            onDismiss={() => setFirst(null)}
+      <div className={mapOnly ? "hidden" : "contents"}>
+        {bannerOpen && (
+          <SharedBanner
+            compared={compared.length}
+            hasArea={selected !== null}
+            adjustHref={`/?${importanceToQuery(importance)}`}
+            saved={bannerSaved}
+            onSave={saveSharedCopy}
+            onDismiss={() => setBannerOpen(false)}
           />
         )}
-        <AreaPanel
-          scores={hex?.scores ?? null}
-          safety={hex?.safety ?? null}
-          air={hex?.air ?? null}
-          minSafety={minSafety}
-          district={hex?.district ?? null}
-          indicators={details?.indicators ?? null}
-          source={source}
-          weights={weights}
-          sensitivity={sensitivity}
-          rent={
-            rentActive && hex
-              ? { ...summarizeRent(hex.district, rent), filter: rent }
-              : null
-          }
-          commute={
-            workplace &&
-            commute &&
-            selected &&
-            commute.minutes[selected] != null
-              ? {
-                  minutes:
-                    route?.source === "routing" || route?.source === "gtfs"
-                      ? route.minutes
-                      : commute.minutes[selected],
-                  maxMin: workplace.maxMin,
-                  mode: workplace.mode,
-                  workName: workplace.name.split(",")[0],
-                  approx:
-                    route?.source === "routing" || route?.source === "gtfs"
-                      ? false
-                      : commute.source !== "routing",
-                  transit: route?.transit ?? null,
-                  distanceKm: route ? route.distanceM / 1000 : null,
-                }
-              : null
-          }
-          stages={stages}
-          onClose={() => setSelected(null)}
-          view={view}
-          onView={setView}
-          pins={pinCategories}
-          onTogglePin={togglePin}
-          worksSlot={<WorksWarnings works={works} year={panelYear} />}
-          parkingSlot={
-            car ? (
-              <ParkingCard
-                facts={parkingFacts}
-                data={parkingData}
-                district={hex?.district ?? null}
+
+        {filtersOpen && hasFilters && (
+          <FiltersWindow
+            onClose={() => setFiltersOpen(false)}
+            onResetAll={resetFilters}
+            hasRent={hasRent}
+            rent={rent}
+            onRent={changeRent}
+            car={car}
+            onCar={changeCar}
+            hasSafety={hasSafety}
+            minSafety={minSafety}
+            onMinSafety={changeMinSafety}
+            showStages={showStageFilter}
+            stages={stages}
+            onToggleStage={toggleStage}
+          />
+        )}
+
+        {openBadge && hex && (
+          <section className="absolute inset-x-3 top-28 z-10 max-h-[40%] overflow-y-auto rounded-2xl border border-border/70 bg-white/95 px-4 pb-4 pt-3 shadow-2xl backdrop-blur sm:inset-x-auto sm:bottom-6 sm:right-[24rem] sm:top-auto sm:max-h-[60%] sm:w-[24rem]">
+            <button
+              onClick={() => setBadgeInfo({ hex: null, kind: null })}
+              aria-label="Zamknij"
+              className="absolute right-2 top-2 z-10 rounded-full p-1.5 text-muted-foreground hover:bg-muted"
+            >
+              <X className="size-4" />
+            </button>
+            {openBadge === "safety" ? (
+              <SafetySection
+                safety={hex.safety ?? null}
+                minSafety={minSafety}
+                indicators={details?.indicators ?? null}
               />
-            ) : null
-          }
-          controlsFor={(c) =>
-            c === "education" && hasStages ? (
-              <StageFilter value={stages} onToggle={toggleStage} />
-            ) : null
-          }
-          placesFor={(c) =>
-            placesView && (
-              <CategoryPlaces
-                category={c}
-                places={placesView}
-                hovered={hoveredPlace}
-                onHover={setHoveredPlace}
-                onFocus={(id) =>
-                  setFocusPlace((f) => ({ id, n: (f?.n ?? 0) + 1 }))
-                }
-              />
-            )
-          }
+            ) : openBadge === "works" ? (
+              <WorksWarnings works={works} year={panelYear} />
+            ) : (
+              hex.air != null && (
+                <AirSection
+                  air={hex.air}
+                  indicators={details?.indicators ?? null}
+                />
+              )
+            )}
+          </section>
+        )}
+
+        <div className="pointer-events-none absolute left-3 top-32 z-[5] flex max-w-[calc(100%-1.5rem)] flex-col items-start gap-2 sm:left-4 sm:top-20 sm:max-w-[calc(100%-26rem)]">
+          {anchor && anchorOutside && (
+            <span className="flex items-center gap-1.5 rounded-full border border-border/70 bg-white/90 py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur">
+              <MapPin className="size-4 text-rose-600" />W pobliżu:{" "}
+              {anchor.name.split(",")[0]} · {formatRadius(anchor.radiusM)}
+            </span>
+          )}
+          {workplace && commuteFit && (
+            <span className="flex items-center gap-1.5 rounded-full border border-border/70 bg-white/90 py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur">
+              <Briefcase className="size-4 text-sky-600" />
+              {commuteFit.within > 0
+                ? `Praca: ${workplace.name.split(",")[0]} · ≤ ${workplace.maxMin} min ${MODE_LABELS[workplace.mode]}`
+                : `Brak obszaru w ${workplace.maxMin} min ${MODE_LABELS[workplace.mode]} · najbliższy ≈ ${commuteFit.nearestMin} min`}
+            </span>
+          )}
+        </div>
+
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center gap-3 p-3 sm:flex-row sm:items-start sm:justify-between sm:p-4">
+          <div className="pointer-events-auto flex items-center gap-2">
+            <Link
+              href={`/?${importanceToQuery(importance)}`}
+              className="pointer-events-auto flex items-center gap-2 rounded-full border border-border/70 bg-white/90 py-1.5 pl-2.5 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur hover:bg-white"
+            >
+              <ArrowLeft className="size-4" />
+              <Hexagon className="size-4 text-emerald-600" />
+              Zmień preferencje
+            </Link>
+            <button
+              type="button"
+              onClick={() => setMapOnly(true)}
+              className="flex items-center gap-1.5 rounded-full border border-border/70 bg-white/90 py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur hover:bg-white"
+            >
+              <EyeOff className="size-4" />
+              Sama mapa
+            </button>
+            {hasFilters && (
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((v) => !v)}
+                aria-expanded={filtersOpen}
+                className={`flex items-center gap-1.5 rounded-full border py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur ${
+                  filtersOpen
+                    ? "border-slate-800 bg-slate-800 text-white"
+                    : "border-border/70 bg-white/90 hover:bg-white"
+                }`}
+              >
+                <SlidersHorizontal className="size-4" />
+                Filtry{activeFilters > 0 ? ` · ${activeFilters}` : ""}
+              </button>
+            )}
+          </div>
+          <div className="pointer-events-auto max-w-full sm:absolute sm:left-1/2 sm:-translate-x-1/2">
+            <ModeSelector mode={mode} onChange={setMode} />
+          </div>
+          <ShareMenu
+            getUrl={() =>
+              buildShareUrl(
+                window.location.origin,
+                currentSearch(),
+                shareState(),
+              )
+            }
+            getQuery={() => savedQuery(currentSearch(), shareState())}
+            summary={shareSummary}
+          />
+        </div>
+
+        <aside className="absolute inset-x-0 bottom-0 max-h-[55%] overflow-y-auto rounded-t-3xl border border-border/70 bg-white/95 shadow-2xl backdrop-blur sm:inset-x-auto sm:bottom-auto sm:right-4 sm:top-16 sm:max-h-[calc(100%-5.5rem)] sm:w-[22rem] sm:rounded-3xl">
+          {firstMatch && first && hex && (
+            <FirstMatchCard
+              score={firstMatch.ex.score}
+              district={hex.district ?? null}
+              headline={firstMatch.ex.headline}
+              reason={firstMatch.ex.reasons[0]}
+              tradeoff={firstMatch.ex.considerations[0] ?? null}
+              contributor={firstMatch.contributor}
+              position={first.i + 1}
+              total={first.ids.length}
+              onCompare={compareAnother}
+              onDismiss={() => setFirst(null)}
+            />
+          )}
+          <AreaPanel
+            scores={hex?.scores ?? null}
+            safety={hex?.safety ?? null}
+            air={hex?.air ?? null}
+            minSafety={minSafety}
+            district={hex?.district ?? null}
+            indicators={details?.indicators ?? null}
+            source={source}
+            weights={weights}
+            sensitivity={sensitivity}
+            rent={
+              rentActive && hex
+                ? { ...summarizeRent(hex.district, rent), filter: rent }
+                : null
+            }
+            commute={
+              workplace &&
+              commute &&
+              selected &&
+              commute.minutes[selected] != null
+                ? {
+                    minutes:
+                      route?.source === "routing" || route?.source === "gtfs"
+                        ? route.minutes
+                        : commute.minutes[selected],
+                    maxMin: workplace.maxMin,
+                    mode: workplace.mode,
+                    workName: workplace.name.split(",")[0],
+                    approx:
+                      route?.source === "routing" || route?.source === "gtfs"
+                        ? false
+                        : commute.source !== "routing",
+                    transit: route?.transit ?? null,
+                    distanceKm: route ? route.distanceM / 1000 : null,
+                  }
+                : null
+            }
+            stages={stages}
+            onClose={() => setSelected(null)}
+            view={view}
+            onView={setView}
+            pins={pinCategories}
+            onTogglePin={togglePin}
+            worksSlot={<WorksWarnings works={works} year={panelYear} />}
+            parkingSlot={
+              car ? (
+                <ParkingCard
+                  facts={parkingFacts}
+                  data={parkingData}
+                  district={hex?.district ?? null}
+                />
+              ) : null
+            }
+            controlsFor={(c) =>
+              c === "education" && hasStages ? (
+                <StageFilter value={stages} onToggle={toggleStage} />
+              ) : null
+            }
+            placesFor={(c) =>
+              placesView && (
+                <CategoryPlaces
+                  category={c}
+                  places={placesView}
+                  hovered={hoveredPlace}
+                  onHover={setHoveredPlace}
+                  onFocus={(id) =>
+                    setFocusPlace((f) => ({ id, n: (f?.n ?? 0) + 1 }))
+                  }
+                />
+              )
+            }
+          />
+        </aside>
+
+        <CompareTray
+          comparison={comparison}
+          selected={selected}
+          onSelect={setSelected}
+          onRemove={(id) => setCompared((c) => c.filter((x) => x !== id))}
+          onClear={() => setCompared([])}
         />
-      </aside>
 
-      <CompareTray
-        comparison={comparison}
-        selected={selected}
-        onSelect={setSelected}
-        onRemove={(id) => setCompared((c) => c.filter((x) => x !== id))}
-        onClear={() => setCompared([])}
-      />
-
-      <Legend
-        mode={mode}
-        minSafety={minSafety}
-        rentActive={rentActive}
-        keyContext={{
-          areaOpen: selected !== null,
-          car,
-          workplace: workplace !== null,
-          comparing: compared.length > 0,
-          timeline: timelineOn,
-        }}
-      />
-      <TimelineBar on={timelineOn} onToggle={toggleTimeline} year={year} onYear={changeYear} counts={timeline?.counts ?? null} list={timeline?.list ?? null} selectedId={selectedWork} onSelect={(id) => pickWork(id, true)} />
+        <Legend
+          mode={mode}
+          minSafety={minSafety}
+          rentActive={rentActive}
+          keyContext={{
+            areaOpen: selected !== null,
+            car,
+            workplace: workplace !== null,
+            comparing: compared.length > 0,
+            timeline: timelineOn,
+          }}
+        />
+        <TimelineBar
+          on={timelineOn}
+          onToggle={toggleTimeline}
+          year={year}
+          onYear={changeYear}
+          counts={timeline?.counts ?? null}
+          list={timeline?.list ?? null}
+          selectedId={selectedWork}
+          onSelect={(id) => pickWork(id, true)}
+        />
+      </div>
     </div>
   );
 }
