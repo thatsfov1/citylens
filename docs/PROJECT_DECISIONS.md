@@ -566,3 +566,15 @@ changes a score.
 ## 3D buildings
 
 - A "3D" icon button in the legend's icon row (`map-experience.tsx`) toggles `HexMap`'s `tilt` prop: the camera eases to pitch 55° (centre/zoom kept) and a `fill-extrusion` layer (`buildings-3d`, OpenFreeMap `building` source-layer, `render_height` with an 8 m fallback, visible from zoom 14) is shown above the heat raster. Default is top-down 2D with the layer hidden. No new data or dependency.
+
+## Sanity check of the stored scores
+
+- `npx tsx scripts/sanity/report.ts` (and `src/lib/__tests__/sanity.test.ts`, part of `npm test`) checks the **committed** `supabase/seed.sql`
+  (not the live table) against common knowledge of Kraków: the cells containing Rynek, the main station, Galeria Krakowska, Bonarka, Błonia, Las Wolski,
+  the UJ and AGH campuses and Plac Centralny must rank in the top 10-40% for what they are known for; Stare Miasto must lead culture and transport,
+  Zwierzyniec greenery; transport, shopping and culture must fall with distance from the centre (Spearman < -0.3); no category may be mostly empty.
+  Expectations were written before looking at the numbers; a second test proves the checks fail on broken data. The script prints top/bottom districts per category.
+- Result on the 2026-10-03 seed: 31/31 pass. **Worth a look, not failures:** Nowa Huta has the lowest district mean for sport (16), culture, shopping, transport and
+  education and is near the bottom for greenery, although its centre scores well (Plac Centralny transport 98); the district is large and mostly open land, but
+  sport and greenery there may be under-mapped in OSM. The air check is weak evidence (air is interpolated from 6 stations, so it is smooth by construction).
+- The thresholds are deliberately loose: this catches broken pipelines (wrong normalisation, a lost tag, a bad join), not small tuning differences.
