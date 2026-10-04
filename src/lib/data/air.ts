@@ -16,7 +16,8 @@ export type AirStation = {
   asOf?: string;
 };
 
-export type AirFile = { source: string; fetched: string; note: string; stations: AirStation[] };
+/** `windowHours` is set for live data: the mean covers only the newest N hourly values (a snapshot covers all, ~3 days). */
+export type AirFile = { source: string; fetched: string; note: string; windowHours?: number; stations: AirStation[] };
 
 export type AirIndicator = {
   /** Interpolated concentrations in µg/m³ (rounded to 0.1); absent when no station in reach measures it. */
@@ -27,6 +28,9 @@ export type AirIndicator = {
   nearest: { name: string; distanceM: number };
   /** Date of the snapshot (YYYY-MM-DD). */
   asOf: string;
+  /** Live data only: the mean covers the newest N hours, up to `latest` (newest reading used, local time as published). */
+  windowHours?: number;
+  latest?: string;
 };
 
 /** Stations further than this don't describe a cell; beyond it the cell has no air data (unknown ≠ clean). */
@@ -63,11 +67,13 @@ export function interpolateAir(center: LngLat, file: AirFile): AirIndicator | nu
   const pm10 = idw(center, file.stations, "pm10");
   if (!pm25 && !pm10) return null;
   let nearest: AirIndicator["nearest"] | null = null;
+  let latest: string | undefined;
   const inReach = new Set<number>();
   for (const s of file.stations) {
     const d = haversine(center, [s.lng, s.lat]);
     if (d > AIR_REACH_M || (s.pm25 === undefined && s.pm10 === undefined)) continue;
     inReach.add(s.id);
+    if (s.asOf && (!latest || s.asOf > latest)) latest = s.asOf;
     if (!nearest || d < nearest.distanceM) nearest = { name: s.name, distanceM: Math.round(d) };
   }
   const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -77,6 +83,7 @@ export function interpolateAir(center: LngLat, file: AirFile): AirIndicator | nu
     stations: inReach.size,
     nearest: nearest as AirIndicator["nearest"],
     asOf: file.fetched,
+    ...(file.windowHours ? { windowHours: file.windowHours, ...(latest ? { latest } : {}) } : {}),
   };
 }
 

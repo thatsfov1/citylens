@@ -109,6 +109,8 @@ const indicatorsSchema = z.object({
       stations: z.number(),
       nearest: z.object({ name: z.string(), distanceM: z.number() }),
       asOf: z.string(),
+      windowHours: z.number().optional(),
+      latest: z.string().optional(),
     })
     .optional(),
 });
