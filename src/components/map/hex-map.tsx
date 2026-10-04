@@ -39,8 +39,6 @@ const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: 
 
 // Once zoomed in by more than this (zoom levels) beyond the "whole city fits" view,
 // the recenter button appears.
-const OLD_TOWN = { lat: 50.0617, lng: 19.9373 } as const;
-const OLD_TOWN_ZOOM = 14;
 const FIT_PADDING = 24;
 const SIDEBAR_WIDTH = 380;
 
@@ -359,17 +357,7 @@ export function HexMap({ hideControls = false, commuteRoute = null, hexes, weigh
     const sync = () => {
       const fit = fitRef.current;
       if (!fit) return;
-      const z = map.getZoom();
       if (flyingRef.current) return;
-      const locked = z <= fit.zoom + 0.01;
-      if (locked) {
-        map.dragPan.disable();
-        const c = map.getCenter();
-        if (Math.abs(c.lng - fit.center[0]) > 1e-6 || Math.abs(c.lat - fit.center[1]) > 1e-6) {
-          map.jumpTo({ center: fit.center });
-        }
-        return;
-      }
       map.dragPan.enable();
       const c = map.getCenter();
       const [[w, s], [e, n]] = KRAKOW_BOUNDS;
@@ -1014,13 +1002,13 @@ export function HexMap({ hideControls = false, commuteRoute = null, hexes, weigh
   // MapLibre forces position:relative on its container, so size it via a wrapper.
   const recenter = () => {
     const map = mapRef.current;
-    if (!map) return;
-    const right = window.innerWidth >= 640 ? SIDEBAR_WIDTH + FIT_PADDING : 0;
+    const fit = fitRef.current;
+    if (!map || !fit) return;
     flyingRef.current = true;
     map.flyTo({
-      center: [OLD_TOWN.lng, OLD_TOWN.lat],
-      zoom: OLD_TOWN_ZOOM,
-      padding: { top: 0, left: 0, right, bottom: 0 },
+      center: fit.center,
+      zoom: fit.zoom,
+      padding: { top: 0, left: 0, right: 0, bottom: 0 },
       duration: 800,
       essential: true,
     });
@@ -1069,10 +1057,10 @@ export function HexMap({ hideControls = false, commuteRoute = null, hexes, weigh
         <button
           type="button"
           onClick={recenter}
-          aria-label="Wyśrodkuj mapę na Starym Mieście"
+          aria-label="Pokaż całe miasto"
           className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 rounded-full border border-border/70 bg-white/95 px-4 py-2 text-sm font-medium shadow-lg backdrop-blur hover:bg-white sm:left-auto sm:right-[25rem] sm:translate-x-0"
         >
-          Stare Miasto
+          Pokaż całe miasto
         </button>
       }
     </div>
