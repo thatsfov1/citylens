@@ -61,16 +61,6 @@ export function savedQuery(search: string, state: ShareState): string {
   return applyShareState(search, state).toString();
 }
 
-/** Parameters that only describe the map view (tab, open area, compared areas, timeline year, shared marker). */
-const VIEW_KEYS = [...SHARE_KEYS, "rok"] as const;
-
-/** What the landing page needs to reopen the preferences: every filter in `search`, without the map-view state. */
-export function preferencesQuery(search: string | URLSearchParams): string {
-  const out = new URLSearchParams(search);
-  for (const k of VIEW_KEYS) out.delete(k);
-  return out.toString();
-}
-
 const LABEL_PL: Record<(typeof CATEGORIES)[number], string> = {
   sport: "sport",
   culture: "kultura",

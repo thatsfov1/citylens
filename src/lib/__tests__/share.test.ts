@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { latLngToCell } from "h3-js";
 import { MAX_SAVED, SAVED_KEY, deleteSaved, loadSaved, saveMap } from "../share/saved";
-import { applyShareState, buildShareUrl, parseShareState, preferencesQuery, rentPhrase, savedQuery, topPreferences } from "../share/state";
+import { applyShareState, buildShareUrl, parseShareState, rentPhrase, savedQuery, topPreferences } from "../share/state";
 
 const cell = (lat: number, lng: number) => latLngToCell(lat, lng, 8);
 const A = cell(50.06, 19.94);
@@ -93,12 +93,4 @@ test("the car switch rides along in shared links and saved maps", () => {
   const state = { mode: "forYou" as const, selected: A, compared: [] };
   assert.match(buildShareUrl("https://x.test", "sport=50&car=1", state), /[?&]car=1/);
   assert.match(savedQuery("sport=50&car=1", state), /car=1/);
-});
-
-test("preferencesQuery keeps every filter and drops the map-view state", () => {
-  const q = new URLSearchParams(
-    preferencesQuery(`sport=50&rent=2000-3500&rooms=2&car=1&minSafety=50&near=1,2,500,X&mode=safety&sel=${A}&cmp=${A},${B}&rok=2028&shared=1`),
-  );
-  assert.deepEqual([...q.keys()].sort(), ["car", "minSafety", "near", "rent", "rooms", "sport"]);
-  assert.equal(q.get("rent"), "2000-3500");
 });

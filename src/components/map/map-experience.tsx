@@ -66,6 +66,7 @@ import {
 import { stagesToParam, withEducationStages } from "@/lib/scoring/education";
 import {
   formatRadius,
+  anchorToQuery,
   hexesOutsideAnchor,
   type Anchor,
 } from "@/lib/scoring/anchor";
@@ -73,6 +74,7 @@ import {
   MODE_LABELS,
   classifyCommute,
   estimateCommutes,
+  workplaceToQuery,
   type Workplace,
 } from "@/lib/scoring/commute";
 import { normalizeWeights } from "@/lib/scoring/weights";
@@ -86,7 +88,6 @@ import {
   DEFAULT_SHARE,
   applyShareState,
   buildShareUrl,
-  preferencesQuery,
   savedQuery,
   type ShareState,
 } from "@/lib/share/state";
@@ -309,12 +310,20 @@ export function MapExperience({
       if (!params.has(k)) params.set(k, v);
     return params.toString();
   };
-  // "Change preferences" returns to the landing page with every filter, not just the weights. Re-read the address bar
-  // after the state that writes into it has changed.
-  const [preferencesHref, setPreferencesHref] = useState(`/?${importanceToQuery(importance)}`);
-  useEffect(() => {
-    setPreferencesHref(`/?${preferencesQuery(currentSearch())}`);
-  }, [minSafety, rent, car, stages, importance]); // eslint-disable-line react-hooks/exhaustive-deps
+  // "Change preferences" returns to the landing page with every filter, not just the weights.
+  const preferencesHref = useMemo(() => {
+    const q = new URLSearchParams(importanceToQuery(importance));
+    const add = (extra: string | null | undefined) => {
+      if (extra) for (const [k, v] of new URLSearchParams(extra)) q.set(k, v);
+    };
+    if (minSafety > 0) q.set("minSafety", String(minSafety));
+    add(stagesToParam(stages) && `edu=${stagesToParam(stages)}`);
+    if (rentActive) add(rentToQuery(rent));
+    if (car) q.set("car", "1");
+    if (anchor) add(anchorToQuery(anchor));
+    if (workplace) add(workplaceToQuery(workplace));
+    return `/?${q}`;
+  }, [importance, minSafety, stages, rentActive, rent, car, anchor, workplace]);
   const shareState = (): ShareState => ({ mode, selected, compared });
   const saveSharedCopy = () => {
     const r = saveMap({
