@@ -228,12 +228,19 @@ export function MapExperience({
         : null,
     [workplace, commute],
   );
+  // Each filter alone never greys out the whole map, but their union can (e.g. "near Czyżyny" + "≤ 30 min to a
+  // stadium across town"). In that case keep the explicit "near a place" radius and drop the commute dimming.
+  const commuteConflict = useMemo(() => {
+    const dimmed = commuteFit?.outside.size ? commuteFit.outside : undefined;
+    if (!anchorOutside || !dimmed) return false;
+    return hexes.every((h) => anchorOutside.has(h.h3Index) || dimmed.has(h.h3Index));
+  }, [hexes, anchorOutside, commuteFit]);
   const outside = useMemo(() => {
     const dimmed = commuteFit?.outside.size ? commuteFit.outside : undefined;
     if (!anchorOutside) return dimmed;
-    if (!dimmed) return anchorOutside;
+    if (!dimmed || commuteConflict) return anchorOutside;
     return new Set([...anchorOutside, ...dimmed]);
-  }, [anchorOutside, commuteFit]);
+  }, [anchorOutside, commuteFit, commuteConflict]);
   const showStageFilter =
     hasStages &&
     (mode === "education" || (mode === "forYou" && importance.education > 0));
@@ -698,6 +705,7 @@ export function MapExperience({
             {commuteFit.within > 0
               ? `Praca: ${workplace.name.split(",")[0]} · ≤ ${workplace.maxMin} min ${MODE_LABELS[workplace.mode]}`
               : `Brak obszaru w ${workplace.maxMin} min ${MODE_LABELS[workplace.mode]} · najbliższy ≈ ${commuteFit.nearestMin} min`}
+            {commuteConflict && " · dojazd nie zawęża mapy (miejsce pracy leży poza promieniem „W pobliżu”)"}
           </span>
         )}
       </div>
