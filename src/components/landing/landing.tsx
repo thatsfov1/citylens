@@ -57,11 +57,15 @@ export function Landing({ initial }: { initial?: Importance }) {
           </Link>
         </section>
 
-        <section className="relative flex items-center justify-center px-5 py-8 sm:px-8 lg:px-10">
-          <div className="absolute right-5 top-5 sm:right-8 sm:top-8">
-            <SavedMapLink />
-          </div>
+        <section className="relative flex min-h-screen items-start justify-center px-5 py-6 sm:px-8 lg:h-screen lg:min-h-0 lg:px-10 lg:py-[clamp(1.5rem,4vh,3rem)]">
           <div className="w-full max-w-xl">
+            <div className="mb-3 flex h-8 items-start justify-end">
+              <SavedMapLink />
+            </div>
+            <h1 className="mb-6 max-w-lg text-4xl font-extrabold leading-[1.08] tracking-[-0.03em] text-[#1b221d] sm:text-5xl">
+              Znajdź część Krakowa, która pasuje do{" "}
+              <span className="text-emerald-600">Ciebie</span>
+            </h1>
             <ChatPanel
               onImportance={(i, nextStages, nextAnchor, nextRent, nextWork, nextCar) => {
                 setImportance(i);

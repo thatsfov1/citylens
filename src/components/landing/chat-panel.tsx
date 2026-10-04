@@ -97,7 +97,11 @@ export function ChatPanel({ onImportance }: Props) {
       aria-label="Rozmowa z asystentem"
       className="w-full text-[#303731]"
     >
-      <div ref={listRef} className="max-h-[48vh] min-h-40 space-y-4 overflow-y-auto pr-1" aria-live="polite">
+      <div
+        ref={listRef}
+        className="min-h-32 max-h-[clamp(8rem,calc(100dvh-30rem),48vh)] space-y-4 overflow-y-auto pr-1"
+        aria-live="polite"
+      >
         <div className="flex items-end gap-2">
           <span className="flex size-8 shrink-0 items-center justify-center border border-stone-300 text-stone-500">
             <Bot className="size-4" aria-hidden />
