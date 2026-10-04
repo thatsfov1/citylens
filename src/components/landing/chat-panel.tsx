@@ -211,7 +211,7 @@ function Bubble({ role, text }: { role: ChatMessage["role"]; text: string }) {
       {!user && <span className="size-8 shrink-0" />}
       <div
         className={cn(
-          "max-w-[85%] border-l px-4 py-2 text-base font-light leading-relaxed",
+          "max-w-[85%] whitespace-pre-line border-l px-4 py-2 text-base font-light leading-relaxed",
           user
             ? "border-stone-300 bg-stone-50 text-stone-600"
             : "border-stone-300 text-[#303731]",

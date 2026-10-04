@@ -566,3 +566,9 @@ changes a score.
 ## 3D buildings
 
 - A "3D" icon button in the legend's icon row (`map-experience.tsx`) toggles `HexMap`'s `tilt` prop: the camera eases to pitch 55° (centre/zoom kept) and a `fill-extrusion` layer (`buildings-3d`, OpenFreeMap `building` source-layer, `render_height` with an 8 m fallback, visible from zoom 14) is shown above the heat raster. Default is top-down 2D with the layer hidden. No new data or dependency.
+
+## Easter egg: `isgudokei` shows the W Starej Kuchni lunch offer
+
+- A chat message containing the word `isgudokei` (any case, punctuation allowed, `src/lib/lunch-menu.ts`) is answered by `POST /api/chat` before the model is called, so it works without the LLM key and costs nothing.
+- The reply is the restaurant's **standing offer** from wstarejkuchni.pl (read 2026-10-04): 46 zł for soup + main + compote, Mon-Fri 12:00-15:00, ul. św. Tomasza 8. The **dishes are not listed**: the restaurant publishes them weekly only on Instagram/Facebook, and inventing a menu is not acceptable. If the offer changes, edit `LUNCH_REPLY`.
+- Chat bubbles now use `whitespace-pre-line` so the multi-line reply renders as lines.
