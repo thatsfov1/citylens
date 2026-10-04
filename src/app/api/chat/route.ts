@@ -4,6 +4,7 @@ import { chatTurn } from "@/lib/llm/gemini";
 import { budgetToFilter } from "@/lib/scoring/rent";
 import { DEFAULT_COMMUTE_MIN, type Workplace } from "@/lib/scoring/commute";
 import { resolveAnchorDebug } from "@/lib/supabase/anchors";
+import { LUNCH_REPLY, isLunchTrigger } from "@/lib/lunch-menu";
 
 // Tiny in-memory per-IP limiter — enough to protect the demo key from accidental loops.
 const WINDOW_MS = 10 * 60 * 1000;
@@ -27,6 +28,20 @@ export async function POST(request: Request) {
   const body = chatRequestSchema.safeParse(await request.json().catch(() => null));
   if (!body.success) {
     return Response.json({ error: "Invalid request." }, { status: 400 });
+  }
+
+  // Easter egg: answered here, the model is not called.
+  if (isLunchTrigger(body.data.messages.at(-1)?.text ?? "")) {
+    return Response.json({
+      reply: LUNCH_REPLY,
+      importance: null,
+      stages: null,
+      anchor: null,
+      rent: null,
+      work: null,
+      car: false,
+      debug: { model: { importance: null, stages: null }, anchorLookup: null, workplaceLookup: null },
+    } satisfies ChatResult);
   }
 
   try {

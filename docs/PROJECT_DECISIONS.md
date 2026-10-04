@@ -634,3 +634,9 @@ changes a score.
   A neighbourhood's czynsz is its own median when ≥ 3 ads state one, otherwise its district's. The Otodom link points at the neighbourhood path (`/<district>/<osiedle slug>`).
 - **Limits:** neighbourhoods are placed by where their listings' streets are, not by boundaries, so the edge between two neighbourhoods is approximate; asking prices, one snapshot (2026-10-04), the
   neighbourhood scrape is separate from the district snapshot (2026-10-03), so the two levels can differ slightly in date and listing mix. "Adjust preferences" does not carry the level back to the landing page.
+
+## Easter egg: `isgudokei` shows the W Starej Kuchni lunch offer
+
+- A chat message containing the word `isgudokei` (any case, punctuation allowed, `src/lib/lunch-menu.ts`) is answered by `POST /api/chat` before the model is called, so it works without the LLM key and costs nothing.
+- The reply is the restaurant's **standing offer** from wstarejkuchni.pl (read 2026-10-04): 46 zł for soup + main + compote, Mon-Fri 12:00-15:00, ul. św. Tomasza 8. The **dishes are not listed**: the restaurant publishes them weekly only on Instagram/Facebook, and inventing a menu is not acceptable. If the offer changes, edit `LUNCH_REPLY`.
+- Chat bubbles now use `whitespace-pre-line` so the multi-line reply renders as lines.
