@@ -118,8 +118,9 @@ function softenBasemap(map: maplibregl.Map) {
 type Tip = { x: number; y: number; district: string; label: string; value: string };
 
 type Props = {
-  /** Map-only mode: hides the floating map buttons. */
-  hideControls?: boolean;
+  showDistricts?: boolean;
+  /** Increment to fly back to the whole-city view. */
+  recenterSignal?: number;
   /** Path from the selected hexagon to the workplace, plus the workplace position for its pin. */
   commuteRoute?: { line: [number, number][]; dashed: boolean; work: [number, number] } | null;
   hexes: HexData[];
@@ -226,7 +227,7 @@ function worksData(layer: Props["worksLayer"]): GeoJSON.FeatureCollection {
   };
 }
 
-export function HexMap({ hideControls = false, commuteRoute = null, hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentShare, rentUnknown, badges, compared, onBadge, parkingPins = null, worksLayer = null, onWorkSelect, selectedWork = null, workFocus = null }: Props) {
+export function HexMap({ showDistricts = false, recenterSignal = 0, commuteRoute = null, hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentShare, rentUnknown, badges, compared, onBadge, parkingPins = null, worksLayer = null, onWorkSelect, selectedWork = null, workFocus = null }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -239,7 +240,6 @@ export function HexMap({ hideControls = false, commuteRoute = null, hexes, weigh
   // Tooltip of a parking pin: hover on desktop, tap on touch screens.
   const [pinTip, setPinTip] = useState<{ x: number; y: number; label: string } | null>(null);
   const modeRef = useRef(mode);
-  const [showDistricts, setShowDistricts] = useState(false);
   const showDistrictsRef = useRef(showDistricts);
   const onHoverPlaceRef = useRef(onHoverPlace);
   // True while our own flyTo runs: the view-lock in sync() must not jumpTo() (it would cancel the flight).
@@ -999,8 +999,9 @@ export function HexMap({ hideControls = false, commuteRoute = null, hexes, weigh
     map.setLayoutProperty("district-line", "visibility", showDistricts ? "visible" : "none");
   }, [showDistricts]);
 
-  // MapLibre forces position:relative on its container, so size it via a wrapper.
-  const recenter = () => {
+  // Fly back to the whole-city view when the legend button asks for it.
+  useEffect(() => {
+    if (recenterSignal === 0) return;
     const map = mapRef.current;
     const fit = fitRef.current;
     if (!map || !fit) return;
@@ -1012,25 +1013,11 @@ export function HexMap({ hideControls = false, commuteRoute = null, hexes, weigh
       duration: 800,
       essential: true,
     });
-  };
+  }, [recenterSignal]);
 
   return (
     <div className="absolute inset-0">
       <div ref={container} className="size-full" />
-      <div className={`absolute right-3 top-28 z-10 flex flex-col items-end gap-2 sm:bottom-6 sm:left-1/2 sm:right-auto sm:top-auto sm:-translate-x-full sm:pr-1 ${hideControls ? "hidden" : ""}`}>
-      <button
-        type="button"
-        onClick={() => setShowDistricts((v) => !v)}
-        aria-pressed={showDistricts}
-        className={`rounded-full border px-4 py-2 text-sm font-medium shadow-lg backdrop-blur ${
-          showDistricts
-            ? "border-slate-800 bg-slate-800 text-white"
-            : "border-border/70 bg-white/95 hover:bg-white"
-        }`}
-      >
-        Granice dzielnic
-      </button>
-      </div>
       {pinTip && (
         <div
           role="tooltip"
@@ -1053,16 +1040,6 @@ export function HexMap({ hideControls = false, commuteRoute = null, hexes, weigh
           </div>
         </div>
       )}
-      {
-        <button
-          type="button"
-          onClick={recenter}
-          aria-label="Pokaż całe miasto"
-          className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 rounded-full border border-border/70 bg-white/95 px-4 py-2 text-sm font-medium shadow-lg backdrop-blur hover:bg-white sm:left-auto sm:right-[25rem] sm:translate-x-0"
-        >
-          Pokaż całe miasto
-        </button>
-      }
     </div>
   );
 }

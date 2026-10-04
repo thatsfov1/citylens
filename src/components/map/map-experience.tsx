@@ -6,6 +6,9 @@ import { cellToLatLng } from "h3-js";
 import {
   ArrowLeft,
   Briefcase,
+  CalendarRange,
+  Layers,
+  Maximize2,
   ChevronDown,
   Eye,
   EyeOff,
@@ -692,6 +695,8 @@ export function MapExperience({
     (hasStages && stages.length < EDUCATION_STAGES.length ? 1 : 0);
 
   const [mapOnly, setMapOnly] = useState(false);
+  const [showDistricts, setShowDistricts] = useState(false);
+  const [recenterN, setRecenterN] = useState(0);
   const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
   const [focusPlace, setFocusPlace] = useState<{
     id: number;
@@ -701,7 +706,8 @@ export function MapExperience({
   return (
     <div className="relative flex-1 overflow-hidden">
       <HexMap
-        hideControls={mapOnly}
+        showDistricts={showDistricts}
+        recenterSignal={recenterN}
         worksLayer={worksLayer}
         selectedWork={selectedWork}
         workFocus={workFocus}
@@ -989,6 +995,11 @@ export function MapExperience({
           mode={mode}
           minSafety={minSafety}
           rentActive={rentActive}
+          onRecenter={() => setRecenterN((n) => n + 1)}
+          timelineOn={timelineOn}
+          onToggleTimeline={toggleTimeline}
+          showDistricts={showDistricts}
+          onToggleDistricts={() => setShowDistricts((v) => !v)}
           keyContext={{
             areaOpen: selected !== null,
             car,
@@ -1103,103 +1114,153 @@ function Legend({
   minSafety,
   rentActive,
   keyContext,
+  onRecenter,
+  timelineOn,
+  onToggleTimeline,
+  showDistricts,
+  onToggleDistricts,
 }: {
+  onRecenter: () => void;
+  timelineOn: boolean;
+  onToggleTimeline: () => void;
+  showDistricts: boolean;
+  onToggleDistricts: () => void;
   mode: MapMode;
   minSafety: number;
   rentActive: boolean;
   keyContext: KeyContext;
 }) {
   const [keyOpen, setKeyOpen] = useState(false);
+  const iconBtn = (active: boolean) =>
+    `pointer-events-auto flex size-9 items-center justify-center rounded-full border shadow-lg backdrop-blur ${
+      active
+        ? "border-slate-800 bg-slate-800 text-white"
+        : "border-border/70 bg-white/95 text-slate-700 hover:bg-white"
+    }`;
   return (
-    <div className="pointer-events-none absolute left-3 top-28 rounded-xl border border-border/70 bg-white/90 px-3 py-2 shadow-lg shadow-black/5 backdrop-blur sm:bottom-6 sm:left-4 sm:top-auto">
-      <div className="mb-1.5 text-[11px] font-medium text-slate-600">
-        {mode === "forYou"
-          ? "Dopasowanie dla Ciebie"
-          : mode === "safety"
-            ? "Wskaźniki bezpieczeństwa"
-            : "Wynik kategorii"}
+    <div className="pointer-events-none absolute left-3 top-28 flex flex-col-reverse items-start gap-2 sm:bottom-6 sm:left-4 sm:top-auto sm:flex-col">
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onRecenter}
+          aria-label="Pokaż całe miasto"
+          title="Pokaż całe miasto"
+          className={iconBtn(false)}
+        >
+          <Maximize2 className="size-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onToggleDistricts}
+          aria-pressed={showDistricts}
+          aria-label="Granice dzielnic"
+          title="Granice dzielnic"
+          className={iconBtn(showDistricts)}
+        >
+          <Layers className="size-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onToggleTimeline}
+          aria-pressed={timelineOn}
+          aria-label="Plany miasta"
+          title="Plany miasta"
+          className={iconBtn(timelineOn)}
+        >
+          <CalendarRange className="size-4" />
+        </button>
       </div>
-      <div
-        className="h-2 w-full rounded-full"
-        style={{ background: LEGEND_GRADIENT }}
-      />
-      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-        <span>
+      <div className="pointer-events-none rounded-xl border border-border/70 bg-white/90 px-3 py-2 shadow-lg shadow-black/5 backdrop-blur">
+        <div className="mb-1.5 text-[11px] font-medium text-slate-600">
           {mode === "forYou"
-            ? "Słabe"
+            ? "Dopasowanie dla Ciebie"
             : mode === "safety"
-              ? "Mniej na korzyść"
-              : "Niski"}
-        </span>
-        <span>
-          {mode === "forYou"
-            ? "Dobre"
-            : mode === "safety"
-              ? "Więcej na korzyść"
-              : "Wysoki"}
-        </span>
-      </div>
-      {mode !== "forYou" && (
-        <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <span
-            className="size-2.5 rounded-sm"
-            style={{ background: NO_DATA_COLOR }}
-          />
-          {mode === "safety"
-            ? "Brak danych o bezpieczeństwie"
-            : "Nic w pobliżu (brak danych)"}
+              ? "Wskaźniki bezpieczeństwa"
+              : "Wynik kategorii"}
         </div>
-      )}
-      {mode !== "safety" && minSafety > 0 && (
-        <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <span className="size-2.5 rounded-sm bg-slate-600/60" />
-          Poniżej Twojego minimalnego poziomu bezpieczeństwa
+        <div
+          className="h-2 w-full rounded-full"
+          style={{ background: LEGEND_GRADIENT }}
+        />
+        <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+          <span>
+            {mode === "forYou"
+              ? "Słabe"
+              : mode === "safety"
+                ? "Mniej na korzyść"
+                : "Niski"}
+          </span>
+          <span>
+            {mode === "forYou"
+              ? "Dobre"
+              : mode === "safety"
+                ? "Więcej na korzyść"
+                : "Wysoki"}
+          </span>
         </div>
-      )}
-      {mode !== "safety" && rentActive && (
-        <>
+        {mode !== "forYou" && (
           <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
             <span
-              className="h-2.5 w-4 rounded-sm"
-              style={{
-                background:
-                  "linear-gradient(90deg, rgba(71,85,105,0.62), rgba(71,85,105,0))",
-              }}
+              className="size-2.5 rounded-sm"
+              style={{ background: NO_DATA_COLOR }}
             />
-            Mniej ofert w Twoim budżecie
+            {mode === "safety"
+              ? "Brak danych o bezpieczeństwie"
+              : "Nic w pobliżu (brak danych)"}
           </div>
+        )}
+        {mode !== "safety" && minSafety > 0 && (
           <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <span className="size-2.5 rounded-sm bg-slate-600/20" />
-            Brak danych o wynajmie
+            <span className="size-2.5 rounded-sm bg-slate-600/60" />
+            Poniżej Twojego minimalnego poziomu bezpieczeństwa
           </div>
-        </>
-      )}
-      {mode === "safety" && (
-        <div className="mt-1 max-w-52 text-[10px] leading-snug text-muted-foreground">
-          Oświetlenie ulic, kamery oraz dostęp do policji, straży pożarnej i
-          szpitala w pobliżu (OpenStreetMap). To wskaźniki, a nie ocena obszaru.
-        </div>
-      )}
+        )}
+        {mode !== "safety" && rentActive && (
+          <>
+            <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <span
+                className="h-2.5 w-4 rounded-sm"
+                style={{
+                  background:
+                    "linear-gradient(90deg, rgba(71,85,105,0.62), rgba(71,85,105,0))",
+                }}
+              />
+              Mniej ofert w Twoim budżecie
+            </div>
+            <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <span className="size-2.5 rounded-sm bg-slate-600/20" />
+              Brak danych o wynajmie
+            </div>
+          </>
+        )}
+        {mode === "safety" && (
+          <div className="mt-1 max-w-52 text-[10px] leading-snug text-muted-foreground">
+            Oświetlenie ulic, kamery oraz dostęp do policji, straży pożarnej i
+            szpitala w pobliżu (OpenStreetMap). To wskaźniki, a nie ocena
+            obszaru.
+          </div>
+        )}
 
-      <button
-        type="button"
-        onClick={() => setKeyOpen((v) => !v)}
-        aria-expanded={keyOpen}
-        className="pointer-events-auto mt-1.5 flex items-center gap-1 rounded-full border border-border/70 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-muted"
-      >
-        <Info className="size-3" aria-hidden />
-        Legenda mapy
-        <ChevronDown
-          className={`size-3 transition-transform ${keyOpen ? "rotate-180" : ""}`}
-          aria-hidden
-        />
-      </button>
-      {keyOpen && (
-        <div className="pointer-events-auto mt-2 max-h-[50dvh] w-64 overflow-y-auto border-t border-border/70 pt-2">
-          <MapKey ctx={keyContext} />
-        </div>
-      )}
-      <OsmAttribution className="pointer-events-auto mt-1" />
+        <button
+          type="button"
+          onClick={() => setKeyOpen((v) => !v)}
+          aria-expanded={keyOpen}
+          className="pointer-events-auto mt-1.5 flex items-center gap-1 rounded-full border border-border/70 bg-white px-2.5 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-muted"
+        >
+          <Info className="size-3" aria-hidden />
+          Legenda mapy
+          <ChevronDown
+            className={`size-3 transition-transform ${keyOpen ? "rotate-180" : ""}`}
+            aria-hidden
+          />
+        </button>
+        {keyOpen && (
+          <div className="pointer-events-auto mt-2 max-h-[50dvh] w-64 overflow-y-auto border-t border-border/70 pt-2">
+            <MapKey ctx={keyContext} />
+          </div>
+        )}
+        <OsmAttribution className="pointer-events-auto mt-1" />
+      </div>
     </div>
   );
 }
