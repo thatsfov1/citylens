@@ -19,7 +19,7 @@ Describe what matters to you, explore a data-backed suitability map, compare are
 [![Gemini](https://img.shields.io/badge/Google_Gemini-8E75B2?style=flat-square&logo=googlegemini&logoColor=white)](https://ai.google.dev/)
 [![OpenStreetMap](https://img.shields.io/badge/OpenStreetMap-7EBC6F?style=flat-square&logo=openstreetmap&logoColor=white)](https://www.openstreetmap.org/)
 
-**Created by [Yevhenii Kulikovskyi](https://github.com/thatsfov1) and Daniel Skwarczek.**
+**Created by [Yevhenii Kulikovskyi](https://github.com/thatsfov1) and [Daniel Skwarczek](https://github.com/dan-skw).**
 
 [View the pitch deck](presentation/citylens-pitch.pdf)
 
