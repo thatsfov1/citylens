@@ -16,14 +16,25 @@ import { SavedMapLink } from "./saved-map-link";
 import { HeroStage } from "./hero-stage";
 import { Highlighter } from "@/components/ui/highlighter";
 
-export function Landing({ initial }: { initial?: Importance }) {
+/** Filters carried back from the map; the chat replaces them when it returns a new interpretation. */
+export type InitialFilters = {
+  stages: EducationStage[] | null;
+  anchor: Anchor | null;
+  rent: RentFilter | null;
+  workplace: Workplace | null;
+  car: boolean;
+  minSafety: string | null;
+};
+
+export function Landing({ initial, initialFilters }: { initial?: Importance; initialFilters?: InitialFilters }) {
   const router = useRouter();
   const [importance, setImportance] = useState<Importance | null>(initial ?? null);
-  const [stages, setStages] = useState<EducationStage[] | null>(null);
-  const [anchor, setAnchor] = useState<Anchor | null>(null);
-  const [rent, setRent] = useState<RentFilter | null>(null);
-  const [workplace, setWorkplace] = useState<Workplace | null>(null);
-  const [car, setCar] = useState(false);
+  const [stages, setStages] = useState<EducationStage[] | null>(initialFilters?.stages?.length ? initialFilters.stages : null);
+  const [anchor, setAnchor] = useState<Anchor | null>(initialFilters?.anchor ?? null);
+  const [rent, setRent] = useState<RentFilter | null>(initialFilters?.rent ?? null);
+  const [workplace, setWorkplace] = useState<Workplace | null>(initialFilters?.workplace ?? null);
+  const [car, setCar] = useState(initialFilters?.car ?? false);
+  const [minSafety, setMinSafety] = useState(initialFilters?.minSafety ?? null);
 
   return (
     <main className="relative isolate flex min-h-screen flex-col overflow-hidden bg-white text-[#222823]">
@@ -47,6 +58,7 @@ export function Landing({ initial }: { initial?: Importance }) {
                 setRent(nextRent);
                 setWorkplace(nextWork);
                 setCar(nextCar);
+                setMinSafety(null);
               }}
             />
             <Button
@@ -55,7 +67,7 @@ export function Landing({ initial }: { initial?: Importance }) {
               onClick={() => {
                 if (!importance) return;
                 const edu = importance.education > 0 && stages ? stagesToParam(stages) : null;
-                router.push(`/map?${importanceToQuery(importance)}${edu ? `&edu=${edu}` : ""}${anchor ? `&${anchorToQuery(anchor)}` : ""}${rent ? `&${rentToQuery(rent)}` : ""}${workplace ? `&${workplaceToQuery(workplace)}` : ""}${car ? "&car=1" : ""}`);
+                router.push(`/map?${importanceToQuery(importance)}${edu ? `&edu=${edu}` : ""}${anchor ? `&${anchorToQuery(anchor)}` : ""}${rent ? `&${rentToQuery(rent)}` : ""}${workplace ? `&${workplaceToQuery(workplace)}` : ""}${car ? "&car=1" : ""}${minSafety ? `&minSafety=${minSafety}` : ""}`);
               }}
               className="mt-5 h-12 w-full justify-between rounded-xl bg-[#252d27] px-5 text-sm font-normal text-white shadow-sm hover:bg-[#39443b] disabled:bg-stone-200 disabled:text-stone-500 disabled:shadow-none"
             >

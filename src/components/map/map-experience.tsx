@@ -86,6 +86,7 @@ import {
   DEFAULT_SHARE,
   applyShareState,
   buildShareUrl,
+  preferencesQuery,
   savedQuery,
   type ShareState,
 } from "@/lib/share/state";
@@ -308,6 +309,12 @@ export function MapExperience({
       if (!params.has(k)) params.set(k, v);
     return params.toString();
   };
+  // "Change preferences" returns to the landing page with every filter, not just the weights. Re-read the address bar
+  // after the state that writes into it has changed.
+  const [preferencesHref, setPreferencesHref] = useState(`/?${importanceToQuery(importance)}`);
+  useEffect(() => {
+    setPreferencesHref(`/?${preferencesQuery(currentSearch())}`);
+  }, [minSafety, rent, car, stages, importance]); // eslint-disable-line react-hooks/exhaustive-deps
   const shareState = (): ShareState => ({ mode, selected, compared });
   const saveSharedCopy = () => {
     const r = saveMap({
@@ -772,7 +779,7 @@ export function MapExperience({
           <SharedBanner
             compared={compared.length}
             hasArea={selected !== null}
-            adjustHref={`/?${importanceToQuery(importance)}`}
+            adjustHref={preferencesHref}
             saved={bannerSaved}
             onSave={saveSharedCopy}
             onDismiss={() => setBannerOpen(false)}
@@ -844,7 +851,7 @@ export function MapExperience({
 
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 sm:p-4">
           <TopMenu
-            preferencesHref={`/?${importanceToQuery(importance)}`}
+            preferencesHref={preferencesHref}
             onFilters={hasFilters ? () => setFiltersOpen((v) => !v) : undefined}
             activeFilters={activeFilters}
             onMapOnly={() => setMapOnly(true)}
