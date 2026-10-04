@@ -13,6 +13,7 @@ import { AIR_CAVEAT, EDUCATION_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describ
 import type { Sensitivity } from "@/lib/scoring/sensitivity";
 import type { HexSource } from "@/lib/supabase/hex-scores";
 import { SensitivitySection } from "./sensitivity-section";
+import { SourceBadge, SourceBadges } from "./source-badge";
 import {
   CATEGORIES,
   CATEGORY_LABELS,
@@ -244,6 +245,11 @@ export function AreaPanel({ scores, safety = null, air = null, minSafety = 0, di
               : `W ramach Twojego limitu ${commute.maxMin} min`}
             {commute.approx ? " · szacunek przybliżony" : ""}
           </p>
+          {!commute.approx && (
+            <div className="mt-2">
+              <SourceBadge id={commute.transit ? "gtfs" : "osrm"} />
+            </div>
+          )}
         </div>
       )}
 
@@ -310,6 +316,7 @@ function CategoryDetail({
       {fact && <p className="mt-3 text-sm leading-snug text-slate-700">{fact}</p>}
       {controls}
       {places}
+      <SourceBadges topic={category} className="mt-4" />
       {fact && category === "education" && (
         <p className="mt-4 text-[11px] leading-snug text-muted-foreground">{EDUCATION_CAVEAT}</p>
       )}
@@ -347,6 +354,7 @@ export function AirSection({ air, indicators }: { air: number; indicators: HexIn
         )}
         <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{AIR_CAVEAT}</p>
       </details>
+      <SourceBadges topic="air" asOf={{ gios: indicators?.air?.asOf }} className="mt-2" />
     </div>
   );
 }
@@ -450,6 +458,7 @@ export function SafetySection({
       )}
       <p className="mt-3 text-[11px] leading-snug text-muted-foreground">{SAFETY_NOT_INCLUDED}</p>
       </details>
+      <SourceBadges topic="safety" className="mt-2" />
     </div>
   );
 }

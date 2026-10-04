@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Car, ExternalLink, Info } from "lucide-react";
 import { dec } from "@/lib/format/pl";
 import { kindLabel, type ParkingData, type ParkingFacts } from "@/lib/scoring/parking";
+import { SourceBadge } from "./source-badge";
 
 /** The parking snapshot, loaded the first time it is needed so the first map load does not carry it. `null` = loading, `false` = failed. */
 export function useParkingData(enabled: boolean): ParkingData | null | false {
@@ -22,8 +23,6 @@ export function useParkingData(enabled: boolean): ParkingData | null | false {
 }
 
 const SOURCES = {
-  osm: { label: "współtwórcy OpenStreetMap (ODbL)", href: "https://www.openstreetmap.org/copyright" },
-  msip: { label: "GIS Miasta Krakowa (MSIP), parkometry", href: "https://msip.um.krakow.pl/arcgis/rest/services/Obserwatorium/K04_PARKOMETRY/MapServer" },
   zdmk: { label: "Oficjalna strefa płatnego parkowania, opłaty i zasady (ZDMK)", href: "https://zdmk.krakow.pl/parkowanie/strefa-platnego-parkowania/informacje-ogolne-i-oplaty/" },
 };
 
@@ -115,22 +114,12 @@ export function ParkingCard({ facts, data, district }: { facts: ParkingFacts | n
         </ul>
       )}
 
-      <p className="mt-3 text-[11px] leading-snug text-muted-foreground">
-        Źródła:{" "}
-        {[
-          { ...SOURCES.osm, date: data ? data.retrieved.osm : null },
-          { ...SOURCES.msip, date: data ? monthLabel(data.metersAsOf) : null },
-        ].map((s, i) => (
-          <span key={s.href}>
-            {i > 0 && "; "}
-            <a href={s.href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">
-              {s.label}
-            </a>
-            {s.date ? ` (${s.date})` : ""}
-          </span>
-        ))}
-        . Odległości to linie proste od środka sześciokąta.
-      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Źródła</span>
+        <SourceBadge id="osm" asOf={data ? data.retrieved.osm : null} />
+        <SourceBadge id="msip" asOf={data ? data.metersAsOf : null} />
+      </div>
+      <p className="mt-2 text-[11px] leading-snug text-muted-foreground">Odległości to linie proste od środka sześciokąta.</p>
       <a
         href={SOURCES.zdmk.href}
         target="_blank"

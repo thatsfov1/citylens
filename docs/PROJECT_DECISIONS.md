@@ -545,3 +545,8 @@ changes a score.
   Minimum safety level, Education stages) with the current value in the header; groups with a value set start open, otherwise the
   first one does. The window scrolls on short screens and has "Reset all" (rent range, safety, education stages; not the car switch).
   `SafetyFilter` / `StageFilter` moved out of `map-experience.tsx`.
+
+## Source badges
+- One registry, `src/lib/sources.ts`: every data source (OSM, GIOŚ, ZTP GTFS, MSIP, ZDMK, krakow.pl, Otodom, OSRM, Nominatim) with what it provides, kind, licence, URL and `asOf`. `SOURCES_BY_TOPIC` says which sources stand behind each category/air/safety/rent/parking/commute. `SourceBadge`/`SourceBadges` (`src/components/map/source-badge.tsx`, Base UI popover) show chip + date + licence/link in the area panel, rent filter and parking card; the map legend lists all sources.
+- **`asOf` is only a date we stored.** `sources.test.ts` checks the registry against the data files (air `fetched`, GTFS `serviceDate`, rent `snapshot`). OSM has no recorded date yet -> badge says "data pobrania nieznana" until `scripts/osm/fetch.ts` has run once (it now writes `data/osm/meta.json`; then set `SOURCES.osm.asOf` — the test enforces they match). Air uses the live `indicators.air.asOf`.
+- Works keep their per-item `SourceLink` (name + publication date + link) because their source/date is per record, not per dataset.

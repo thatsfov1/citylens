@@ -49,6 +49,8 @@ async function run(name: string) {
       if (name === "districts" && !json.elements.some((e) => e.members?.length)) throw new Error("no geometry");
       mkdirSync(OUT_DIR, { recursive: true });
       writeFileSync(`${OUT_DIR}/${name}.json`, JSON.stringify(json.elements));
+      // Record the fetch date (committed, unlike the full extracts) so the UI can show how old the OSM data is.
+      writeFileSync("data/osm/meta.json", JSON.stringify({ fetched: new Date().toISOString().slice(0, 10) }) + "\n");
       console.log(name, json.elements.length, "elements from", url);
       return;
     } catch (e) {

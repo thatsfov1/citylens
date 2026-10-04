@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus, ShieldCheck, TriangleAlert, Wind } from "lucide-react";
+import { SOURCES, formatAsOf } from "@/lib/sources";
 import { keySections, type KeyContext, type KeySymbol } from "@/lib/map/key";
 
 const BADGE = "grid h-5 min-w-5 place-items-center rounded-full border border-border/70 bg-white px-1 text-slate-900 shadow";
@@ -69,6 +70,19 @@ export function MapKey({ ctx }: { ctx: KeyContext }) {
           {s.note && <p className="mt-1 text-[10px] italic leading-snug text-muted-foreground">{s.note}</p>}
         </section>
       ))}
+      <section aria-label="Źródła danych">
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Źródła danych</h3>
+        <ul className="mt-1 space-y-1">
+          {Object.values(SOURCES).map((s) => (
+            <li key={s.id} className="text-[11px] leading-snug">
+              <a href={s.url} target="_blank" rel="noopener noreferrer" className="font-medium text-slate-900 underline-offset-2 hover:underline">
+                {s.label}
+              </a>{" "}
+              <span className="text-muted-foreground">· {formatAsOf(s.asOf)}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }
