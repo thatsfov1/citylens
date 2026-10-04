@@ -566,3 +566,23 @@ changes a score.
 ## 3D buildings
 
 - A "3D" icon button in the legend's icon row (`map-experience.tsx`) toggles `HexMap`'s `tilt` prop: the camera eases to pitch 55° (centre/zoom kept) and a `fill-extrusion` layer (`buildings-3d`, OpenFreeMap `building` source-layer, `render_height` with an 8 m fallback, visible from zoom 14) is shown above the heat raster. Default is top-down 2D with the layer hidden. No new data or dependency.
+
+## Rent at neighbourhood level: experiment (not built into the app)
+
+- **Question:** can asking rents be shown finer than the district (the shipped filter, see "Rent budget")? **Per hexagon: no. Per neighbourhood: yes, with limits.**
+- **Data is already there.** Otodom's result pages (same 45 pages as `scripts/rent/build.ts`, no per-listing requests) carry, for every listing, the neighbourhood
+  (`location.reverseGeocoding`, level `residential`, e.g. "Żabiniec", "Ruczaj") and the street (`location.address.street`, no house number). `scripts/rent/osiedle-check.ts`
+  re-scrapes them into `data/rent/listings-osiedle.json` (1,641 listings, 2026-10-04) and prints the report; it does **not** touch the shipped snapshot.
+- **Density:** 93 neighbourhoods; 62 have ≥ 5 listings and hold 96% of all listings (53 have ≥ 10, 92%). Per hexagon it does not work: ~3.6 listings per cell on average.
+- **Is it worth it?** Mostly the neighbourhood median is close to its district's: only 9 of 53 comparable neighbourhoods (2-room flats, ≥ 5 offers) differ by 10% or more.
+  But where they differ, the gap is large and the district median hides it: Dębniki (Ruczaj 2,700 / Ludwinów 3,750 / Dębniki 3,545 zł), Podgórze (Kabel 2,500 / Stare
+  Podgórze 3,300), Stare Miasto (Nowy Świat 4,100 / Piasek 3,200), Podgórze Duchackie (Wola Duchacka 2,875 / Kurdwanów 2,500).
+- **Placing neighbourhoods on the map is the hard part.** Otodom's neighbourhoods have no boundaries here and do not match OSM admin areas. Tested way: normalise the
+  street name, find OSM `highway` ways with that name (Geofabrik Małopolskie extract, points every 3rd node), keep the H3 cells inside the listing's own district. Result:
+  1,070 of 1,641 listings (65%) resolve; 192 have no street, 336 not found (mostly "gen./dr./prof./płk./bp." name prefixes and house numbers in the street field, fixable),
+  43 fall outside their district. A resolved listing touches a median of 2 cells (p90 4). **Only 212 of 461 cells get any listing, 95 get weight ≥ 3**, so a cell estimate would
+  have to fall back to the neighbourhood and then the district for the rest.
+- **Recommended design if built:** keep the district view as the default; add a switch "Dzielnica / Osiedle". Osiedle view: each cell takes the neighbourhood that most of
+  its resolved listings belong to (needs ≥ 5 offers for that neighbourhood and room bucket), otherwise falls back to the district value and is labelled as such. Never show a
+  per-cell median. Build cost: improve street normalisation (target ≥ 80%), a committed cell → neighbourhood table, extend `rent.ts` with a granularity parameter, a switch in
+  the Filters window, the area card saying which level it uses. Roughly half a day; not started.
