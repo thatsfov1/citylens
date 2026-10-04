@@ -581,7 +581,7 @@ changes a score.
   The committed file was built from the **Geofabrik Malopolskie extract of 2026-10-03** (pyosmium, same tags, nodes and ways, no relations) because the
   Overpass mirrors were unreachable from the build machine: counts 339 pharmacies, 480 doctors/clinics, 26 hospitals, 153 post offices, 166 banks.
   Re-running the Overpass script gives the same kinds, with relation centres added.
-- **Deploy order:** apply `20261004000100_health_score.sql` and then load `supabase/health_seed.sql`. `loadHexes` first selects `health_score`; if the column
+- **Deploy order:** apply `20261004000100_health_score.sql` and then load `supabase/health_seed.sql` (compact: five numbers per kind, expanded to JSON in SQL; ~47 KB). **Both are applied to the live database** (checked: 461 cells, same checksum as the local file). `loadHexes` first selects `health_score`; if the column
   does not exist yet it retries without it (health is simply absent), so an early deploy no longer drops the app to mock data.
 - **Limits (shown in `HEALTH_CAVEAT`):** mapped places only: no opening hours, queues, quality, NFZ contracts or whether a practice takes new patients;
   OSM undercounts doctors' offices; the score compares areas with each other, it is not a verdict on a neighbourhood.
