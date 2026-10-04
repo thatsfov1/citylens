@@ -1,7 +1,7 @@
 [
   {
     "id": "starowislna-stage1",
-    "title": "Starowiślna street renovation: first stage (utilities and pavements, Dietla–Miodowa)",
+    "title": "Remont ulicy Starowiślnej: pierwszy etap (sieci i chodniki, Dietla–Miodowa)",
     "kind": "road", "status": "ongoing",
     "dateFrom": "2026-08-27", "dateTo": "2026-11-30", "whenLabel": null,
     "source": "zdmk", "snapshot": "zdmk-starowislna", "publishedAt": "2026-08-21",
@@ -11,9 +11,9 @@
   },
   {
     "id": "starowislna-track",
-    "title": "Starowiślna street renovation: tram track and roadway (Dietla–Powstańców Śląskich bridge)",
+    "title": "Remont ulicy Starowiślnej: torowisko i jezdnia (Dietla–most Powstańców Śląskich)",
     "kind": "tram", "status": "planned",
-    "dateFrom": "2027-01-01", "dateTo": null, "whenLabel": "track works planned for early 2027",
+    "dateFrom": "2027-01-01", "dateTo": null, "whenLabel": "prace torowe planowane na początek 2027",
     "source": "zdmk", "snapshot": "zdmk-starowislna", "publishedAt": "2026-08-21",
     "evidence": ["Prace torowe rozpoczną się na początku 2027 roku."],
     "locations": ["geocode:Starowiślna 1", "geocode:Starowiślna 60"],
@@ -21,9 +21,9 @@
   },
   {
     "id": "azory-tram",
-    "title": "New tram line Krowodrza Górka – Azory (approximate corridor)",
+    "title": "Nowa linia tramwajowa Krowodrza Górka – Azory (przybliżony przebieg)",
     "kind": "tram", "status": "planned",
-    "dateFrom": "2027-07-01", "dateTo": null, "whenLabel": "construction start planned around mid-2027",
+    "dateFrom": "2027-07-01", "dateTo": null, "whenLabel": "rozpoczęcie budowy planowane około połowy 2027",
     "source": "krakow_pl", "snapshot": "krakow-azory", "publishedAt": "2026-09-16",
     "evidence": ["około połowy 2027 roku, po przeprowadzeniu postępowania, planowane jest zawarcie umowy z wykonawcą oraz rozpoczęcie robót budowlanych"],
     "locations": ["stop:Krowodrza Górka P+R", "stop:Azory"],
@@ -31,9 +31,9 @@
   },
   {
     "id": "domagaly-extension",
-    "title": "Extension of ul. Domagały (first stage of the Złocień tram line, approximate location)",
+    "title": "Rozbudowa ul. Domagały (pierwszy etap linii tramwajowej Złocień, przybliżona lokalizacja)",
     "kind": "road", "status": "planned",
-    "dateFrom": "2027-01-01", "dateTo": null, "whenLabel": "first works possible in 2027 if all goes to plan (city statement from Feb 2024)",
+    "dateFrom": "2027-01-01", "dateTo": null, "whenLabel": "pierwsze prace możliwe w 2027, jeśli wszystko pójdzie zgodnie z planem (komunikat miasta z lutego 2024)",
     "source": "krakow_pl", "snapshot": "krakow-tram-plans", "publishedAt": "2024-02-13",
     "evidence": ["Jeżeli wszystko pójdzie zgodnie z planem, pierwsze prace przy rozbudowie ul. Domagały będzie można rozpocząć w 2027 r."],
     "locations": ["geocode:Nad Drwiną"],
@@ -41,7 +41,7 @@
   },
   {
     "id": "medyczna-obronna",
-    "title": "Extension of ul. Medyczna and ul. Obronna (temporary traffic organisation)",
+    "title": "Rozbudowa ul. Medycznej i ul. Obronnej (czasowa organizacja ruchu)",
     "kind": "road", "status": "ongoing",
     "dateFrom": "2026-01-16", "dateTo": "2027-12-31", "whenLabel": null,
     "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
@@ -51,7 +51,7 @@
   },
   {
     "id": "bronowice-hub",
-    "title": "Bronowice transfer hub with P&R car park and bus terminal",
+    "title": "Węzeł przesiadkowy Bronowice z parkingiem P&R i terminalem autobusowym",
     "kind": "building", "status": "ongoing",
     "dateFrom": null, "dateTo": "2028-03-13", "whenLabel": null,
     "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
@@ -61,7 +61,7 @@
   },
   {
     "id": "gertrudy-track",
-    "title": "Tram track renovation on św. Gertrudy and Stradomska",
+    "title": "Remont torowiska na ul. św. Gertrudy i Stradomskiej",
     "kind": "tram", "status": "planned",
     "dateFrom": "2026-10-05", "dateTo": null, "whenLabel": null,
     "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
@@ -71,7 +71,7 @@
   },
   {
     "id": "bonarka-forest-path",
-    "title": "Recreational walking and cycling path in Bonarka forest",
+    "title": "Rekreacyjny ciąg pieszo-rowerowy w lesie Bonarka",
     "kind": "green", "status": "ongoing",
     "dateFrom": null, "dateTo": "2026-12-16", "whenLabel": null,
     "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
@@ -81,9 +81,9 @@
   },
   {
     "id": "podluzna-sewer",
-    "title": "Sanitary sewer construction on ul. Podłużna (road closed)",
+    "title": "Budowa kanalizacji sanitarnej w ul. Podłużnej (droga zamknięta)",
     "kind": "utility", "status": "ongoing",
-    "dateFrom": "2026-07-06", "dateTo": null, "whenLabel": "expected to last about 6–8 months",
+    "dateFrom": "2026-07-06", "dateTo": null, "whenLabel": "prace potrwają około 6–8 miesięcy",
     "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
     "evidence": ["W terminie od 6 lipca 2026 r. Wodociągi Miasta Krakowa S.A. rozpoczną budowę sieci kanalizacji sanitarnej w ul. Podłużnej.", "Prace potrwają około 6–8 miesięcy"],
     "locations": ["geocode:Podłużna"],
@@ -91,7 +91,7 @@
   },
   {
     "id": "grunwaldzki-bridge",
-    "title": "Grunwaldzki Bridge renovation",
+    "title": "Remont Mostu Grunwaldzkiego",
     "kind": "road", "status": "ongoing",
     "dateFrom": null, "dateTo": null, "whenLabel": null,
     "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
@@ -101,7 +101,7 @@
   },
   {
     "id": "bagatela-junction",
-    "title": "Bagatela tram junction rebuild (Karmelicka)",
+    "title": "Przebudowa węzła tramwajowego Bagatela (Karmelicka)",
     "kind": "tram", "status": "ongoing",
     "dateFrom": null, "dateTo": null, "whenLabel": null,
     "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
@@ -111,7 +111,7 @@
   },
   {
     "id": "grzegorzecka-repair",
-    "title": "Renovation of ul. Grzegórzecka (tram and bus diversions)",
+    "title": "Remont ul. Grzegórzeckiej (objazdy tramwajów i autobusów)",
     "kind": "road", "status": "ongoing",
     "dateFrom": null, "dateTo": null, "whenLabel": null,
     "source": "zdmk", "snapshot": "zdmk-works", "publishedAt": "2026-10-03",
