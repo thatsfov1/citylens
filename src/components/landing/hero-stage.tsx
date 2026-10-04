@@ -1,19 +1,26 @@
 import Link from "next/link";
-import { KrakowMap } from "./krakow-shape";
 import { UseCaseCallouts } from "./use-case-callouts";
 
-/** Left half: the city video inside Kraków's outline, with rotating product examples and the wordmark. */
+/** Left half: full-bleed Kraków video with rotating product examples and the wordmark. */
 export function HeroStage() {
   return (
     <section
       aria-label="Mapa Krakowa"
-      className="relative min-h-[38vh] overflow-hidden bg-ink bg-[radial-gradient(ellipse_at_50%_40%,#12303a_0%,#0B1620_70%)] sm:min-h-[44vh] lg:min-h-screen"
+      className="relative min-h-[38vh] overflow-hidden bg-ink sm:min-h-[44vh] lg:min-h-screen"
     >
-      <div className="absolute inset-0 px-6 pb-16 pt-10 [container-type:size] lg:pb-44 lg:pt-16">
-        <div className="flex size-full items-center justify-center">
-          <KrakowMap />
-        </div>
-      </div>
+      <video
+        aria-hidden="true"
+        tabIndex={-1}
+        disablePictureInPicture
+        className="absolute inset-0 size-full object-cover motion-reduce:hidden"
+        src="/videos/krakow.mp4"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+      />
+      <div aria-hidden="true" className="absolute inset-0 bg-white/50" />
       <UseCaseCallouts />
       <Link
         href="/"
