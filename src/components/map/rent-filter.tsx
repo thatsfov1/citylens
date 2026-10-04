@@ -6,6 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import {
   RENT_MAX,
   RENT_META,
+  RENT_OSIEDLE_META,
   RENT_MIN,
   RENT_STEP,
   ROOMS_OPTIONS,
@@ -13,6 +14,7 @@ import {
   formatRentRange,
   formatZl,
   otodomUrl,
+  type RentArea,
   type RentFilter as Filter,
   type RentSummary,
 } from "@/lib/scoring/rent";
@@ -86,6 +88,38 @@ export function RentFilter({
         ))}
       </div>
 
+      <div
+        role="radiogroup"
+        aria-label="Poziom szczegółowości cen"
+        className="mt-3 flex gap-1 rounded-full bg-muted p-1"
+      >
+        {(
+          [
+            { value: "district", label: "Dzielnica" },
+            { value: "osiedle", label: "Osiedle" },
+          ] as const
+        ).map((l) => (
+          <button
+            key={l.value}
+            role="radio"
+            aria-checked={(value.level ?? "district") === l.value}
+            onClick={() => onChange({ ...value, level: l.value })}
+            className={`flex-1 rounded-full px-2 py-1 text-xs font-medium transition-colors ${
+              (value.level ?? "district") === l.value
+                ? "bg-white text-slate-900 shadow"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            {l.label}
+          </button>
+        ))}
+      </div>
+      <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
+        {value.level === "osiedle"
+          ? `Osiedle: ceny z osiedla tam, gdzie mamy dla niego dość ogłoszeń (${RENT_OSIEDLE_META.cells} z 461 sześciokątów); pozostałe obszary mają cenę dzielnicy.`
+          : "Dzielnica: jedna cena dla całej dzielnicy. Przełącz na osiedle, by zobaczyć różnice w jej obrębie, np. na Dębnikach czy Podgórzu."}
+      </p>
+
       <label className="mt-3 flex cursor-pointer items-start gap-2.5 rounded-xl bg-muted/60 p-2.5">
         <input
           type="checkbox"
@@ -125,7 +159,11 @@ export function RentFilter({
           ? "Mapa blednie tam, gdzie pasuje niewiele ofert z dzielnicy. Dzielnice ze zbyt małą liczbą ogłoszeń pozostają lekko zacieniowane."
           : "Opcjonalnie: wyszarz dzielnice, w których mało ofert mieści się w Twoim budżecie."}{" "}
         Ceny ofertowe z {RENT_META.listings.toLocaleString("pl")} ogłoszeń na
-        Otodom.pl (stan na {RENT_META.snapshot}), według dzielnic.
+        Otodom.pl (stan na {RENT_META.snapshot}), według dzielnic
+        {value.level === "osiedle"
+          ? ` i osiedli (${RENT_OSIEDLE_META.listings.toLocaleString("pl")} ogłoszeń, ${RENT_OSIEDLE_META.snapshot})`
+          : ""}
+        .
       </p>
       <SourceBadges
         topic="rent"
@@ -160,10 +198,13 @@ export function RentSection({
   fit,
   filter,
   district,
-}: RentSummary & { filter: Filter; district: string | null }) {
+  area,
+}: RentSummary & { filter: Filter; district: string | null; area?: RentArea }) {
   const size = ROOMS_OPTIONS.find((r) => r.value === filter.rooms)?.label ?? "";
   const badge = fit === "unknown" ? null : FIT_BADGE[fit];
-  const place = district ?? "ta dzielnica";
+  const isOsiedle = area?.kind === "osiedle";
+  const place = isOsiedle ? `osiedle ${area?.name}, ${district}` : (district ?? "ta dzielnica");
+  const scope = isOsiedle ? "osiedla" : "dzielnicy";
   return (
     <div className="mt-5 rounded-2xl border border-border/70 p-4">
       <div className="flex items-center justify-between gap-3">
@@ -217,11 +258,14 @@ export function RentSection({
             </div>
           )}
           <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
-            Ceny ofertowe (dzielnica: {place}) z {stats.n} ogłoszeń na Otodom.pl
-            ({RENT_META.snapshot})
+            Ceny ofertowe ({isOsiedle ? "" : "dzielnica: "}{place}) z {stats.n} ogłoszeń na
+            Otodom.pl ({isOsiedle ? RENT_OSIEDLE_META.snapshot : RENT_META.snapshot})
             {stats.n < 15 ? ", mało ofert, traktuj orientacyjnie" : ""}. To
-            szacunek dla całej dzielnicy, a nie dla tego sześciokąta. Opłaty
-            (media, internet) zwykle są dodatkowe.
+            szacunek dla całej {scope}, a nie dla tego sześciokąta.
+            {filter.level === "osiedle" && !isOsiedle
+              ? " Dla tego sześciokąta nie ma dość ogłoszeń z jednego osiedla, więc pokazujemy cenę dzielnicy."
+              : ""}{" "}
+            Opłaty (media, internet) zwykle są dodatkowe.
           </p>
           <SourceBadges
             topic="rent"
@@ -236,12 +280,12 @@ export function RentSection({
         </p>
       )}
       <a
-        href={otodomUrl(filter, district)}
+        href={otodomUrl(filter, district, isOsiedle ? area?.slug : null)}
         target="_blank"
         rel="noopener noreferrer"
         className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-emerald-700 underline underline-offset-2 hover:text-emerald-800"
       >
-        Zobacz aktualne oferty{district ? ` (${district})` : ""} na Otodom
+        Zobacz aktualne oferty{district ? ` (${isOsiedle ? area?.name : district})` : ""} na Otodom
         <ExternalLink className="size-3" aria-hidden />
       </a>
       {filter.fees && isRentActive(filter) && (

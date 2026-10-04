@@ -2,7 +2,7 @@
 
 import { RentSection } from "./rent-filter";
 import { MODE_LABELS, formatMinutes, type TravelMode } from "@/lib/scoring/commute";
-import type { RentFilter, RentSummary } from "@/lib/scoring/rent";
+import type { RentArea, RentFilter, RentSummary } from "@/lib/scoring/rent";
 import type { ReactNode } from "react";
 import { plPlural } from "@/lib/format/pl";
 import { ArrowLeft, Briefcase, Bus, Check, ChevronRight, Footprints, Info, MapPin, ShieldCheck, TramFront, Wind, X } from "lucide-react";
@@ -68,7 +68,7 @@ type Props = {
   /** Does the match survive nudging one priority? Null = not computed. */
   sensitivity?: Sensitivity | null;
   /** Typical rent of this area for the chosen flat size; set only while a rent budget is active. */
-  rent?: (RentSummary & { filter: RentFilter }) | null;
+  rent?: (RentSummary & { filter: RentFilter; area?: RentArea }) | null;
   /** Commute from this area to the workplace; set only while a workplace is chosen. */
   commute?: { minutes: number; maxMin: number; mode: TravelMode; workName: string; approx: boolean; distanceKm?: number | null; transit?: TransitPlan | null } | null;
 };

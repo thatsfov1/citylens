@@ -151,3 +151,71 @@ test("Otodom link carries district and flat size, and lowers the limits by the c
   assert.equal(open.searchParams.get("roomsNumber"), "[THREE,FOUR,FIVE,SIX_OR_MORE]");
   assert.ok(open.pathname.endsWith("/krakow/krakow/krakow"));
 });
+
+// ---- neighbourhood level ----
+import osiedleData from "../data/rent-osiedle.json";
+import { RENT_OSIEDLE_META, rentAreaFor, summarizeRentFor } from "../scoring/rent";
+
+const cells = osiedleData.cells as Record<string, string>;
+const firstCell = Object.keys(cells)[0];
+const cellDistrict = Object.keys(osiedleData.areas).find((k) => k.endsWith(` › ${cells[firstCell]}`))?.split(" › ")[0] as string;
+
+test("district level always describes a cell by its district", () => {
+  const a = rentAreaFor({ h3Index: firstCell, district: cellDistrict }, 2, "district");
+  assert.equal(a.kind, "district");
+  assert.equal(a.key, cellDistrict);
+});
+
+test("neighbourhood level uses the cell's neighbourhood when it has enough offers, else the district", () => {
+  const withTable = [1, 2, 3].find((r) => (osiedleData.areas as Record<string, Record<string, unknown>>)[`${cellDistrict} › ${cells[firstCell]}`]?.[String(r)]);
+  assert.ok(withTable, "the first assigned cell has a table for some flat size");
+  const a = rentAreaFor({ h3Index: firstCell, district: cellDistrict }, withTable as 1 | 2 | 3, "osiedle");
+  assert.equal(a.kind, "osiedle");
+  assert.equal(a.name, cells[firstCell]);
+  assert.equal(a.key, `${cellDistrict} › ${cells[firstCell]}`);
+  // A cell nobody assigned, and a cell without a district, never get a neighbourhood.
+  assert.equal(rentAreaFor({ h3Index: "881e2e6ad9fffff", district: "Wzgórza Krzesławickie" }, 2, "osiedle").kind, "district");
+  assert.equal(rentAreaFor({ h3Index: firstCell, district: null }, 2, "osiedle").key, null);
+});
+
+test("a neighbourhood's summary comes from its own offers; the district summary is untouched by the level", () => {
+  const filter = { min: 2500, max: 3500, rooms: 2 as const, fees: true };
+  const hex = { h3Index: firstCell, district: cellDistrict };
+  const d = summarizeRentFor(hex, filter);
+  const o = summarizeRentFor(hex, { ...filter, level: "osiedle" });
+  assert.equal(d.area.kind, "district");
+  assert.deepEqual(d.stats, summarizeRent(cellDistrict, filter).stats);
+  if (o.area.kind === "osiedle") {
+    assert.ok((o.stats?.n ?? 0) >= 5, "at least the minimum number of offers");
+    assert.ok(o.fee > 0, "falls back to the district's czynsz when the ads rarely state one");
+  }
+});
+
+test("classifyHexes at neighbourhood level grades hexes of one district differently where neighbourhoods differ", () => {
+  // Dębniki: Ruczaj is much cheaper than Ludwinów/Dębniki proper (see docs: Rent at neighbourhood level).
+  const entries = Object.entries(cells).filter(([h]) => h);
+  const debniki = entries.filter(([, name]) => (osiedleData.areas as Record<string, unknown>)[`Dębniki › ${name}`]);
+  const filter = { min: 1500, max: 3000, rooms: 2 as const, fees: false };
+  const hexes = debniki.map(([h3Index]) => ({ h3Index, district: "Dębniki" }));
+  const byDistrict = classifyHexes(hexes, filter);
+  const byOsiedle = classifyHexes(hexes, { ...filter, level: "osiedle" });
+  const dShares = new Set([...byDistrict.share.values()]);
+  const oShares = new Set([...byOsiedle.share.values()]);
+  assert.equal(dShares.size, 1, "district level gives every Dębniki hexagon the same share");
+  assert.ok(oShares.size > 1, "neighbourhood level separates them");
+});
+
+test("the level survives the URL, and is left out at district level", () => {
+  const f = { min: 2500, max: 4000, rooms: 2 as const, fees: true, level: "osiedle" as const };
+  assert.equal(rentToQuery(f), "rent=2500-4000&rooms=2&rl=osiedle");
+  assert.equal(rentFromQuery({ rent: "2500-4000", rooms: "2", rl: "osiedle" })?.level, "osiedle");
+  assert.equal(rentFromQuery({ rent: "2500-4000", rooms: "2" })?.level, undefined);
+  assert.equal(rentToQuery({ ...f, level: "district" }), "rent=2500-4000&rooms=2");
+});
+
+test("the Otodom link can point at the neighbourhood", () => {
+  const f = { min: 1500, max: 7000, rooms: 2 as const, fees: false };
+  assert.match(otodomUrl(f, "Dębniki", "ruczaj"), /\/debniki\/ruczaj\?/);
+  assert.doesNotMatch(otodomUrl(f, "Dębniki"), /ruczaj/);
+  assert.ok(RENT_OSIEDLE_META.areas > 20);
+});

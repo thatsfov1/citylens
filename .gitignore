@@ -44,3 +44,4 @@ next-env.d.ts
 # full OSM extracts (regenerate with scripts/osm/fetch.ts)
 /data/osm/full/
 /data/gtfs/full/
+/data/rent/full/

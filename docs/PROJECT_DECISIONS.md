@@ -582,7 +582,14 @@ changes a score.
   1,070 of 1,641 listings (65%) resolve; 192 have no street, 336 not found (mostly "gen./dr./prof./płk./bp." name prefixes and house numbers in the street field, fixable),
   43 fall outside their district. A resolved listing touches a median of 2 cells (p90 4). **Only 212 of 461 cells get any listing, 95 get weight ≥ 3**, so a cell estimate would
   have to fall back to the neighbourhood and then the district for the rest.
-- **Recommended design if built:** keep the district view as the default; add a switch "Dzielnica / Osiedle". Osiedle view: each cell takes the neighbourhood that most of
-  its resolved listings belong to (needs ≥ 5 offers for that neighbourhood and room bucket), otherwise falls back to the district value and is labelled as such. Never show a
-  per-cell median. Build cost: improve street normalisation (target ≥ 80%), a committed cell → neighbourhood table, extend `rent.ts` with a granularity parameter, a switch in
-  the Filters window, the area card saying which level it uses. Roughly half a day; not started.
+- **Built (branch `feature/rent-osiedle`):** a "Dzielnica / Osiedle" switch in the rent filter. Default stays the district. At neighbourhood level a hexagon uses its
+  neighbourhood's offers when it has one and that neighbourhood has ≥ 5 offers for the chosen flat size; otherwise it keeps the district figure (the area card says so).
+  Never a per-cell median. `rentAreaFor` / `summarizeRentFor` in `src/lib/scoring/rent.ts`; URL `rl=osiedle` (left out at district level; `RentFilter.level` is optional so old links work).
+  Data: `src/lib/data/rent-osiedle.json` (35 KB, committed) built by `npx tsx scripts/rent/build-osiedle.ts` from `data/rent/listings-osiedle.json` (scrape: `scripts/rent/osiedle-check.ts`,
+  now also keeps czynsz and Otodom's neighbourhood slug) and OSM street names (`scripts/rent/streets-from-pbf.py` → `data/rent/full/streets.json`, gitignored).
+- **Street matching after tuning:** names are normalised (prefixes/titles such as "gen., dr, prof., płk., bp., św., ul., al." and house numbers dropped; a whole-word suffix
+  match covers "Słowackiego" vs "Juliusza Słowackiego"). **1,317 of 1,641 listings (80%) now resolve**; 190 have no street, 87 not found, 47 fall outside their district. A cell takes the neighbourhood that most
+  of its listings belong to (≥ 0.5 listing-equivalents). Result: **56 neighbourhoods have a table, 150 of 461 cells are assigned**; the rest (mostly outskirts with few ads) use the district.
+  A neighbourhood's czynsz is its own median when ≥ 3 ads state one, otherwise its district's. The Otodom link points at the neighbourhood path (`/<district>/<osiedle slug>`).
+- **Limits:** neighbourhoods are placed by where their listings' streets are, not by boundaries, so the edge between two neighbourhoods is approximate; asking prices, one snapshot (2026-10-04), the
+  neighbourhood scrape is separate from the district snapshot (2026-10-03), so the two levels can differ slightly in date and listing mix. "Adjust preferences" does not carry the level back to the landing page.
