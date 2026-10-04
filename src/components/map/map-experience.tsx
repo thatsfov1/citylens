@@ -1,21 +1,16 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { cellToLatLng } from "h3-js";
 import {
-  ArrowLeft,
   Briefcase,
   CalendarRange,
   Layers,
   Maximize2,
   ChevronDown,
   Eye,
-  EyeOff,
-  Hexagon,
   Info,
   MapPin,
-  SlidersHorizontal,
   X,
 } from "lucide-react";
 import {
@@ -52,6 +47,7 @@ import {
 } from "@/lib/data/works";
 import { workBounds } from "@/lib/map/work-bounds";
 import type { WorksCollection } from "@/lib/data/works-map";
+import { TopMenu } from "./top-menu";
 import {
   TimelineBar,
   type TimelineCounts,
@@ -800,7 +796,7 @@ export function MapExperience({
         )}
 
         {openBadge && hex && (
-          <section className="absolute inset-x-3 top-28 z-10 max-h-[40%] overflow-y-auto rounded-2xl border border-border/70 bg-white/95 px-4 pb-4 pt-3 shadow-2xl backdrop-blur sm:inset-x-auto sm:bottom-6 sm:right-[24rem] sm:top-auto sm:max-h-[60%] sm:w-[24rem]">
+          <section className="absolute inset-x-3 top-[4.5rem] z-10 max-h-[40%] overflow-y-auto rounded-2xl border border-border/70 bg-white/95 px-4 pb-4 pt-3 shadow-2xl backdrop-blur sm:inset-x-auto sm:bottom-6 sm:right-[24rem] sm:top-auto sm:max-h-[60%] sm:w-[24rem]">
             <button
               onClick={() => setBadgeInfo({ hex: null, kind: null })}
               aria-label="Zamknij"
@@ -844,41 +840,14 @@ export function MapExperience({
           )}
         </div>
 
-        <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center gap-3 p-3 sm:flex-row sm:items-start sm:justify-between sm:p-4">
-          <div className="pointer-events-auto flex items-center gap-2">
-            <Link
-              href={`/?${importanceToQuery(importance)}`}
-              className="pointer-events-auto flex items-center gap-2 rounded-full border border-border/70 bg-white/90 py-1.5 pl-2.5 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur hover:bg-white"
-            >
-              <ArrowLeft className="size-4" />
-              <Hexagon className="size-4 text-emerald-600" />
-              Zmień preferencje
-            </Link>
-            <button
-              type="button"
-              onClick={() => setMapOnly(true)}
-              className="flex items-center gap-1.5 rounded-full border border-border/70 bg-white/90 py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur hover:bg-white"
-            >
-              <EyeOff className="size-4" />
-              Sama mapa
-            </button>
-            {hasFilters && (
-              <button
-                type="button"
-                onClick={() => setFiltersOpen((v) => !v)}
-                aria-expanded={filtersOpen}
-                className={`flex items-center gap-1.5 rounded-full border py-1.5 pl-3 pr-4 text-sm font-medium shadow-lg shadow-black/5 backdrop-blur ${
-                  filtersOpen
-                    ? "border-slate-800 bg-slate-800 text-white"
-                    : "border-border/70 bg-white/90 hover:bg-white"
-                }`}
-              >
-                <SlidersHorizontal className="size-4" />
-                Filtry{activeFilters > 0 ? ` · ${activeFilters}` : ""}
-              </button>
-            )}
-          </div>
-          <div className="pointer-events-auto max-w-full sm:absolute sm:left-1/2 sm:-translate-x-1/2">
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 sm:p-4">
+          <TopMenu
+            preferencesHref={`/?${importanceToQuery(importance)}`}
+            onFilters={hasFilters ? () => setFiltersOpen((v) => !v) : undefined}
+            activeFilters={activeFilters}
+            onMapOnly={() => setMapOnly(true)}
+          />
+          <div className="pointer-events-auto min-w-0 sm:absolute sm:left-1/2 sm:-translate-x-1/2">
             <ModeSelector mode={mode} onChange={setMode} />
           </div>
           <ShareMenu
@@ -1138,7 +1107,7 @@ function Legend({
         : "border-border/70 bg-white/95 text-slate-700 hover:bg-white"
     }`;
   return (
-    <div className="pointer-events-none absolute left-3 top-28 flex flex-col-reverse items-start gap-2 sm:bottom-6 sm:left-4 sm:top-auto sm:flex-col">
+    <div className="pointer-events-none absolute left-3 top-[4.5rem] flex flex-col-reverse items-start gap-2 sm:bottom-6 sm:left-4 sm:top-auto sm:flex-col">
       <div className="flex gap-2">
         <button
           type="button"

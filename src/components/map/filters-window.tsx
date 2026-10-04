@@ -106,7 +106,7 @@ export function FiltersWindow(p: Props) {
   return (
     <section
       aria-label="Filtry"
-      className="absolute inset-x-3 top-28 z-10 max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-2xl border border-border/70 bg-white/95 p-4 shadow-2xl backdrop-blur sm:inset-x-auto sm:left-4 sm:top-16 sm:max-h-[calc(100dvh-5.5rem)] sm:w-[22rem]"
+      className="absolute inset-x-3 top-[4.5rem] z-10 max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-2xl border border-border/70 bg-white/95 p-4 shadow-2xl backdrop-blur sm:inset-x-auto sm:left-4 sm:top-16 sm:max-h-[calc(100dvh-5.5rem)] sm:w-[22rem]"
     >
       <div className="flex items-center justify-between gap-2 pb-1">
         <h2 className="text-sm font-semibold">Filtry</h2>
