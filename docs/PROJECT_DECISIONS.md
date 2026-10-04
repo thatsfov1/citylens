@@ -559,3 +559,6 @@ changes a score.
 
 ## Removed: "Najmocniejsze obszary" button
 - The map button that outlined the top 10% of cells (and its layer, `topZone`, legend entry) was **removed on request**. The separate first-match card (`strongestAreas` in `src/lib/scoring/first-match.ts`) stays.
+- **Interactive (follow-up):** the bar has "Pokaż listę (N)" — every work for the selected year (active, "termin nieznany", permits collapsed by count), each row with status pill, timing text (`describeTiming`, no distance), certainty label and, when selected, the source link. Clicking a row highlights it on the map and frames it (`workBounds`, `workFocus` in `hex-map.tsx`); clicking a work on the map selects its row and wins over the hexagon under it. Titles/`whenLabel` of curated works are still English (authored that way in `data/works/curated.json`).
+- Gotcha fixed: `HexMap` keeps the latest works layer in `worksRef` *before* the readiness check, otherwise data that arrives before the map is ready is lost; map fly-ins must set `flyingRef` or the view-lock `sync()` jumps back.
+

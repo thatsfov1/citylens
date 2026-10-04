@@ -78,13 +78,11 @@ export function isCurrent(w: Pick<WorkNearby, "status" | "dateTo">, today: Date)
   return true;
 }
 
-export function describeWork(w: WorkNearby, today: Date): WorkWarning {
-  const dist = distanceLabel(w.distanceM);
-  const base = { id: w.id, title: w.title, sourceName: w.sourceName, sourceUrl: w.sourceUrl, publishedAt: w.publishedAt, certainty: certainty(w) };
-
+/** Label + timing sentence from the stored dates only (no distance), e.g. "planowane za około 1 rok (połowa 2027)". */
+export function describeTiming(w: WorkTime, today: Date): { label: string; text: string } {
   if (w.status === "decision") {
     const when = w.dateFrom ? `wydane ${fmtMonth(w.dateFrom)}` : "wydane";
-    return { ...base, label: "Wydano pozwolenie", text: `${dist} · pozwolenie ${when}; brak opublikowanego harmonogramu budowy` };
+    return { label: "Wydano pozwolenie", text: `pozwolenie ${when}; brak opublikowanego harmonogramu budowy` };
   }
 
   if (w.status === "planned") {
@@ -95,13 +93,21 @@ export function describeWork(w: WorkNearby, today: Date): WorkWarning {
       w.whenLabel ? `(${w.whenLabel})` : w.dateFrom ? `(od ${fmtDay(w.dateFrom)})` : "",
       dur ? `potrwa ${dur}` : "",
     ].filter(Boolean);
-    return { ...base, label: "Planowane", text: `${dist} · ${parts.join(" ")}` };
+    return { label: "Planowane", text: parts.join(" ") };
   }
 
   const started = w.dateFrom && parse(w.dateFrom) <= toUtcDay(today) ? `od ${fmtDay(w.dateFrom)}` : "";
   const until = w.whenLabel ?? (w.dateTo ? `do ${fmtDay(w.dateTo)}` : "źródło nie podaje daty zakończenia");
-  const parts = ["w trakcie", started, until].filter(Boolean);
-  return { ...base, label: "W trakcie", text: `${dist} · ${parts.join(", ")}` };
+  return { label: "W trakcie", text: ["w trakcie", started, until].filter(Boolean).join(", ") };
+}
+
+export function describeWork(w: WorkNearby, today: Date): WorkWarning {
+  const t = describeTiming(w, today);
+  return {
+    id: w.id, title: w.title, sourceName: w.sourceName, sourceUrl: w.sourceUrl, publishedAt: w.publishedAt, certainty: certainty(w),
+    label: t.label,
+    text: `${distanceLabel(w.distanceM)} · ${t.text}`,
+  };
 }
 
 export type WorksSummary = {

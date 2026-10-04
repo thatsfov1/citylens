@@ -28,6 +28,9 @@ const PLACES_SOURCE = "places";
 const PARKING_SOURCE = "parking-pins";
 const WORKS_SOURCE = "works-layer";
 const PARKING_PIN_LAYERS = ["parking-lot", "parking-meter"];
+const WORK_LAYERS = ["works-permit", "works-line", "works-point"];
+const workFilter = (id: string | null, geometry: "Polygon" | "LineString" | "Point") =>
+  ["all", ["==", ["get", "id"], id ?? ""], ["==", ["geometry-type"], geometry]] as unknown as maplibregl.FilterSpecification;
 const GREEN_SOURCE = "place-green";
 const RING_SOURCE = "place-rings";
 const ROUTE_SOURCE = "commute-route";
@@ -146,6 +149,11 @@ type Props = {
   parkingPins?: readonly ParkingPin[] | null;
   /** City plans & works for the timeline (null = layer off). Informational: never part of the scores. */
   worksLayer?: { collection: WorksCollection; year: number | null } | null;
+  /** Clicking a work on the map (or empty space) reports its id; the selected one is highlighted. */
+  onWorkSelect?: (id: string | null) => void;
+  selectedWork?: string | null;
+  /** Ask the map to frame one work (bbox = [west, south, east, north]); `n` makes repeated requests distinct. */
+  workFocus?: { id: string; bbox: [number, number, number, number]; n: number } | null;
   /** Areas in the side-by-side comparison; they stay outlined even when not selected. */
   compared?: readonly string[];
   onBadge?: (kind: BadgeKind) => void;
@@ -217,11 +225,13 @@ function worksData(layer: Props["worksLayer"]): GeoJSON.FeatureCollection {
   };
 }
 
-export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentShare, rentUnknown, badges, compared, onBadge, parkingPins = null, worksLayer = null }: Props) {
+export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentShare, rentUnknown, badges, compared, onBadge, parkingPins = null, worksLayer = null, onWorkSelect, selectedWork = null, workFocus = null }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
   const worksRef = useRef(worksLayer);
+  const onWorkSelectRef = useRef(onWorkSelect);
+  const selectedWorkRef = useRef(selectedWork);
   const onSelectRef = useRef(onSelect);
   const fitRef = useRef<{ zoom: number; center: [number, number] } | null>(null);
   const [zoomedIn, setZoomedIn] = useState(false);
@@ -625,6 +635,11 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
         filter: ["==", ["get", "p"], "permit"],
         paint: { "fill-color": "#64748b", "fill-opacity": 0.22, "fill-outline-color": "#64748b" },
       });
+      // Highlight of the work picked in the list or on the map: a dark halo under its normal symbol.
+      const sel = selectedWorkRef.current;
+      map.addLayer({ id: "works-hl-permit", type: "line", source: WORKS_SOURCE, filter: workFilter(sel, "Polygon"), paint: { "line-color": "#0f172a", "line-width": 3 } });
+      map.addLayer({ id: "works-hl-line", type: "line", source: WORKS_SOURCE, filter: workFilter(sel, "LineString"), layout: { "line-cap": "round" }, paint: { "line-color": "#0f172a", "line-width": 10 } });
+      map.addLayer({ id: "works-hl-point", type: "circle", source: WORKS_SOURCE, filter: workFilter(sel, "Point"), paint: { "circle-radius": 14, "circle-color": "#0f172a" } });
       map.addLayer({
         id: "works-line",
         type: "line",
@@ -683,15 +698,24 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
       onHoverPlaceRef.current(id ?? null);
     });
     map.on("mouseleave", "place-pins", () => onHoverPlaceRef.current(null));
+    // A work on the map is selectable (and listed in the timeline bar); it wins over the hexagon under it.
+    for (const layer of WORK_LAYERS) {
+      map.on("click", layer, (e) => {
+        const id = e.features?.[0]?.properties?.id as string | undefined;
+        if (id) onWorkSelectRef.current?.(id);
+      });
+      map.on("mousemove", layer, () => (map.getCanvas().style.cursor = "pointer"));
+      map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
+    }
     map.on("click", "hex-fill", (e) => {
-      if (map.queryRenderedFeatures(e.point, { layers: ["place-pins", ...PARKING_PIN_LAYERS] }).length > 0) return;
+      if (map.queryRenderedFeatures(e.point, { layers: ["place-pins", ...PARKING_PIN_LAYERS, ...WORK_LAYERS] }).length > 0) return;
       const id = e.features?.[0]?.properties?.h3Index as string | undefined;
       if (id) onSelectRef.current(id);
     });
     map.on("click", (e) => {
       if (!map.getLayer("hex-fill")) return;
       if (
-        map.queryRenderedFeatures(e.point, { layers: ["hex-fill", "place-pins", ...PARKING_PIN_LAYERS] }).length === 0
+        map.queryRenderedFeatures(e.point, { layers: ["hex-fill", "place-pins", ...PARKING_PIN_LAYERS, ...WORK_LAYERS] }).length === 0
       ) {
         onSelectRef.current(null);
       }
@@ -937,9 +961,31 @@ export function HexMap({ commuteRoute = null, hexes, weights, mode, selected, on
   }, [parkingPins]);
 
   useEffect(() => {
+    onWorkSelectRef.current = onWorkSelect;
+  }, [onWorkSelect]);
+
+  useEffect(() => {
     const map = mapRef.current;
+    selectedWorkRef.current = selectedWork;
     if (!map || !readyRef.current) return;
-    worksRef.current = worksLayer;
+    map.setFilter("works-hl-permit", workFilter(selectedWork, "Polygon"));
+    map.setFilter("works-hl-line", workFilter(selectedWork, "LineString"));
+    map.setFilter("works-hl-point", workFilter(selectedWork, "Point"));
+  }, [selectedWork]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current || !workFocus) return;
+    const [w, so, e, n] = workFocus.bbox;
+    const right = window.innerWidth >= 640 ? SIDEBAR_WIDTH + FIT_PADDING : FIT_PADDING;
+    flyingRef.current = true; // the view-lock in sync() must not jump back mid-flight
+    map.fitBounds([[w, so], [e, n]], { padding: { top: 80, bottom: Math.round(Math.min(window.innerHeight * 0.55, 520)), left: FIT_PADDING, right }, maxZoom: 15, duration: 700 });
+  }, [workFocus]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    worksRef.current = worksLayer; // also when the map is not ready yet: the load handler reads it
+    if (!map || !readyRef.current) return;
     (map.getSource(WORKS_SOURCE) as maplibregl.GeoJSONSource).setData(worksData(worksLayer));
   }, [worksLayer]);
 

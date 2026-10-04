@@ -39,9 +39,10 @@ import { explainMatch } from "@/lib/scoring/explain";
 import { describeAll } from "@/lib/scoring/facts";
 import { MAX_COMPARED, compareAreas } from "@/lib/scoring/compare";
 import { strongestAreas, topContributor } from "@/lib/scoring/first-match";
-import { groupWorks, worksAtYear } from "@/lib/data/works";
+import { certainty, describeTiming, groupWorks, worksAtYear } from "@/lib/data/works";
+import { workBounds } from "@/lib/map/work-bounds";
 import type { WorksCollection } from "@/lib/data/works-map";
-import { TimelineBar, type TimelineCounts } from "./timeline-bar";
+import { TimelineBar, type TimelineCounts, type TimelineItem, type TimelineList } from "./timeline-bar";
 import { fetchCached } from "@/lib/map/hex-cache";
 import { defaultPinCategories } from "@/lib/map/places";
 import { NO_DATA_COLOR } from "@/lib/map/zones";
@@ -375,17 +376,38 @@ export function MapExperience({
     window.history.replaceState(null, "", url);
   };
   const toggleTimeline = () => {
-    if (timelineOn) changeYear(null);
+    if (timelineOn) {
+      changeYear(null);
+      setSelectedWork(null);
+    }
     setTimelineOn(!timelineOn);
   };
   const worksLayer = useMemo(() => (timelineOn && worksMap ? { collection: worksMap, year } : null), [timelineOn, worksMap, year]);
-  const timelineCounts = useMemo<TimelineCounts | null>(() => {
+  // Each record once (a corridor or permit can have several geometries), split by the selected year.
+  const timeline = useMemo<{ counts: TimelineCounts; list: TimelineList } | null>(() => {
     if (!worksMap) return null;
-    // A permit or a corridor can have several geometries; count each record once.
+    const today = new Date();
     const byId = new Map(worksMap.features.map((f) => [f.properties.id, f.properties]));
-    const v = worksAtYear([...byId.values()], year, new Date());
-    return { active: v.active.length, unknown: v.unknown.length, permits: v.permits.length };
+    const v = worksAtYear([...byId.values()], year, today);
+    const item = (w: WorksCollection["features"][number]["properties"]): TimelineItem => {
+      const t = describeTiming(w, today);
+      const ref = w.id.startsWith("msip:") ? ` (${w.id.slice(5)})` : "";
+      return { id: w.id, title: `${w.title}${ref}`, label: t.label, text: t.text, certainty: certainty(w), sourceName: w.sourceName, sourceUrl: w.sourceUrl, publishedAt: w.publishedAt };
+    };
+    const byStart = (a: { dateFrom: string | null; title: string }, b: { dateFrom: string | null; title: string }) =>
+      (a.dateFrom ?? "9999").localeCompare(b.dateFrom ?? "9999") || a.title.localeCompare(b.title);
+    return {
+      counts: { active: v.active.length, unknown: v.unknown.length, permits: v.permits.length },
+      list: { active: v.active.sort(byStart).map(item), unknown: v.unknown.sort(byStart).map(item), permits: v.permits.sort(byStart).map(item) },
+    };
   }, [worksMap, year]);
+  const [selectedWork, setSelectedWork] = useState<string | null>(null);
+  const [workFocus, setWorkFocus] = useState<{ id: string; bbox: [number, number, number, number]; n: number } | null>(null);
+  const pickWork = (id: string | null, focus: boolean) => {
+    setSelectedWork(id);
+    const bbox = id && focus && worksMap ? workBounds(worksMap, id) : null;
+    if (id && bbox) setWorkFocus((f) => ({ id, bbox, n: (f?.n ?? 0) + 1 }));
+  };
   const panelYear = timelineOn ? year : null;
 
   // Construction / renovation works near the selected hexagon. Failure just means no warning block.
@@ -628,6 +650,9 @@ export function MapExperience({
     <div className="relative flex-1 overflow-hidden">
       <HexMap
         worksLayer={worksLayer}
+        selectedWork={selectedWork}
+        workFocus={workFocus}
+        onWorkSelect={(id) => pickWork(id, false)}
         parkingPins={parkingPinList}
         commuteRoute={
           workplace && route
@@ -896,7 +921,7 @@ export function MapExperience({
           timeline: timelineOn,
         }}
       />
-      <TimelineBar on={timelineOn} onToggle={toggleTimeline} year={year} onYear={changeYear} counts={timelineCounts} />
+      <TimelineBar on={timelineOn} onToggle={toggleTimeline} year={year} onYear={changeYear} counts={timeline?.counts ?? null} list={timeline?.list ?? null} selectedId={selectedWork} onSelect={(id) => pickWork(id, true)} />
     </div>
   );
 }

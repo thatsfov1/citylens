@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { certainty, describeWork, durationLabel, groupWorks, parseYear, placeAtYear, relativeStart, summarizeWorks, worksAtYear } from "../data/works";
+import { certainty, describeTiming, describeWork, durationLabel, groupWorks, parseYear, placeAtYear, relativeStart, summarizeWorks, worksAtYear } from "../data/works";
 import type { WorkNearby } from "../../types";
 
 const today = new Date(2026, 9, 3); // 3 Oct 2026
@@ -137,5 +137,27 @@ describe("works map layer", () => {
       assert.ok(f.geometry.type);
     }
     assert.ok(fc.features.some((f) => f.properties.status === "decision"));
+  });
+});
+
+describe("timing text and bounds", () => {
+  it("describeTiming is the describeWork text without the distance", () => {
+    const item = w({ status: "ongoing", dateFrom: "2026-08-27", dateTo: "2026-11-30" });
+    const { text } = describeTiming(item, today);
+    assert.equal(describeWork(item, today).text, `~400 m stąd · ${text}`);
+    assert.equal(text, "w trakcie, od 27 sie 2026, do 30 lis 2026");
+  });
+
+  it("workBounds covers all geometries of one id", async () => {
+    const { workBounds } = await import("../map/work-bounds");
+    const fc = {
+      features: [
+        { type: "Feature" as const, properties: { id: "a" } as never, geometry: { type: "Point" as const, coordinates: [19.9, 50.0] } },
+        { type: "Feature" as const, properties: { id: "a" } as never, geometry: { type: "LineString" as const, coordinates: [[19.8, 50.1], [20.0, 49.99]] } },
+        { type: "Feature" as const, properties: { id: "b" } as never, geometry: { type: "Point" as const, coordinates: [21, 51] } },
+      ],
+    };
+    assert.deepEqual(workBounds(fc, "a"), [19.8, 49.99, 20.0, 50.1]);
+    assert.equal(workBounds(fc, "zzz"), null);
   });
 });
