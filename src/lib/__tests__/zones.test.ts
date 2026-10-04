@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { cellToLatLng, gridDisk } from "h3-js";
-import { bandOf, topZone } from "../map/zones";
+import { bandOf } from "../map/zones";
 import { heatPixels, rampColor } from "../map/heat-field";
 
 test("bandOf buckets percentiles into quintiles", () => {
@@ -11,13 +11,6 @@ test("bandOf buckets percentiles into quintiles", () => {
   assert.equal(bandOf(0.5), 2);
   assert.equal(bandOf(0.99), 4);
   assert.equal(bandOf(1), 4);
-});
-
-test("topZone keeps only cells at or above the threshold", () => {
-  const [a, b] = gridDisk("891e2e5b6b7ffff", 1).slice(0, 2);
-  assert.equal(topZone([a, b], [0.1, 0.2]).features.length, 0);
-  const fc = topZone([a, b], [0.95, 0.2]);
-  assert.equal((fc.features[0].geometry as GeoJSON.MultiPolygon).coordinates.length, 1);
 });
 
 test("rampColor runs continuously from red to green", () => {

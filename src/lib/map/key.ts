@@ -127,13 +127,6 @@ export const KEY_ENTRIES: KeyEntry[] = [
     when: (c) => c.comparing,
   },
   {
-    id: "strongest",
-    group: "lines",
-    symbol: { kind: "outline", color: "#0f5132" },
-    label: "Najmocniejsze obszary",
-    meaning: "Pokazywane przyciskiem „Najmocniejsze obszary”: górna jedna dziesiąta komórek dla bieżącej zakładki.",
-  },
-  {
     id: "districts",
     group: "lines",
     symbol: { kind: "line", color: "#334155" },

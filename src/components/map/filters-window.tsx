@@ -60,7 +60,7 @@ function SafetyFilter({ value, onChange }: { value: number; onChange: (v: number
       </div>
       <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
         {value > 0
-          ? "Obszary poniżej tego poziomu są wyszarzone i pomijane w „Najmocniejszych obszarach”. Obszary bez danych pozostają widoczne."
+          ? "Obszary poniżej tego poziomu są wyszarzone i pomijane przy wskazaniu pierwszego dopasowania. Obszary bez danych pozostają widoczne."
           : "Opcjonalnie: wyszarz obszary z mniejszą liczbą wskaźników bezpieczeństwa na ich korzyść."}
       </p>
     </div>

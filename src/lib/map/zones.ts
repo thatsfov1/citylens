@@ -22,24 +22,6 @@ export function bandOf(pct: number): number {
   return Math.min(BAND_COUNT - 1, Math.max(0, Math.floor(pct * BAND_COUNT)));
 }
 
-/** Dissolved outline of the cells whose percentile rank is at least `threshold`. */
-export function topZone(cells: string[], pcts: number[], threshold = 0.9): GeoJSON.FeatureCollection {
-  const top = cells.filter((_, i) => pcts[i] >= threshold);
-  return {
-    type: "FeatureCollection",
-    features:
-      top.length === 0
-        ? []
-        : [
-            {
-              type: "Feature",
-              properties: {},
-              geometry: { type: "MultiPolygon", coordinates: cellsToMultiPolygon(top, true) },
-            },
-          ],
-  };
-}
-
 /**
  * District overlay built from the per-hex `district` names: one dissolved outline per district
  * (follows hex edges) and one label point, placed on the member cell nearest the district's centre.

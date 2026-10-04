@@ -6,7 +6,7 @@ const none: KeyContext = { areaOpen: false, car: false, workplace: false, compar
 const ids = (ctx: KeyContext) => keySections(ctx).flatMap((s) => s.entries.map((e) => e.id));
 
 test("with nothing open only the always-on lines are listed", () => {
-  assert.deepEqual(ids(none), ["strongest", "districts"]);
+  assert.deepEqual(ids(none), ["districts"]);
 });
 
 test("pins, badges and rings need an open area", () => {

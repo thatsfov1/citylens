@@ -122,7 +122,7 @@ export function RentFilter({
 
       <p className="mt-1.5 text-[11px] leading-snug text-muted-foreground">
         {active
-          ? "Mapa blednie tam, gdzie pasuje niewiele ofert z dzielnicy, a takie dzielnice są pomijane w „Najmocniejszych obszarach”. Dzielnice ze zbyt małą liczbą ogłoszeń pozostają lekko zacieniowane."
+          ? "Mapa blednie tam, gdzie pasuje niewiele ofert z dzielnicy. Dzielnice ze zbyt małą liczbą ogłoszeń pozostają lekko zacieniowane."
           : "Opcjonalnie: wyszarz dzielnice, w których mało ofert mieści się w Twoim budżecie."}{" "}
         Ceny ofertowe z {RENT_META.listings.toLocaleString("pl")} ogłoszeń na
         Otodom.pl (stan na {RENT_META.snapshot}), według dzielnic.

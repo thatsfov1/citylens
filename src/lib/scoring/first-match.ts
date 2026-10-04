@@ -1,7 +1,7 @@
 import { CATEGORIES, type Category, type CategoryWeights, type HexData, type Place, type PlacesResponse } from "../../types";
 import { calculatePersonalScore } from "./personal-score";
 
-/** Share of cells offered as "first matches": the same top 10% the map highlights as strongest areas. */
+/** Share of cells offered as "first matches": the top 10% by personal score. */
 export const TOP_SHARE = 0.1;
 
 /**

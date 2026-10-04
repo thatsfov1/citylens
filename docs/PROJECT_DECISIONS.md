@@ -119,7 +119,7 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
 - **Safety is NOT a category.** It is an optional per-cell value (`hex_scores.safety_score`, nullable;
   `HexData.safety`; map mode `"safety"`), used as a **minimum-level filter** (`?minSafety=0|25|50|75`, control in the side
   panel) — good transport can't make up for feeling unsafe, so it never enters the weighted score or the LLM prompt.
-  Hexes below the minimum are greyed out and skipped by "Strongest areas"; hexes with no data are never filtered out
+  Hexes below the minimum are greyed out and skipped by the first-match card; hexes with no data are never filtered out
   (unknown ≠ unsafe). The UI hides the mode and the control when no cell has safety data (e.g. mock fallback).
   Copy rule: "safety indicators", "below your minimum safety level" — never "dangerous".
 - **Safety data actually used (public, OSM only; no crime data, no road/accident data).** Three scored indicators, each
@@ -180,7 +180,7 @@ Code: `scripts/osm/{fetch,compute,sample}.ts`, `src/lib/data/{osm,geo,score-hex}
   normalised to weights for the weighted sum. Defaults: sport 50, culture 10, greenery 70,
   shopping 20, transport 50. Preferences travel in the URL query string.
 - Copy rule (AGENTS.md §3): "match for you", never "best/worst neighbourhood".
-- Colours: 5 percentile bands (red → orange → yellow → light green → green, `src/lib/map/zones.ts`). Same-band neighbouring hexes are dissolved into one zone (`cellsToMultiPolygon`), so borders only appear where the band changes; the per-hex layer is an invisible hit target. In category modes a hex scoring 0 is grey "nothing nearby" (`NO_DATA_BAND`), not a weak match. Extras: hover tooltip, dimmed non-selected zones, "Strongest areas" toggle (top 10% outline), softened basemap. The map is veiled outside Kraków's boundary (airports stay visible).
+- Colours: 5 percentile bands (red → orange → yellow → light green → green, `src/lib/map/zones.ts`). Same-band neighbouring hexes are dissolved into one zone (`cellsToMultiPolygon`), so borders only appear where the band changes; the per-hex layer is an invisible hit target. In category modes a hex scoring 0 is grey "nothing nearby" (`NO_DATA_BAND`), not a weak match. Extras: hover tooltip, dimmed non-selected zones, , softened basemap. The map is veiled outside Kraków's boundary (airports stay visible).
 - **Map view lock** (`src/components/map/hex-map.tsx`): the minimum zoom is the zoom at which the whole
   city fits beside the 380 px side panel (mobile: full width). At that view panning is disabled; zooming
   in enables panning, with the centre clamped to the city bbox (`KRAKOW_BOUNDS` in `src/lib/h3/mask.ts`).
@@ -411,7 +411,7 @@ changes a score.
   table (`src/lib/supabase/anchors.ts`, ranking in `src/lib/data/anchors.ts`) and returns `anchor {name, lat, lng, radiusM}`
   or `null` (unknown names are silently dropped).
 - The anchor travels in the URL as `?near=lat,lng,radiusM,name`. On the map it is a **filter, not a score term**: hexes
-  whose centre is beyond the radius are dimmed like the safety filter and left out of "Strongest areas"
+  whose centre is beyond the radius are dimmed like the safety filter and left out of the first match
   (`src/lib/scoring/anchor.ts`, deterministic, client-side). Weights and stored scores are untouched.
 - Streets/addresses: when `pois` has no match, `src/lib/data/nominatim.ts` does one bounded Nominatim lookup (Kraków
   box, 4 s timeout, best-effort: failure = no anchor). It returns a single point (the street's centre), so for a long
@@ -425,7 +425,7 @@ changes a score.
 
 - A **filter, not a score term** (like safety and "near a place"): the user sets a monthly rent range and a flat size
   (1 / 2 / 3+ rooms); the map fades toward grey where few of the district's offers fit, and those districts are left out of
-  "Strongest areas". Weights and stored scores are untouched. Logic and tests: `src/lib/scoring/rent.ts`,
+  (the "Strongest areas" button was removed). Weights and stored scores are untouched. Logic and tests: `src/lib/scoring/rent.ts`,
   `src/lib/__tests__/rent.test.ts`. UI: `src/components/map/rent-filter.tsx` (Filters window; a rent card in the area panel).
 - **Data:** `src/lib/data/rent-data.json` is a one-off snapshot of Otodom rental *asking prices* (about 1,600 listings,
   2026-10-03), built by `scripts/rent/build.ts` (45 result pages, 2 s apart, no per-listing requests; raw rows in
@@ -434,7 +434,7 @@ changes a score.
   left out (e.g. Wzgórza Krzesławickie has none). Asking prices run above signed rents.
 - **Fit = share of a district's offers inside the range** (not the median: all 2-room medians lie between 2 400 and
   3 350, so the first version greyed nothing for ordinary budgets). The map overlay fades from full grey at 0% to none at
-  50% (`FULL_SHARE`); below 20% (`OUT_SHARE`) a district counts as outside the budget (skipped by "Strongest areas" and
+  50% (`FULL_SHARE`); below 20% (`OUT_SHARE`) a district counts as outside the budget (skipped for the first match and
   the first-match pick). A handle at the end of the slider (1 500 / 7 000+) means no limit on that side; the full range
   means no filter. Districts with no estimate are **unknown**: a light shade, never in or out.
 - **Czynsz (building fee):** ads show the base rent; the czynsz administracyjny is a separate field (stated in about 94% of
@@ -458,7 +458,7 @@ changes a score.
 - A **filter, not a score term** (like rent, safety and "near a place"): the user may mention where they work, how they travel
   (walk / bike / public transport / car) and a maximum commute in the landing chat. The model copies it into
   `workplace {query, mode, maxMin}` (null = not stated; defaults transit / 30 min) and `POST /api/chat` resolves the address and
-  returns `work`. Hexes whose commute exceeds the limit are dimmed and left out of "Strongest areas";
+  returns `work`. Hexes whose commute exceeds the limit are dimmed and left out of the first match;
   weights and stored scores are untouched. A strongly matching area can therefore be impractical without the score hiding it.
 - URL: `?work=lat,lng,mode,maxMin,name` (`src/lib/scoring/commute.ts`, tested in `commute.test.ts`).
 - Address -> coordinates: `resolveAnchor` in the chat route (own `pois`, then bounded Nominatim); unknown addresses are dropped.
@@ -537,7 +537,7 @@ changes a score.
 - **Map key:** the legend card has a "Map key" button that expands a list of what each symbol means. It is data
   (`src/lib/map/key.ts`, tested in `map-key.test.ts`) drawn by `map-key.tsx`, and only lists what is on the map now: places and
   green outlines when an area is open, **P / P+R / parking meter (the grey dot)** only with "I have a car", the hexagon badges
-  (safety, air, works, compare), rings, compared outline, route and work marker. The "Strongest areas" and "District borders" rows are
+  (safety, air, works, compare), rings, compared outline, route and work marker. The "District borders" row is
   always listed because those toggles live inside `HexMap`. Parking pins show a tooltip (hover on desktop, tap on touch) with their
   name and the no-guarantee reminder; taps on pins do not select the hexagon under them. Pin colours and the caveat text are shared
   constants in `src/lib/scoring/parking.ts`.
@@ -557,3 +557,5 @@ changes a score.
 - **Map data is static, not a DB query:** `scripts/works/build.ts` also writes `src/lib/data/works-map.json` (same verified records as `supabase/seed-works.sql`, no evidence text); `GET /api/works` serves it (`works-map.ts`, zod). No migration was needed and the layer works without Supabase. Re-run the build after refreshing works data and commit both outputs.
 - Known gaps shown in the bar: the list is incomplete (metro, the Mistrzejowice tram and the MSIP investments layer are not in the data).
 
+## Removed: "Najmocniejsze obszary" button
+- The map button that outlined the top 10% of cells (and its layer, `topZone`, legend entry) was **removed on request**. The separate first-match card (`strongestAreas` in `src/lib/scoring/first-match.ts`) stays.
