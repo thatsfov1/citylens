@@ -55,7 +55,7 @@ export function Landing({ initial }: { initial?: Importance }) {
                 const edu = importance.education > 0 && stages ? stagesToParam(stages) : null;
                 router.push(`/map?${importanceToQuery(importance)}${edu ? `&edu=${edu}` : ""}${anchor ? `&${anchorToQuery(anchor)}` : ""}${rent ? `&${rentToQuery(rent)}` : ""}${workplace ? `&${workplaceToQuery(workplace)}` : ""}${car ? "&car=1" : ""}`);
               }}
-              className="mt-5 h-12 w-full justify-between rounded-none bg-[#252d27] px-5 text-sm font-normal text-white hover:bg-[#39443b] disabled:bg-stone-200 disabled:text-stone-500"
+              className="mt-5 h-12 w-full justify-between rounded-xl bg-[#252d27] px-5 text-sm font-normal text-white shadow-sm hover:bg-[#39443b] disabled:bg-stone-200 disabled:text-stone-500 disabled:shadow-none"
             >
               Pokaż moją mapę
               <ArrowRight className="size-4" aria-hidden />

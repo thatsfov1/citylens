@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { KrakowMap } from "./krakow-shape";
+import { UseCaseCallouts } from "./use-case-callouts";
 
-/** Left half: the city video inside Kraków's outline, with the wordmark. Static — no decorative motion. */
+/** Left half: the city video inside Kraków's outline, with rotating product examples and the wordmark. */
 export function HeroStage() {
   return (
     <section
@@ -13,12 +14,17 @@ export function HeroStage() {
           <KrakowMap />
         </div>
       </div>
+      <UseCaseCallouts />
       <Link
         href="/"
-        className="absolute bottom-0 left-0 z-10 px-2 pb-1 text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]"
+        aria-label="Citylens — strona główna"
+        className="absolute bottom-5 left-5 z-20 flex items-center gap-2 text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)] sm:bottom-7 sm:left-7"
       >
-        <span className="block font-[family-name:var(--font-roboto)] text-7xl font-bold leading-none tracking-[-0.04em] sm:text-8xl lg:text-9xl">
-          citylens
+        <span aria-hidden="true" className="relative size-6 rounded-full border-2 border-current sm:size-7">
+          <span className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-current" />
+        </span>
+        <span className="font-[family-name:var(--font-bricolage)] text-4xl font-semibold leading-none tracking-[-0.06em] sm:text-5xl lg:text-6xl">
+          citylens.
         </span>
       </Link>
     </section>

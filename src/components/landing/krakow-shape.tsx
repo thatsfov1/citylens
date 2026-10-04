@@ -47,6 +47,7 @@ export function KrakowMap({ videoSrc = "/videos/krakow.mp4" }: { videoSrc?: stri
           playsInline
           preload="metadata"
         />
+        <div aria-hidden="true" className="absolute inset-0 bg-white/50" />
       </div>
 
       <svg viewBox={`0 0 ${KRAKOW_ASPECT} 1`} className="pointer-events-none absolute inset-0 size-full overflow-visible" aria-hidden>
