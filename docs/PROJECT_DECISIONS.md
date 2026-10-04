@@ -562,3 +562,7 @@ changes a score.
 - **Interactive (follow-up):** the bar has "Pokaż listę (N)" — every work for the selected year (active, "termin nieznany", permits collapsed by count), each row with status pill, timing text (`describeTiming`, no distance), certainty label and, when selected, the source link. Clicking a row highlights it on the map and frames it (`workBounds`, `workFocus` in `hex-map.tsx`); clicking a work on the map selects its row and wins over the hexagon under it. Titles/`whenLabel` of curated works are still English (authored that way in `data/works/curated.json`).
 - Gotcha fixed: `HexMap` keeps the latest works layer in `worksRef` *before* the readiness check, otherwise data that arrives before the map is ready is lost; map fly-ins must set `flyingRef` or the view-lock `sync()` jumps back.
 
+
+## 3D buildings
+
+- A "3D" icon button in the legend's icon row (`map-experience.tsx`) toggles `HexMap`'s `tilt` prop: the camera eases to pitch 55° (centre/zoom kept) and a `fill-extrusion` layer (`buildings-3d`, OpenFreeMap `building` source-layer, `render_height` with an 8 m fallback, visible from zoom 14) is shown above the heat raster. Default is top-down 2D with the layer hidden. No new data or dependency.

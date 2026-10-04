@@ -693,6 +693,7 @@ export function MapExperience({
   const [mapOnly, setMapOnly] = useState(false);
   const [showDistricts, setShowDistricts] = useState(false);
   const [recenterN, setRecenterN] = useState(0);
+  const [tilt, setTilt] = useState(false);
   const [hoveredPlace, setHoveredPlace] = useState<number | null>(null);
   const [focusPlace, setFocusPlace] = useState<{
     id: number;
@@ -704,6 +705,7 @@ export function MapExperience({
       <HexMap
         showDistricts={showDistricts}
         recenterSignal={recenterN}
+        tilt={tilt}
         worksLayer={worksLayer}
         selectedWork={selectedWork}
         workFocus={workFocus}
@@ -965,6 +967,8 @@ export function MapExperience({
           minSafety={minSafety}
           rentActive={rentActive}
           onRecenter={() => setRecenterN((n) => n + 1)}
+          tilt={tilt}
+          onToggleTilt={() => setTilt((v) => !v)}
           timelineOn={timelineOn}
           onToggleTimeline={toggleTimeline}
           showDistricts={showDistricts}
@@ -1084,12 +1088,16 @@ function Legend({
   rentActive,
   keyContext,
   onRecenter,
+  tilt,
+  onToggleTilt,
   timelineOn,
   onToggleTimeline,
   showDistricts,
   onToggleDistricts,
 }: {
   onRecenter: () => void;
+  tilt: boolean;
+  onToggleTilt: () => void;
   timelineOn: boolean;
   onToggleTimeline: () => void;
   showDistricts: boolean;
@@ -1117,6 +1125,16 @@ function Legend({
           className={iconBtn(false)}
         >
           <Maximize2 className="size-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onToggleTilt}
+          aria-pressed={tilt}
+          aria-label="Widok 3D"
+          title="Widok 3D"
+          className={`${iconBtn(tilt)} text-[11px] font-semibold`}
+        >
+          3D
         </button>
         <button
           type="button"

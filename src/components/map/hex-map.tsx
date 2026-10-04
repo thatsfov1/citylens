@@ -34,6 +34,8 @@ const workFilter = (id: string | null, geometry: "Polygon" | "LineString" | "Poi
 const GREEN_SOURCE = "place-green";
 const RING_SOURCE = "place-rings";
 const ROUTE_SOURCE = "commute-route";
+const BUILDINGS_3D = "buildings-3d";
+const TILT_PITCH = 55;
 const DRILL_ZOOM = 14.2;
 const EMPTY: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
@@ -121,6 +123,7 @@ type Props = {
   showDistricts?: boolean;
   /** Increment to fly back to the whole-city view. */
   recenterSignal?: number;
+  tilt?: boolean;
   /** Path from the selected hexagon to the workplace, plus the workplace position for its pin. */
   commuteRoute?: { line: [number, number][]; dashed: boolean; work: [number, number] } | null;
   hexes: HexData[];
@@ -227,7 +230,7 @@ function worksData(layer: Props["worksLayer"]): GeoJSON.FeatureCollection {
   };
 }
 
-export function HexMap({ showDistricts = false, recenterSignal = 0, commuteRoute = null, hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentShare, rentUnknown, badges, compared, onBadge, parkingPins = null, worksLayer = null, onWorkSelect, selectedWork = null, workFocus = null }: Props) {
+export function HexMap({ showDistricts = false, recenterSignal = 0, tilt = false, commuteRoute = null, hexes, weights, mode, selected, onSelect, places, pinCategories, hoveredPlace, onHoverPlace, focusPlace, minSafety, outside, overBudget, rentShare, rentUnknown, badges, compared, onBadge, parkingPins = null, worksLayer = null, onWorkSelect, selectedWork = null, workFocus = null }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
@@ -318,8 +321,10 @@ export function HexMap({ showDistricts = false, recenterSignal = 0, commuteRoute
   const districts = useMemo(() => districtLayers(hexes), [hexes]);
 
   // Latest values for the one-time map setup (updated before it runs).
+  const tiltRef = useRef(tilt);
   const initial = useRef({ geojson, fields, mode, selected, districts });
   useEffect(() => {
+    tiltRef.current = tilt;
     onSelectRef.current = onSelect;
     onHoverPlaceRef.current = onHoverPlace;
     modeRef.current = mode;
@@ -335,6 +340,7 @@ export function HexMap({ showDistricts = false, recenterSignal = 0, commuteRoute
       zoom: KRAKOW_INITIAL_ZOOM,
       minZoom: 9,
       maxZoom: 16,
+      maxPitch: 60,
       attributionControl: { compact: true },
       // Keyless vector basemap (OpenStreetMap data via OpenFreeMap).
       style: "https://tiles.openfreemap.org/styles/positron",
@@ -432,6 +438,25 @@ export function HexMap({ showDistricts = false, recenterSignal = 0, commuteRoute
         layout: { "line-join": "round", visibility: showDistrictsRef.current ? "visible" : "none" },
         paint: { "line-color": "#334155", "line-width": 1.2, "line-opacity": 0.4 },
       });
+
+      // 3D buildings (hidden in the default top-down view). Above the heat raster so they are not painted over.
+      map.addLayer(
+        {
+          id: BUILDINGS_3D,
+          type: "fill-extrusion",
+          source: "openmaptiles",
+          "source-layer": "building",
+          minzoom: 14,
+          layout: { visibility: tiltRef.current ? "visible" : "none" },
+          paint: {
+            "fill-extrusion-color": "#c9ced3",
+            "fill-extrusion-opacity": 0.75,
+            "fill-extrusion-height": ["coalesce", ["get", "render_height"], 8],
+            "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
+          },
+        },
+        "district-line",
+      );
       map.addSource(DISTRICT_LABEL_SOURCE, { type: "geojson", data: districts.labels });
       map.addLayer({
         id: "district-label",
@@ -998,6 +1023,14 @@ export function HexMap({ showDistricts = false, recenterSignal = 0, commuteRoute
     if (!map || !readyRef.current) return;
     map.setLayoutProperty("district-line", "visibility", showDistricts ? "visible" : "none");
   }, [showDistricts]);
+
+  // 3D toggle: tilt the camera (centre and zoom preserved) and show extruded buildings.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    map.setLayoutProperty(BUILDINGS_3D, "visibility", tilt ? "visible" : "none");
+    map.easeTo({ pitch: tilt ? TILT_PITCH : 0, duration: 600 });
+  }, [tilt]);
 
   // Fly back to the whole-city view when the legend button asks for it.
   useEffect(() => {
