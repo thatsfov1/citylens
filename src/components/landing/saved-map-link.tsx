@@ -23,7 +23,10 @@ export function SavedMapLink() {
   const latest = raw ? loadSaved()[0] : undefined;
   if (!latest) return null;
   return (
-    <Link href={`/map?${latest.query}`} className="max-w-[12rem] truncate text-xs font-medium text-[#222823] underline underline-offset-4 hover:text-emerald-700">
+    <Link
+      href={`/map?${latest.query}`}
+      className="block max-w-[12rem] truncate rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-[#222823] shadow-sm transition hover:border-emerald-300 hover:text-emerald-700"
+    >
       Wróć do: {latest.name}
     </Link>
   );

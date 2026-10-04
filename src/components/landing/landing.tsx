@@ -14,6 +14,7 @@ import { workplaceToQuery, type Workplace } from "@/lib/scoring/commute";
 import type { EducationStage } from "@/types";
 import { ChatPanel } from "./chat-panel";
 import { SavedMapLink } from "./saved-map-link";
+import { UseCaseCallouts } from "./use-case-callouts";
 
 export function Landing({ initial }: { initial?: Importance }) {
   const router = useRouter();
@@ -40,12 +41,18 @@ export function Landing({ initial }: { initial?: Importance }) {
             playsInline
             preload="metadata"
           />
+          <div aria-hidden="true" className="absolute inset-0 bg-white/50" />
+          <UseCaseCallouts />
           <Link
             href="/"
-            className="absolute bottom-0 left-0 z-10 px-2 pb-1 text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]"
+            aria-label="Citylens — strona główna"
+            className="absolute bottom-5 left-5 z-20 flex items-center justify-center gap-2 text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)] sm:bottom-7 sm:left-7"
           >
-            <span className="block font-[family-name:var(--font-roboto)] text-7xl font-bold leading-none tracking-[-0.04em] sm:text-8xl lg:text-9xl">
-              citylens
+            <span aria-hidden="true" className="relative size-6 rounded-full border-2 border-current sm:size-7">
+              <span className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-current" />
+            </span>
+            <span className="font-[family-name:var(--font-bricolage)] text-4xl font-semibold leading-none tracking-[-0.06em] sm:text-5xl lg:text-6xl">
+              citylens.
             </span>
           </Link>
         </section>
@@ -73,7 +80,7 @@ export function Landing({ initial }: { initial?: Importance }) {
                 const edu = importance.education > 0 && stages ? stagesToParam(stages) : null;
                 router.push(`/map?${importanceToQuery(importance)}${edu ? `&edu=${edu}` : ""}${anchor ? `&${anchorToQuery(anchor)}` : ""}${rent ? `&${rentToQuery(rent)}` : ""}${workplace ? `&${workplaceToQuery(workplace)}` : ""}${car ? "&car=1" : ""}`);
               }}
-              className="mt-5 h-12 w-full justify-between rounded-none bg-[#252d27] px-5 text-sm font-normal text-white hover:bg-[#39443b] disabled:bg-stone-200 disabled:text-stone-500"
+              className="mt-5 h-12 w-full justify-between rounded-xl bg-[#252d27] px-5 text-sm font-normal text-white shadow-sm hover:bg-[#39443b] disabled:bg-stone-200 disabled:text-stone-500 disabled:shadow-none"
             >
               Pokaż moją mapę
               <ArrowRight className="size-4" aria-hidden />
