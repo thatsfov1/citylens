@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { Highlighter } from "@/components/ui/highlighter";
 import { Button } from "@/components/ui/button";
 import { OsmAttribution } from "@/components/osm-attribution";
 import { importanceToQuery, type Importance } from "@/lib/scoring/preferences";
@@ -64,7 +65,7 @@ export function Landing({ initial }: { initial?: Importance }) {
             </div>
             <h1 className="mb-6 max-w-lg text-4xl font-extrabold leading-[1.08] tracking-[-0.03em] text-[#1b221d] sm:text-5xl">
               Znajdź część Krakowa, która pasuje do{" "}
-              <span className="text-emerald-600">Ciebie</span>
+              <Highlighter action="highlight" color="#86EFAC">Ciebie</Highlighter>
             </h1>
             <ChatPanel
               onImportance={(i, nextStages, nextAnchor, nextRent, nextWork, nextCar) => {
