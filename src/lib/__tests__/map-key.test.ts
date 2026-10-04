@@ -11,7 +11,7 @@ test("with nothing open only the always-on lines are listed", () => {
 
 test("pins, badges and rings need an open area", () => {
   const open = ids({ ...none, areaOpen: true });
-  for (const id of ["places", "green", "badge-safety", "badge-air", "badge-works", "badge-compare", "rings"]) assert.ok(open.includes(id), id);
+  for (const id of ["places", "green", "badge-safety", "badge-air", "badge-health", "badge-works", "badge-compare", "rings"]) assert.ok(open.includes(id), id);
   assert.ok(!ids(none).includes("places"));
 });
 

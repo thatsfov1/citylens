@@ -20,11 +20,14 @@ const rowSchema = z.object({
   education_stages: z.object({ kindergarten: score, primary: score, secondary: score, university: score }).nullable(),
   safety_score: score.nullable(),
   air_score: score.nullable(),
+  health_score: score.nullable().optional(),
   district: z.string().nullable(),
 });
 
 // Scores + district only: the heavy `indicators` JSON is fetched per hex on demand.
 const LIST_COLUMNS = "h3_index,sport_score,culture_score,greenery_score,shopping_score,transport_score,education_score,education_stages,safety_score,air_score,district";
+// `health_score` came with a later migration: until it is applied the list is read without it (health just stays absent).
+const LIST_COLUMNS_WITH_HEALTH = `${LIST_COLUMNS},health_score`;
 
 export type HexSource = "supabase" | "mock";
 
@@ -32,9 +35,10 @@ export type HexSource = "supabase" | "mock";
 export async function loadHexes(): Promise<{ hexes: HexData[]; source: HexSource }> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.from("hex_scores").select(LIST_COLUMNS).limit(5000);
-    if (error) throw error;
-    const rows = z.array(rowSchema).parse(data);
+    const withHealth = await supabase.from("hex_scores").select(LIST_COLUMNS_WITH_HEALTH).limit(5000);
+    const result = withHealth.error ? await supabase.from("hex_scores").select(LIST_COLUMNS).limit(5000) : withHealth;
+    if (result.error) throw result.error;
+    const rows = z.array(rowSchema).parse(result.data);
     if (rows.length === 0) throw new Error("hex_scores is empty");
     return {
       source: "supabase",
@@ -43,6 +47,7 @@ export async function loadHexes(): Promise<{ hexes: HexData[]; source: HexSource
         district: r.district,
         safety: r.safety_score,
         air: r.air_score,
+        health: r.health_score ?? null,
         educationStages: r.education_stages ?? undefined,
         scores: {
           sport: r.sport_score,
@@ -74,6 +79,14 @@ const poiIndicator = z.object({
     .nullable(),
   departuresPerHourWithin500: z.number().optional(),
 });
+const healthKind = z.object({
+  raw: z.number(),
+  within500: z.number(),
+  within1000: z.number(),
+  nearestM: z.number().nullable(),
+  score: z.number().optional(),
+});
+
 const indicatorsSchema = z.object({
   sport: poiIndicator,
   culture: poiIndicator,
@@ -102,6 +115,7 @@ const indicatorsSchema = z.object({
         .optional(),
     })
     .optional(),
+  health: z.object({ pharmacy: healthKind, doctor: healthKind, hospital: healthKind, post: healthKind, bank: healthKind }).optional(),
   air: z
     .object({
       pm25: z.number().optional(),

@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, ShieldCheck, TriangleAlert, Wind } from "lucide-react";
+import { HeartPulse, Plus, ShieldCheck, TriangleAlert, Wind } from "lucide-react";
 import { SOURCES, formatAsOf } from "@/lib/sources";
 import { keySections, type KeyContext, type KeySymbol } from "@/lib/map/key";
 
@@ -29,6 +29,7 @@ function Symbol({ symbol }: { symbol: KeySymbol }) {
         <span className={BADGE}>
           {symbol.icon === "safety" && <ShieldCheck className="size-3" />}
           {symbol.icon === "air" && <Wind className="size-3" />}
+          {symbol.icon === "health" && <HeartPulse className="size-3" />}
           {symbol.icon === "works" && <TriangleAlert className="size-3 text-amber-600" />}
           {symbol.icon === "compare" && <Plus className="size-3" />}
         </span>

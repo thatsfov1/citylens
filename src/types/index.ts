@@ -47,6 +47,11 @@ export type HexData = {
    * Not a category: shown only in the area panel, never on the map or in the weighted score.
    */
   air?: number | null;
+  /**
+   * Access to health and everyday services (pharmacies, doctors, hospitals, post offices, banks), 0–100. null/absent = no data.
+   * Not a category: shown only as a badge and in the area panel, never in the weighted score.
+   */
+  health?: number | null;
 };
 
 export type MapMode = "forYou" | Category | "safety";

@@ -1,6 +1,7 @@
 import { EDUCATION_STAGES, type Category, type EducationStage, type HexIndicators } from "../../types";
 import { dec, plCount } from "../format/pl";
 import { airLevel } from "../data/air";
+import { HEALTH_KINDS, HEALTH_SCALE, HEALTH_WEIGHTS, type HealthKind } from "../data/health";
 import { CCTV_RADIUS_M, EMERGENCY_REACH_M, LIGHTING_RADIUS_M, NIGHTLIFE_RADIUS_M, partShares, type SafetyPart } from "../data/safety";
 
 // Turns stored OSM indicators into short, factual sentences. Deterministic; no LLM involved.
@@ -232,6 +233,36 @@ export function describeAirLevel(ind: HexIndicators): string | null {
   if (!ind.air) return null;
   return `Jakość powietrza jest tu zwykle ${AIR_LEVEL_PL[airLevel(ind.air)]}: to szybka orientacja, a nie dokładny odczyt.`;
 }
+
+const HEALTH_LABELS: Record<HealthKind, { label: string; nearest: string; none: string }> = {
+  pharmacy: { label: "Apteki", nearest: "Najbliższa apteka", none: "apteki" },
+  doctor: { label: "Lekarze i przychodnie", nearest: "Najbliższy gabinet lub przychodnia", none: "gabinetu ani przychodni" },
+  hospital: { label: "Szpitale", nearest: "Najbliższy szpital", none: "szpitala" },
+  post: { label: "Poczty", nearest: "Najbliższa poczta", none: "poczty" },
+  bank: { label: "Banki", nearest: "Najbliższy bank", none: "banku" },
+};
+
+export type HealthPartInfo = { key: HealthKind; label: string; fact: string; score: number | null; sharePct: number };
+
+/** One row per kind of place: what is nearby, the kind's own score and its share of the combined score. */
+export function describeHealthParts(ind: HexIndicators): HealthPartInfo[] {
+  const h = ind.health;
+  if (!h) return [];
+  return HEALTH_KINDS.map((key) => {
+    const x = h[key];
+    const l = HEALTH_LABELS[key];
+    const reach = metres(HEALTH_SCALE[key] * 1000);
+    const fact =
+      x.nearestM === null
+        ? `Brak ${l.none} w promieniu ${reach}`
+        : `${l.nearest}: ${metres(x.nearestM)}${x.within1000 > 0 ? ` · w promieniu 1 km: ${x.within1000}` : ""}`;
+    return { key, label: l.label, fact, score: x.score ?? null, sharePct: Math.round(HEALTH_WEIGHTS[key] * 100) };
+  });
+}
+
+/** What the health-and-services figure can and cannot tell you. Shown in the panel. */
+export const HEALTH_CAVEAT =
+  "Liczą się tylko miejsca zmapowane w OpenStreetMap w pobliżu. Nie wiemy nic o godzinach otwarcia, kolejkach, jakości usług, kontraktach z NFZ ani o tym, czy gabinet przyjmuje nowych pacjentów. Wynik porównuje ten obszar z innymi obszarami Krakowa, to nie ocena okolicy i nie wchodzi do dopasowania.";
 
 /** What the air-quality figure can and cannot tell you. Shown in the panel. */
 export const AIR_CAVEAT =

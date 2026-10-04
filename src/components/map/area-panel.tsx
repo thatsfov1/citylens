@@ -5,11 +5,11 @@ import { MODE_LABELS, formatMinutes, type TravelMode } from "@/lib/scoring/commu
 import type { RentFilter, RentSummary } from "@/lib/scoring/rent";
 import type { ReactNode } from "react";
 import { plPlural } from "@/lib/format/pl";
-import { ArrowLeft, Briefcase, Bus, Check, ChevronRight, Footprints, Info, MapPin, ShieldCheck, TramFront, Wind, X } from "lucide-react";
+import { ArrowLeft, Briefcase, Bus, Check, ChevronRight, Footprints, HeartPulse, Info, MapPin, ShieldCheck, TramFront, Wind, X } from "lucide-react";
 import type { TransitPlan } from "@/lib/data/transit";
 import { GREEN_COLOR, PLACE_COLORS } from "@/lib/map/places";
 import { explainMatch, type MatchLevel } from "@/lib/scoring/explain";
-import { AIR_CAVEAT, EDUCATION_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describeAirLevel, describeAll, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
+import { AIR_CAVEAT, EDUCATION_CAVEAT, HEALTH_CAVEAT, SAFETY_NOT_INCLUDED, describeAir, describeAirLevel, describeAll, describeHealthParts, describeNightlife, describeSafetyParts } from "@/lib/scoring/facts";
 import type { Sensitivity } from "@/lib/scoring/sensitivity";
 import type { HexSource } from "@/lib/supabase/hex-scores";
 import { SensitivitySection } from "./sensitivity-section";
@@ -355,6 +355,59 @@ export function AirSection({ air, indicators }: { air: number; indicators: HexIn
         <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{AIR_CAVEAT}</p>
       </details>
       <SourceBadges topic="air" asOf={{ gios: indicators?.air?.asOf }} className="mt-2" />
+    </div>
+  );
+}
+
+export function HealthSection({ health, indicators }: { health: number; indicators: HexIndicators | null }) {
+  const parts = indicators ? describeHealthParts(indicators) : [];
+  return (
+    <div className="mt-4 rounded-2xl border border-border/70 p-3.5">
+      <div className="flex items-center justify-between text-sm">
+        <span className="flex items-center gap-1.5 font-semibold">
+          <HeartPulse className="size-4 text-slate-700" />
+          Zdrowie i usługi codzienne
+        </span>
+        <span className="font-semibold tabular-nums">{health}/100</span>
+      </div>
+      <div className="mt-1.5 h-1.5 rounded-full bg-muted">
+        <div className="h-full rounded-full bg-slate-800 transition-all" style={{ width: `${health}%` }} />
+      </div>
+      <details open className="group mt-2">
+        <summary className="flex cursor-pointer list-none items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground">
+          <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
+          Szczegóły
+        </summary>
+        {parts.length > 0 && (
+          <>
+            <p className="mt-2.5 text-[11px] leading-snug text-muted-foreground">
+              Każdy rodzaj miejsc jest porównywany z innymi obszarami Krakowa (0 = najmniej, 100 = najwięcej w zasięgu), a wyniki łączone według
+              poniższych udziałów.
+            </p>
+            <ul className="mt-2 space-y-2.5">
+              {parts.map((p) => (
+                <li key={p.key} className="text-xs">
+                  <div className="flex justify-between gap-2">
+                    <span className="font-medium text-slate-800">
+                      {p.label}
+                      <span className="ml-1.5 font-normal text-muted-foreground">liczy się w {p.sharePct}%</span>
+                    </span>
+                    <span className="font-semibold tabular-nums">{p.score ?? "–"}</span>
+                  </div>
+                  {p.score !== null && (
+                    <div className="mt-1 h-1 rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-slate-700" style={{ width: `${p.score}%` }} />
+                    </div>
+                  )}
+                  <p className="mt-1 leading-snug text-muted-foreground">{p.fact}</p>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        <p className="mt-3 text-[11px] leading-snug text-muted-foreground">{HEALTH_CAVEAT}</p>
+      </details>
+      <SourceBadges topic="health" className="mt-2" />
     </div>
   );
 }

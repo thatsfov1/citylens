@@ -20,7 +20,7 @@ export type KeySymbol =
   | { kind: "dots"; colors: string[] }
   | { kind: "letter"; text: string; bg: string }
   | { kind: "dot"; color: string }
-  | { kind: "badge"; icon: "safety" | "air" | "works" | "compare" }
+  | { kind: "badge"; icon: "safety" | "air" | "health" | "works" | "compare" }
   | { kind: "line"; color: string; dashed?: boolean }
   | { kind: "ring" }
   | { kind: "outline"; color: string; dashed?: boolean };
@@ -95,6 +95,13 @@ export const KEY_ENTRIES: KeyEntry[] = [
     symbol: { kind: "badge", icon: "air" },
     label: "Jakość powietrza",
     meaning: "Wynik jakości powietrza z najbliższych stacji. Stuknij, aby zobaczyć szczegóły.",
+  },
+  {
+    id: "badge-health",
+    group: "badges",
+    symbol: { kind: "badge", icon: "health" },
+    label: "Zdrowie i usługi",
+    meaning: "Dostęp do aptek, lekarzy, szpitali, poczt i banków w pobliżu. Stuknij, aby zobaczyć szczegóły.",
   },
   {
     id: "badge-works",
